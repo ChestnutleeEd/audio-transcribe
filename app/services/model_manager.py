@@ -23,10 +23,24 @@ class DownloadTracker:
     state: ModelDownloadState = ModelDownloadState.idle
     message: str = "模型尚未检测"
     error: str | None = None
+    active_device: str | None = None
+    active_compute_type: str | None = None
 
 
 tracker = DownloadTracker()
 tracker_lock = Lock()
+
+
+def set_runtime_device(device: str, compute_type: str) -> None:
+    with tracker_lock:
+        tracker.active_device = device
+        tracker.active_compute_type = compute_type
+
+
+def clear_runtime_device() -> None:
+    with tracker_lock:
+        tracker.active_device = None
+        tracker.active_compute_type = None
 
 
 def is_valid_model_dir(path: Path) -> bool:
@@ -46,6 +60,8 @@ def model_status() -> ModelStatus:
         state = tracker.state
         message = tracker.message
         error = tracker.error
+        active_device = tracker.active_device
+        active_compute_type = tracker.active_compute_type
 
     if active_path:
         state = ModelDownloadState.completed
@@ -60,6 +76,9 @@ def model_status() -> ModelStatus:
         managed_path=str(settings.managed_model_path),
         repo_id=settings.model_repo_id,
         required_files=REQUIRED_MODEL_FILES,
+        configured_device=settings.device,
+        active_device=active_device,
+        active_compute_type=active_compute_type,
         download_state=state,
         message=message,
         error=error,

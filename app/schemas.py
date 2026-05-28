@@ -63,6 +63,9 @@ class ModelStatus(BaseModel):
     managed_path: str
     repo_id: str
     required_files: list[str]
+    configured_device: str
+    active_device: str | None = None
+    active_compute_type: str | None = None
     download_state: ModelDownloadState
     message: str
     error: str | None = None

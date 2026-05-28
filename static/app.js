@@ -7,6 +7,7 @@ const jobsList = document.querySelector("#jobs-list");
 const jobSummary = document.querySelector("#job-summary");
 const jobsRefreshButton = document.querySelector("#jobs-refresh-button");
 const modelMessage = document.querySelector("#model-message");
+const modelDevice = document.querySelector("#model-device");
 const modelPath = document.querySelector("#model-path");
 const modelDownloadButton = document.querySelector("#model-download-button");
 const modelDownloadLabel = document.querySelector("#model-download-label");
@@ -240,6 +241,13 @@ function startModelPolling() {
 
 function renderModelStatus(status) {
   modelMessage.textContent = status.error || status.message;
+  const plannedDevice = (status.configured_device || "unknown").toUpperCase();
+  const activeDevice = status.active_device ? status.active_device.toUpperCase() : null;
+  const computeType = status.active_compute_type ? ` / ${status.active_compute_type}` : "";
+  modelDevice.textContent = activeDevice
+    ? `运行设备：${activeDevice}${computeType}`
+    : `计划设备：${plannedDevice}（模型加载后确认）`;
+  modelDevice.dataset.device = (status.active_device || status.configured_device || "unknown").toLowerCase();
   modelPath.textContent = status.available
     ? `当前模型：${status.active_path}`
     : `将下载到：${status.managed_path}`;

@@ -9,7 +9,7 @@ from faster_whisper import WhisperModel
 
 from app.config import ROOT_DIR, settings
 from app.services.exporters import TranscriptSegment
-from app.services.model_manager import resolve_model_path
+from app.services.model_manager import clear_runtime_device, resolve_model_path, set_runtime_device
 
 
 def configure_runtime() -> None:
@@ -39,15 +39,21 @@ def get_model() -> WhisperModel:
     configure_runtime()
     model_path = resolve_model_path()
     if model_path is None:
+        clear_runtime_device()
         raise FileNotFoundError(
             f"未找到 Whisper 模型目录。请下载模型到 {settings.managed_model_path}，"
             f"或设置 AUDIO_TRANSCRIBE_MODEL_PATH。"
         )
     try:
-        return create_model(model_path, settings.device, settings.compute_type)
+        model = create_model(model_path, settings.device, settings.compute_type)
+        set_runtime_device(settings.device, settings.compute_type)
+        return model
     except Exception as exc:
         if settings.device == "cuda" and cpu_fallback_enabled() and is_cuda_library_error(exc):
-            return create_model(model_path, "cpu", "int8")
+            model = create_model(model_path, "cpu", "int8")
+            set_runtime_device("cpu", "int8")
+            return model
+        clear_runtime_device()
         raise
 
 
