@@ -14,6 +14,7 @@ from app.schemas import AppOptions, JobState, JobStatus, OptionItem, OutputFile,
 from app.services.exporters import export_transcript
 from app.services.jobs import Job, job_store
 from app.services.media import SUPPORTED_UPLOAD_SUFFIXES, download_audio, ensure_runtime_dirs, normalize_audio, safe_stem
+from app.services.model_manager import download_model, model_status
 from app.services.transcriber import transcribe_audio
 
 
@@ -135,6 +136,22 @@ def options() -> AppOptions:
         ],
         supported_sources=["upload", "url"],
     )
+
+
+@app.get("/api/model")
+def get_model_status():
+    return model_status()
+
+
+@app.post("/api/model/download")
+def start_model_download():
+    status = model_status()
+    if status.available:
+        return status
+    if status.download_state == "downloading":
+        return status
+    executor.submit(download_model)
+    return model_status()
 
 
 @app.post("/api/jobs", response_model=JobStatus)

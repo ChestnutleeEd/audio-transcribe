@@ -106,6 +106,18 @@
           </div>
           <p class="message" id="message">选择文件或粘贴链接后开始。</p>
           <div id="outputs" class="outputs"></div>
+
+          <div class="model-card" aria-live="polite">
+            <div>
+              <h3>模型状态</h3>
+              <p id="model-message">正在检测 large-v3 模型</p>
+              <small id="model-path"></small>
+            </div>
+            <button class="secondary" type="button" id="model-download-button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>
+              <span id="model-download-label">下载模型</span>
+            </button>
+          </div>
         </aside>
       </section>
     </main>

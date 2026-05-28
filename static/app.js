@@ -9,8 +9,32 @@ const progressText = document.querySelector("#progress-text");
 const message = document.querySelector("#message");
 const outputs = document.querySelector("#outputs");
 const submitButton = form.querySelector(".primary");
+const modelMessage = document.querySelector("#model-message");
+const modelPath = document.querySelector("#model-path");
+const modelDownloadButton = document.querySelector("#model-download-button");
+const modelDownloadLabel = document.querySelector("#model-download-label");
 
 let pollTimer = null;
+let modelPollTimer = null;
+
+refreshModelStatus();
+
+modelDownloadButton.addEventListener("click", async () => {
+  const approved = window.confirm(
+    "large-v3 模型文件很大，会下载到项目的 models/large-v3-local 目录。确认开始下载吗？",
+  );
+  if (!approved) return;
+
+  modelDownloadButton.disabled = true;
+  modelMessage.textContent = "正在提交模型下载任务";
+  try {
+    await fetch("/api/model/download", { method: "POST" });
+    startModelPolling();
+  } catch (error) {
+    modelMessage.textContent = `模型下载任务启动失败：${error.message}`;
+    modelDownloadButton.disabled = false;
+  }
+});
 
 fileInput.addEventListener("change", () => {
   fileLabel.textContent = fileInput.files[0]?.name || "选择本地音频或视频";
@@ -93,4 +117,38 @@ function formatBytes(bytes) {
   const units = ["B", "KB", "MB", "GB"];
   const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
   return `${(bytes / 1024 ** index).toFixed(index ? 1 : 0)} ${units[index]}`;
+}
+
+async function refreshModelStatus() {
+  try {
+    const response = await fetch("/api/model");
+    const status = await response.json();
+    renderModelStatus(status);
+    return status;
+  } catch (error) {
+    modelMessage.textContent = `模型状态检测失败：${error.message}`;
+    modelDownloadButton.disabled = false;
+    return null;
+  }
+}
+
+function startModelPolling() {
+  clearInterval(modelPollTimer);
+  modelPollTimer = setInterval(async () => {
+    const status = await refreshModelStatus();
+    if (!status || ["completed", "failed"].includes(status.download_state)) {
+      clearInterval(modelPollTimer);
+    }
+  }, 2500);
+}
+
+function renderModelStatus(status) {
+  modelMessage.textContent = status.error || status.message;
+  modelPath.textContent = status.available
+    ? `当前模型：${status.active_path}`
+    : `将下载到：${status.managed_path}`;
+
+  const downloading = status.download_state === "downloading";
+  modelDownloadButton.disabled = status.available || downloading;
+  modelDownloadLabel.textContent = downloading ? "下载中" : status.available ? "模型已就绪" : "下载模型";
 }

@@ -10,6 +10,7 @@ data/jobs/
 data/tmp/
 
 # Heavy local model/runtime files
+models/
 origin-code/
 *.dll
 *.zip

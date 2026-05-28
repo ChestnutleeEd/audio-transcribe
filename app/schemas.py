@@ -45,3 +45,21 @@ class AppOptions(BaseModel):
     formats: list[OptionItem]
     timestamp_modes: list[OptionItem]
     supported_sources: list[Literal["upload", "url"]]
+
+
+class ModelDownloadState(str, Enum):
+    idle = "idle"
+    downloading = "downloading"
+    completed = "completed"
+    failed = "failed"
+
+
+class ModelStatus(BaseModel):
+    available: bool
+    active_path: str | None = None
+    managed_path: str
+    repo_id: str
+    required_files: list[str]
+    download_state: ModelDownloadState
+    message: str
+    error: str | None = None

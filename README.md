@@ -29,7 +29,27 @@ http://127.0.0.1:8000
 
 ## 本地模型和运行时配置
 
-默认模型路径：
+GitHub 仓库不会包含 large-v3 模型文件。模型体积很大，`models/` 和 `origin-code/` 都会被 Git 忽略。
+
+应用启动后会自动检测模型，检测顺序：
+
+1. `AUDIO_TRANSCRIBE_MODEL_PATH` 指定的目录
+2. `models/large-v3-local`
+3. `origin-code/large-v3-local`
+
+如果没有检测到模型，页面右侧会显示“下载模型”按钮。点击并确认后，会从 Hugging Face 下载：
+
+```text
+Systran/faster-whisper-large-v3
+```
+
+默认下载位置：
+
+```text
+models/large-v3-local
+```
+
+当前兼容的旧模型路径：
 
 ```text
 origin-code/large-v3-local

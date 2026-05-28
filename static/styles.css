@@ -370,6 +370,50 @@ summary:focus-visible {
   gap: 10px;
 }
 
+.model-card {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  border-top: 1px solid rgba(13, 148, 136, 0.2);
+  padding-top: 18px;
+}
+
+.model-card h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.model-card p {
+  margin-bottom: 6px;
+  color: rgba(19, 78, 74, 0.78);
+  line-height: 1.5;
+}
+
+.model-card small {
+  display: block;
+  overflow-wrap: anywhere;
+  color: rgba(19, 78, 74, 0.6);
+  line-height: 1.4;
+}
+
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  gap: 8px;
+  border: 1px solid rgba(13, 148, 136, 0.3);
+  border-radius: var(--radius);
+  color: var(--color-primary);
+  background: #fff;
+  font-weight: 900;
+}
+
+.secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
 .download {
   display: flex;
   align-items: center;

@@ -8,6 +8,7 @@ from faster_whisper import WhisperModel
 
 from app.config import settings
 from app.services.exporters import TranscriptSegment
+from app.services.model_manager import resolve_model_path
 
 
 def configure_runtime() -> None:
@@ -22,9 +23,13 @@ def configure_runtime() -> None:
 @lru_cache(maxsize=1)
 def get_model() -> WhisperModel:
     configure_runtime()
-    if not settings.model_path.exists():
-        raise FileNotFoundError(f"未找到 Whisper 模型目录: {settings.model_path}")
-    return WhisperModel(str(settings.model_path), device=settings.device, compute_type=settings.compute_type)
+    model_path = resolve_model_path()
+    if model_path is None:
+        raise FileNotFoundError(
+            f"未找到 Whisper 模型目录。请下载模型到 {settings.managed_model_path}，"
+            f"或设置 AUDIO_TRANSCRIBE_MODEL_PATH。"
+        )
+    return WhisperModel(str(model_path), device=settings.device, compute_type=settings.compute_type)
 
 
 def transcribe_audio(audio_path: Path, language: str | None) -> list[TranscriptSegment]:
