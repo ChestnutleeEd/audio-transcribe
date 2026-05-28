@@ -15,9 +15,12 @@ class Job:
     progress: int = 0
     message: str = "等待处理"
     source_label: str = "未命名任务"
+    source_url: str | None = None
     language: str = "auto"
     start_time: str | None = None
     end_time: str | None = None
+    processing_started_at: str | None = None
+    processing_finished_at: str | None = None
     model_id: str = "large-v3"
     model_label: str = "large-v3"
     formats: list[OutputFormat] = field(default_factory=list)
@@ -39,6 +42,7 @@ class JobStore:
         job_id: str,
         work_dir: Path,
         source_label: str,
+        source_url: str | None,
         language: str,
         start_time: str | None,
         end_time: str | None,
@@ -51,6 +55,7 @@ class JobStore:
             id=job_id,
             work_dir=work_dir,
             source_label=source_label,
+            source_url=source_url,
             language=language,
             start_time=start_time,
             end_time=end_time,

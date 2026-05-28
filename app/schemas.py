@@ -33,9 +33,12 @@ class JobStatus(BaseModel):
     progress: int
     message: str
     source_label: str = "未命名任务"
+    source_url: str | None = None
     language: str = "auto"
     start_time: str | None = None
     end_time: str | None = None
+    processing_started_at: str | None = None
+    processing_finished_at: str | None = None
     model_label: str = "large-v3"
     formats: list[OutputFormat] = Field(default_factory=list)
     include_timestamps: bool = True

@@ -8,7 +8,7 @@ import os
 import socket
 from pathlib import Path
 from typing import Callable
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from app.config import settings
 
@@ -72,7 +72,9 @@ def run_command_with_env(
     command: list[str],
     is_canceled: Callable[[], bool],
     env: dict[str, str] | None = None,
+    timeout_seconds: int | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    started_at = time.monotonic()
     process = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
@@ -83,6 +85,13 @@ def run_command_with_env(
         env=env,
     )
     while process.poll() is None:
+        if timeout_seconds is not None and time.monotonic() - started_at > timeout_seconds:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+            raise RuntimeError("视频音频下载超时，请检查链接、网络代理或稍后重试")
         if is_canceled():
             process.terminate()
             try:
@@ -93,6 +102,23 @@ def run_command_with_env(
         time.sleep(0.3)
     stdout, stderr = process.communicate()
     return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+
+def normalize_source_url(url: str) -> str:
+    parsed = urlparse(url.strip())
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError("仅支持 http/https 视频链接")
+
+    host = parsed.netloc.lower()
+    query = parse_qsl(parsed.query, keep_blank_values=True)
+    if "youtube.com" in host or "youtu.be" in host:
+        keep_keys = {"v"}
+        query = [(key, value) for key, value in query if key in keep_keys]
+    else:
+        time_keys = {"t", "start", "time_continue"}
+        query = [(key, value) for key, value in query if key not in time_keys]
+
+    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, urlencode(query), ""))
 
 
 def yt_dlp_command() -> list[str]:
@@ -169,6 +195,7 @@ def normalize_audio(
 
 
 def download_audio(url: str, output_dir: Path, is_canceled: Callable[[], bool] = lambda: False) -> Path:
+    url = normalize_source_url(url)
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"}:
         raise ValueError("仅支持 http/https 视频链接")
@@ -177,6 +204,12 @@ def download_audio(url: str, output_dir: Path, is_canceled: Callable[[], bool] =
     command = [
         *yt_dlp_command(),
         "--no-playlist",
+        "--socket-timeout",
+        "30",
+        "--retries",
+        "3",
+        "--fragment-retries",
+        "3",
         "--remote-components",
         "ejs:github",
         "-x",
@@ -195,7 +228,7 @@ def download_audio(url: str, output_dir: Path, is_canceled: Callable[[], bool] =
     if proxy:
         command.extend(["--proxy", proxy])
     command.append(url)
-    result = run_command_with_env(command, is_canceled, proxy_env(proxy))
+    result = run_command_with_env(command, is_canceled, proxy_env(proxy), timeout_seconds=1800)
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or "视频音频下载失败，请检查链接、网络或 yt-dlp 支持情况")
 

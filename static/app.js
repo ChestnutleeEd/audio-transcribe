@@ -216,8 +216,20 @@ function renderJob(job) {
   header.className = "job-head";
 
   const titleWrap = document.createElement("div");
+  titleWrap.className = "job-title-wrap";
   const title = document.createElement("h3");
-  title.textContent = job.source_label || `任务 ${shortId(job.id)}`;
+  const titleText = job.source_label || `任务 ${shortId(job.id)}`;
+  if (job.source_url) {
+    const titleLink = document.createElement("a");
+    titleLink.className = "job-title-link";
+    titleLink.href = job.source_url;
+    titleLink.target = "_blank";
+    titleLink.rel = "noreferrer";
+    titleLink.textContent = titleText;
+    title.append(titleLink);
+  } else {
+    title.textContent = titleText;
+  }
   const meta = document.createElement("p");
   meta.className = "job-meta";
   meta.textContent = `任务 ${shortId(job.id)}`;
@@ -348,7 +360,23 @@ function jobDetails(job) {
     { label: "模型", value: job.model_label || "large-v3" },
     { label: "格式", value: job.formats?.length ? job.formats.map(formatLabel).join(" / ") : "未选择" },
     { label: "时间轴", value: job.include_timestamps ? "带时间轴" : "纯文本" },
+    { label: "耗时", value: elapsedLabel(job) },
   ];
+}
+
+function elapsedLabel(job) {
+  const start = Date.parse(job.processing_started_at || job.created_at || "");
+  if (!Number.isFinite(start)) return "等待开始";
+  const finished = Date.parse(job.processing_finished_at || "");
+  const end = Number.isFinite(finished) ? finished : Date.now();
+  return formatElapsed(Math.max(0, Math.floor((end - start) / 1000)));
+}
+
+function formatElapsed(totalSeconds) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return [hours, minutes, seconds].map((part) => String(part).padStart(2, "0")).join(":");
 }
 
 function modelUsesCpu(modelLabel) {

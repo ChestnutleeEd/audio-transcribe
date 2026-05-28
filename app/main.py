@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -19,6 +20,7 @@ from app.services.media import (
     download_audio,
     ensure_runtime_dirs,
     normalize_audio,
+    normalize_source_url,
     safe_stem,
 )
 from app.services.model_manager import current_model_id, download_model, model_status, select_model, set_runtime_device
@@ -27,6 +29,10 @@ from app.services.transcriber import transcribe_audio
 
 app = FastAPI(title=settings.app_name)
 executor = ThreadPoolExecutor(max_workers=1)
+
+
+def utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def parse_formats(raw_formats: list[str] | str) -> list[OutputFormat]:
@@ -52,9 +58,12 @@ def build_status(job: Job) -> JobStatus:
         progress=job.progress,
         message=job.message,
         source_label=job.source_label,
+        source_url=job.source_url,
         language=job.language,
         start_time=job.start_time,
         end_time=job.end_time,
+        processing_started_at=job.processing_started_at,
+        processing_finished_at=job.processing_finished_at,
         model_label=job.model_label,
         formats=job.formats,
         include_timestamps=job.include_timestamps,
@@ -100,8 +109,15 @@ def run_job(
         return
 
     try:
+        job_store.update(job_id, processing_started_at=utc_now_iso(), processing_finished_at=None)
         if job.cancel_requested:
-            job_store.update(job_id, state=JobState.canceled, progress=100, message="已取消排队任务")
+            job_store.update(
+                job_id,
+                state=JobState.canceled,
+                progress=100,
+                message="已取消排队任务",
+                processing_finished_at=utc_now_iso(),
+            )
             return
 
         job_store.update(job_id, state=JobState.running, progress=8, message="准备音频来源")
@@ -110,6 +126,7 @@ def run_job(
         if media_path is None and source_url:
             media_path = download_audio(source_url, work_dir, lambda: is_job_canceled(job_id))
             base_name = safe_stem(media_path.name)
+            job_store.update(job_id, source_label=Path(media_path).stem)
 
         if media_path is None:
             raise ValueError("缺少上传文件或视频链接")
@@ -199,11 +216,26 @@ def run_job(
             progress=100,
             message="转录完成，可下载或手动删除转录文件",
             outputs=outputs,
+            processing_finished_at=utc_now_iso(),
         )
     except OperationCanceled as exc:
-        job_store.update(job_id, state=JobState.canceled, progress=100, message=str(exc), error=None)
+        job_store.update(
+            job_id,
+            state=JobState.canceled,
+            progress=100,
+            message=str(exc),
+            error=None,
+            processing_finished_at=utc_now_iso(),
+        )
     except Exception as exc:
-        job_store.update(job_id, state=JobState.failed, progress=100, message="任务失败", error=str(exc))
+        job_store.update(
+            job_id,
+            state=JobState.failed,
+            progress=100,
+            message="任务失败",
+            error=str(exc),
+            processing_finished_at=utc_now_iso(),
+        )
 
 
 @app.on_event("startup")
@@ -222,9 +254,9 @@ def options() -> AppOptions:
             OptionItem(value="ko", label="韩语"),
         ],
         formats=[
-            OptionItem(value="docx", label="Word"),
             OptionItem(value="txt", label="TXT"),
             OptionItem(value="md", label="Markdown"),
+            OptionItem(value="docx", label="Word"),
         ],
         timestamp_modes=[
             OptionItem(value="true", label="带时间轴"),
@@ -261,13 +293,16 @@ async def create_job(
     file: UploadFile | None = File(default=None),
     source_url: str | None = Form(default=None),
     language: str = Form(default="auto"),
-    formats: str = Form(default="docx,txt"),
+    formats: str = Form(default="txt"),
     include_timestamps: bool = Form(default=True),
     start_time: str | None = Form(default=None),
     end_time: str | None = Form(default=None),
 ) -> JobStatus:
     has_file = bool(file and file.filename)
-    clean_source_url = source_url.strip() if source_url else None
+    try:
+        clean_source_url = normalize_source_url(source_url) if source_url else None
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if not has_file and not clean_source_url:
         raise HTTPException(status_code=400, detail="请上传本地文件或填写视频链接")
@@ -301,6 +336,7 @@ async def create_job(
         job_id,
         work_dir,
         source_label,
+        clean_source_url,
         language,
         start_time,
         end_time,

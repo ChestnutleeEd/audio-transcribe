@@ -313,6 +313,7 @@ summary:focus-visible {
 .formats label {
   display: flex;
   align-items: center;
+  flex: 1 1 150px;
   min-height: 44px;
   gap: 8px;
   border: 1px solid rgba(13, 148, 136, 0.28);
@@ -413,17 +414,36 @@ summary:focus-visible {
 
 .job-head {
   display: flex;
-  align-items: start;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
+.job-title-wrap {
+  min-width: 0;
+}
+
 .job-head h3 {
-  max-width: 220px;
+  max-width: 100%;
   margin: 0 0 4px;
   overflow-wrap: anywhere;
   font-size: 15px;
   line-height: 1.35;
+}
+
+.job-title-link {
+  color: inherit;
+  text-decoration-color: rgba(13, 148, 136, 0.42);
+  text-underline-offset: 3px;
+}
+
+.job-title-link:hover {
+  color: var(--color-primary);
+}
+
+.pill {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .job-head p,
@@ -450,7 +470,7 @@ summary:focus-visible {
 
 .job-detail {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: 64px minmax(0, 1fr);
   gap: 10px;
   align-items: start;
 }
