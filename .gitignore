@@ -1,0 +1,26 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.codex/
+
+# Runtime artifacts
+data/uploads/
+data/jobs/
+data/tmp/
+
+# Heavy local model/runtime files
+origin-code/
+*.dll
+*.zip
+*.mp4
+*.m4a
+*.wav
+*.mp3
+*.flac
+*.aac
+*.ogg
+*.webm
+*.mkv
+*.mov
+*.avi
