@@ -9,7 +9,7 @@ from faster_whisper import WhisperModel
 
 from app.config import ROOT_DIR, settings
 from app.services.exporters import TranscriptSegment
-from app.services.model_manager import clear_runtime_device, resolve_model_path, set_runtime_device
+from app.services.model_manager import clear_runtime_device, current_model_id, resolve_model_path, set_runtime_device
 
 
 def configure_runtime() -> None:
@@ -34,25 +34,24 @@ def cpu_fallback_enabled() -> bool:
     return os.getenv("AUDIO_TRANSCRIBE_CPU_FALLBACK", "1") not in {"0", "false", "False"}
 
 
-@lru_cache(maxsize=1)
-def get_model() -> WhisperModel:
+@lru_cache(maxsize=4)
+def get_model(model_id: str) -> tuple[WhisperModel, str, str]:
     configure_runtime()
-    model_path = resolve_model_path()
+    model_path = resolve_model_path(model_id)
     if model_path is None:
         clear_runtime_device()
+        managed_path = settings.managed_model_path_for(model_id)
         raise FileNotFoundError(
-            f"未找到 Whisper 模型目录。请下载模型到 {settings.managed_model_path}，"
+            f"未找到 Whisper 模型目录。请下载模型到 {managed_path}，"
             f"或设置 AUDIO_TRANSCRIBE_MODEL_PATH。"
         )
     try:
         model = create_model(model_path, settings.device, settings.compute_type)
-        set_runtime_device(settings.device, settings.compute_type)
-        return model
+        return model, settings.device, settings.compute_type
     except Exception as exc:
         if settings.device == "cuda" and cpu_fallback_enabled() and is_cuda_library_error(exc):
             model = create_model(model_path, "cpu", "int8")
-            set_runtime_device("cpu", "int8")
-            return model
+            return model, "cpu", "int8"
         clear_runtime_device()
         raise
 
@@ -62,7 +61,8 @@ def transcribe_audio(
     language: str | None,
     is_canceled: Callable[[], bool] = lambda: False,
 ) -> list[TranscriptSegment]:
-    model = get_model()
+    model, device, compute_type = get_model(current_model_id())
+    set_runtime_device(device, compute_type)
     whisper_language = None if language in {None, "", "auto"} else language
     segments, _info = model.transcribe(
         str(audio_path),

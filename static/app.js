@@ -8,6 +8,7 @@ const endTimeInput = form.querySelector('input[name="end_time"]');
 const jobsList = document.querySelector("#jobs-list");
 const jobSummary = document.querySelector("#job-summary");
 const jobsRefreshButton = document.querySelector("#jobs-refresh-button");
+const modelSelect = document.querySelector("#model-select");
 const modelMessage = document.querySelector("#model-message");
 const modelDevice = document.querySelector("#model-device");
 const modelPath = document.querySelector("#model-path");
@@ -27,18 +28,41 @@ startJobsPolling();
 
 jobsRefreshButton.addEventListener("click", refreshJobs);
 
+modelSelect.addEventListener("change", async () => {
+  modelSelect.disabled = true;
+  modelMessage.textContent = `正在检查 ${modelSelect.value} 模型`;
+  let status = null;
+  try {
+    const response = await fetch("/api/model/select", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model_id: modelSelect.value }),
+    });
+    status = await response.json();
+    if (!response.ok) {
+      throw new Error(status.detail || "模型切换失败");
+    }
+    renderModelStatus(status);
+  } catch (error) {
+    modelMessage.textContent = `模型切换失败：${error.message}`;
+  } finally {
+    modelSelect.disabled = status?.download_state === "downloading";
+  }
+});
+
 modelRefreshButton.addEventListener("click", async () => {
   modelRefreshButton.disabled = true;
   modelRefreshLabel.textContent = "检测中";
-  modelMessage.textContent = "正在重新检测 large-v3 模型";
+  modelMessage.textContent = `正在重新检测 ${modelSelect.value || "当前"} 模型`;
   await refreshModelStatus();
   modelRefreshButton.disabled = false;
   modelRefreshLabel.textContent = "重新检测";
 });
 
 modelDownloadButton.addEventListener("click", async () => {
+  const selectedLabel = modelSelect.selectedOptions[0]?.textContent || modelSelect.value || "当前模型";
   const approved = window.confirm(
-    "large-v3 模型文件很大，会下载到项目的 models/large-v3-local 目录。确认开始下载吗？",
+    `${selectedLabel} 模型文件可能较大，会下载到项目的 models 目录。确认开始下载吗？`,
   );
   if (!approved) return;
 
@@ -314,6 +338,7 @@ function startModelPolling() {
 }
 
 function renderModelStatus(status) {
+  renderModelOptions(status);
   modelMessage.textContent = status.error || status.message;
   const plannedDevice = (status.configured_device || "unknown").toUpperCase();
   const activeDevice = status.active_device ? status.active_device.toUpperCase() : null;
@@ -327,10 +352,38 @@ function renderModelStatus(status) {
     : `将下载到：${status.managed_path}`;
 
   const downloading = status.download_state === "downloading";
+  modelSelect.disabled = downloading;
   modelDownloadButton.disabled = status.available || downloading;
   modelRefreshButton.disabled = downloading;
   modelDownloadLabel.textContent = downloading ? "下载中" : status.available ? "模型已就绪" : "下载模型";
   if (!modelRefreshButton.disabled) {
     modelRefreshLabel.textContent = "重新检测";
   }
+}
+
+function renderModelOptions(status) {
+  const models = status.models || [];
+  if (!models.length) return;
+
+  const existingValues = [...modelSelect.options].map((option) => option.value).join("|");
+  const nextValues = models.map((model) => model.id).join("|");
+  if (existingValues !== nextValues) {
+    modelSelect.replaceChildren(
+      ...models.map((model) => {
+        const option = document.createElement("option");
+        option.value = model.id;
+        option.textContent = model.available ? `${model.label}（已存在）` : model.label;
+        return option;
+      }),
+    );
+  } else {
+    for (const option of modelSelect.options) {
+      const model = models.find((item) => item.id === option.value);
+      if (model) {
+        option.textContent = model.available ? `${model.label}（已存在）` : model.label;
+      }
+    }
+  }
+
+  modelSelect.value = status.selected_model;
 }
