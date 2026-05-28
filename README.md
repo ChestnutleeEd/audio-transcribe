@@ -19,9 +19,65 @@
 - 输出文件可下载，也可在页面中手动删除
 - 支持模型选择、模型检测、模型下载进度、下载取消和 CUDA 失败后的 CPU 降级提示
 
-## 运行
+## 安装和运行
 
-### 一键启动
+### 发行版便携包
+
+首个发行版建议使用 `v0.1.0`。安装包不内置 Whisper 模型，首次运行后在页面右侧按需下载模型。
+
+从 GitHub Releases 下载对应系统的便携包：
+
+- Windows x64：`AudioTranscribe-v0.1.0-windows-x64.zip`
+- macOS：`AudioTranscribe-v0.1.0-macos.zip`
+
+Windows 便携包：
+
+1. 解压 zip 到任意目录。
+2. 双击 `start-audio-transcribe.bat`。
+3. 如果包里已有 `.venv`，会直接启动；如果没有，会自动创建环境并安装依赖。
+4. 浏览器会打开 `http://127.0.0.1:8000`。
+
+macOS 便携包：
+
+1. 解压 zip 到任意目录。
+2. 先安装系统依赖：
+
+```bash
+brew install ffmpeg
+```
+
+3. 首次运行：
+
+```bash
+chmod +x scripts/setup-macos.sh start-audio-transcribe.command
+./start-audio-transcribe.command
+```
+
+4. 脚本会自动创建 `.venv`、安装 Python 依赖并打开 `http://127.0.0.1:8000`。
+
+### 命令安装
+
+Windows PowerShell：
+
+```powershell
+git clone https://github.com/ChestnutleeEd/audio-transcribe.git
+cd audio-transcribe
+.\scripts\setup-windows.ps1
+.\start-audio-transcribe.bat
+```
+
+macOS Terminal：
+
+```bash
+git clone https://github.com/ChestnutleeEd/audio-transcribe.git
+cd audio-transcribe
+brew install ffmpeg
+chmod +x scripts/setup-macos.sh start-audio-transcribe.command
+./scripts/setup-macos.sh
+./start-audio-transcribe.command
+```
+
+### 本地开发运行
 
 Windows 下可以直接双击项目根目录的：
 
@@ -35,7 +91,7 @@ start-audio-transcribe.bat
 http://127.0.0.1:8000
 ```
 
-### 手动启动
+也可以手动启动：
 
 ```powershell
 python -m venv .venv
@@ -72,7 +128,7 @@ https://www.youtube.com/watch?v=ecAh4F6CjJY
 
 ## 本地模型和运行时配置
 
-GitHub 仓库不会包含 large-v3 模型文件。模型体积很大，`models/` 和 `origin-code/` 都会被 Git 忽略。
+GitHub 仓库和发行版便携包都不会内置 Whisper 模型。模型体积较大，首次运行后请在页面右侧选择模型并点击“下载模型”，或按下表手动下载。`models/` 和 `origin-code/` 都会被 Git 忽略。
 
 应用启动后会自动检测模型，检测顺序：
 
@@ -80,16 +136,34 @@ GitHub 仓库不会包含 large-v3 模型文件。模型体积很大，`models/`
 2. `models/large-v3-local`
 3. `origin-code/large-v3-local`
 
-如果没有检测到模型，页面右侧会显示“下载模型”按钮。点击并确认后，会从 Hugging Face 下载：
+如果没有检测到模型，页面右侧会显示“下载模型”按钮。点击并确认后，会从 Hugging Face 下载所选模型。
+
+### 手动下载模型
+
+手动下载时，把 Hugging Face 仓库里的必要文件放到对应目录。必要文件是：
+
+- `config.json`
+- `model.bin`
+- `tokenizer.json`
+- `vocabulary.json` 或 `vocabulary.txt`
+
+| 页面选项 | Hugging Face 链接 | 预估大小 | 放置目录 |
+| --- | --- | ---: | --- |
+| `faster-whisper tiny` | [Systran/faster-whisper-tiny](https://huggingface.co/Systran/faster-whisper-tiny/tree/main) | 75 MB | `models/tiny-local/` |
+| `faster-whisper base` | [Systran/faster-whisper-base](https://huggingface.co/Systran/faster-whisper-base/tree/main) | 141 MB | `models/base-local/` |
+| `faster-whisper small` | [Systran/faster-whisper-small](https://huggingface.co/Systran/faster-whisper-small/tree/main) | 464 MB | `models/small-local/` |
+| `faster-whisper medium` | [Systran/faster-whisper-medium](https://huggingface.co/Systran/faster-whisper-medium/tree/main) | 1.43 GB | `models/medium-local/` |
+| `faster-whisper large-v3` | [Systran/faster-whisper-large-v3](https://huggingface.co/Systran/faster-whisper-large-v3/tree/main) | 2.88 GB | `models/large-v3-local/` |
+
+示例：如果手动下载 `small`，目录结构应类似：
 
 ```text
-Systran/faster-whisper-large-v3
-```
-
-默认下载位置：
-
-```text
-models/large-v3-local
+models/
+  small-local/
+    config.json
+    model.bin
+    tokenizer.json
+    vocabulary.txt
 ```
 
 下载过程中会显示阶段进度条、百分比和已下载大小。进度不是只按文件数量计算：应用会先解析 Hugging Face 文件清单，再按必要文件大小、磁盘写入和下载活动综合展示，避免 `model.bin` 这类大文件下载时长时间停在个位数。下载时也会出现“取消下载”按钮；取消后，应用会中止当前下载进程，并清理该模型目录下本次产生的部分文件。

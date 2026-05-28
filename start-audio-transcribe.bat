@@ -11,12 +11,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Invoke-WebRequest 
 if "%ERRORLEVEL%"=="0" goto open_app
 
 if not exist "%PYTHON_EXE%" (
-  echo Could not find .venv\Scripts\python.exe
-  echo Please run:
-  echo   python -m venv .venv
-  echo   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-  pause
-  exit /b 1
+  if exist "%CD%\scripts\setup-windows.ps1" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\setup-windows.ps1"
+  ) else (
+    echo Could not find .venv\Scripts\python.exe
+    echo Please run:
+    echo   python -m venv .venv
+    echo   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+    pause
+    exit /b 1
+  )
 )
 
 start "Audio Transcribe Server" /min "%PYTHON_EXE%" -m uvicorn app.main:app --host %APP_HOST% --port %APP_PORT%
