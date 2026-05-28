@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
 
-from app.schemas import JobState, OutputFile
+from app.schemas import JobState, OutputFile, OutputFormat
 
 
 @dataclass
@@ -15,6 +15,13 @@ class Job:
     progress: int = 0
     message: str = "等待处理"
     source_label: str = "未命名任务"
+    language: str = "auto"
+    start_time: str | None = None
+    end_time: str | None = None
+    model_id: str = "large-v3"
+    model_label: str = "large-v3"
+    formats: list[OutputFormat] = field(default_factory=list)
+    include_timestamps: bool = True
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     cancel_requested: bool = False
     outputs: list[OutputFile] = field(default_factory=list)
@@ -27,8 +34,31 @@ class JobStore:
         self._jobs: dict[str, Job] = {}
         self._lock = Lock()
 
-    def create(self, job_id: str, work_dir: Path, source_label: str) -> Job:
-        job = Job(id=job_id, work_dir=work_dir, source_label=source_label)
+    def create(
+        self,
+        job_id: str,
+        work_dir: Path,
+        source_label: str,
+        language: str,
+        start_time: str | None,
+        end_time: str | None,
+        model_id: str,
+        model_label: str,
+        formats: list[OutputFormat],
+        include_timestamps: bool,
+    ) -> Job:
+        job = Job(
+            id=job_id,
+            work_dir=work_dir,
+            source_label=source_label,
+            language=language,
+            start_time=start_time,
+            end_time=end_time,
+            model_id=model_id,
+            model_label=model_label,
+            formats=formats,
+            include_timestamps=include_timestamps,
+        )
         with self._lock:
             self._jobs[job_id] = job
         return job
@@ -53,9 +83,11 @@ class JobStore:
             job = self._jobs[job_id]
             job.cancel_requested = True
             if job.state == JobState.queued:
-                job.state = JobState.canceled
-                job.progress = 100
                 job.message = "已取消排队任务"
+            else:
+                job.message = "正在停止任务"
+            job.state = JobState.canceled
+            job.progress = 100
             return job
 
 

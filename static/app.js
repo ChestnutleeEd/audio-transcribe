@@ -219,7 +219,8 @@ function renderJob(job) {
   const title = document.createElement("h3");
   title.textContent = job.source_label || `任务 ${shortId(job.id)}`;
   const meta = document.createElement("p");
-  meta.textContent = `任务 ${shortId(job.id)}`;
+  meta.className = "job-meta";
+  meta.textContent = jobMeta(job);
   titleWrap.append(title, meta);
 
   const pill = document.createElement("span");
@@ -244,7 +245,7 @@ function renderJob(job) {
     stopButton.className = "danger";
     stopButton.type = "button";
     stopButton.textContent = "停止";
-    stopButton.addEventListener("click", () => cancelJob(job.id));
+    stopButton.addEventListener("click", () => cancelJob(job.id, stopButton));
     actions.append(stopButton);
   }
 
@@ -281,8 +282,21 @@ function renderOutput(jobId, file) {
   return row;
 }
 
-async function cancelJob(jobId) {
-  await fetch(`/api/jobs/${jobId}/cancel`, { method: "POST" });
+async function cancelJob(jobId, button) {
+  if (button) {
+    button.disabled = true;
+    button.textContent = "正在停止";
+  }
+  const response = await fetch(`/api/jobs/${jobId}/cancel`, { method: "POST" });
+  if (!response.ok) {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "停止";
+    }
+    const payload = await response.json().catch(() => ({}));
+    window.alert(payload.detail || "停止任务失败");
+    return;
+  }
   await refreshJobs();
 }
 
@@ -305,6 +319,44 @@ function stateLabel(state) {
 
 function shortId(id) {
   return String(id || "").slice(0, 10);
+}
+
+function jobMeta(job) {
+  const details = [
+    `语言：${languageLabel(job.language)}`,
+    `截取：${timeRangeLabel(job.start_time, job.end_time)}`,
+    `模型：${job.model_label || "large-v3"}`,
+  ];
+  if (job.formats?.length) {
+    details.push(`格式：${job.formats.map(formatLabel).join("、")}`);
+  }
+  details.push(job.include_timestamps ? "带时间轴" : "纯文本");
+  return details.join(" · ");
+}
+
+function languageLabel(language) {
+  return {
+    auto: "自动识别",
+    zh: "中文",
+    ja: "日语",
+    en: "英语",
+    ko: "韩语",
+  }[language] || language || "自动识别";
+}
+
+function timeRangeLabel(startTime, endTime) {
+  if (startTime && endTime) return `${startTime} - ${endTime}`;
+  if (startTime) return `${startTime} 起`;
+  if (endTime) return `截至 ${endTime}`;
+  return "完整音频";
+}
+
+function formatLabel(format) {
+  return {
+    docx: "Word",
+    txt: "TXT",
+    md: "Markdown",
+  }[format] || format;
 }
 
 function formatBytes(bytes) {

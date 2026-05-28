@@ -21,7 +21,7 @@ from app.services.media import (
     normalize_audio,
     safe_stem,
 )
-from app.services.model_manager import download_model, model_status, select_model
+from app.services.model_manager import current_model_id, download_model, model_status, select_model, set_runtime_device
 from app.services.transcriber import transcribe_audio
 
 
@@ -52,6 +52,12 @@ def build_status(job: Job) -> JobStatus:
         progress=job.progress,
         message=job.message,
         source_label=job.source_label,
+        language=job.language,
+        start_time=job.start_time,
+        end_time=job.end_time,
+        model_label=job.model_label,
+        formats=job.formats,
+        include_timestamps=job.include_timestamps,
         created_at=job.created_at,
         outputs=job.outputs,
         error=job.error,
@@ -61,6 +67,20 @@ def build_status(job: Job) -> JobStatus:
 def is_job_canceled(job_id: str) -> bool:
     current = job_store.get(job_id)
     return current is None or current.cancel_requested
+
+
+def planned_model_label(model_id: str | None = None) -> str:
+    model_id = model_id or current_model_id()
+    return f"{model_id}（计划 {settings.device}/{settings.compute_type}）"
+
+
+def loaded_model_label(model_meta: dict[str, str] | None) -> str:
+    if not model_meta:
+        return planned_model_label()
+    model_id = model_meta.get("model_id", current_model_id())
+    device = model_meta.get("device", settings.device)
+    compute_type = model_meta.get("compute_type", settings.compute_type)
+    return f"{model_id}（{device}/{compute_type}）"
 
 
 def run_job(
@@ -73,6 +93,7 @@ def run_job(
     include_timestamps: bool,
     start_time: str | None,
     end_time: str | None,
+    model_id: str,
 ) -> None:
     job = job_store.get(job_id)
     if job is None or job.work_dir is None:
@@ -100,8 +121,43 @@ def run_job(
         wav_path = work_dir / "input_16k.wav"
         normalize_audio(media_path, wav_path, start_time, end_time, lambda: is_job_canceled(job_id))
 
-        job_store.update(job_id, progress=42, message="加载模型并转写")
-        segments = transcribe_audio(wav_path, language, lambda: is_job_canceled(job_id))
+        job_store.update(job_id, progress=42, message=f"加载 {model_id} 模型")
+
+        def update_transcribe_status(stage: str, model_meta: dict[str, str] | None) -> None:
+            if is_job_canceled(job_id):
+                return
+            if stage == "loading_model":
+                active_model_id = model_meta.get("model_id", model_id) if model_meta else model_id
+                job_store.update(job_id, progress=42, message=f"加载 {active_model_id} 模型")
+            elif stage == "model_loaded":
+                label = loaded_model_label(model_meta)
+                if model_meta:
+                    set_runtime_device(
+                        model_meta.get("device", settings.device),
+                        model_meta.get("compute_type", settings.compute_type),
+                    )
+                job_store.update(
+                    job_id,
+                    progress=50,
+                    message="模型已加载，开始转写",
+                    model_label=label,
+                )
+            elif stage == "transcribing":
+                label = loaded_model_label(model_meta)
+                job_store.update(
+                    job_id,
+                    progress=58,
+                    message="正在转写音频",
+                    model_label=label,
+                )
+
+        segments = transcribe_audio(
+            wav_path,
+            language,
+            lambda: is_job_canceled(job_id),
+            update_transcribe_status,
+            model_id,
+        )
         if not segments:
             raise RuntimeError("没有识别到可用文本")
 
@@ -226,7 +282,19 @@ async def create_job(
     elif clean_source_url:
         base_name = safe_stem(clean_source_url)
 
-    job = job_store.create(job_id, work_dir, source_label)
+    model_id = current_model_id()
+    job = job_store.create(
+        job_id,
+        work_dir,
+        source_label,
+        language,
+        start_time,
+        end_time,
+        model_id,
+        planned_model_label(model_id),
+        parsed_formats,
+        include_timestamps,
+    )
     executor.submit(
         run_job,
         job_id,
@@ -238,6 +306,7 @@ async def create_job(
         include_timestamps,
         start_time,
         end_time,
+        model_id,
     )
     return build_status(job)
 

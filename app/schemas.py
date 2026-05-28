@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class OutputFormat(str, Enum):
@@ -33,8 +33,14 @@ class JobStatus(BaseModel):
     progress: int
     message: str
     source_label: str = "未命名任务"
+    language: str = "auto"
+    start_time: str | None = None
+    end_time: str | None = None
+    model_label: str = "large-v3"
+    formats: list[OutputFormat] = Field(default_factory=list)
+    include_timestamps: bool = True
     created_at: str | None = None
-    outputs: list[OutputFile] = []
+    outputs: list[OutputFile] = Field(default_factory=list)
     error: str | None = None
 
 
