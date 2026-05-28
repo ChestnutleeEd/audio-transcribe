@@ -151,6 +151,20 @@ def run_job(
                     model_label=label,
                 )
 
+            elif stage == "fallback_cpu":
+                label = loaded_model_label(model_meta)
+                if model_meta:
+                    set_runtime_device(
+                        model_meta.get("device", "cpu"),
+                        model_meta.get("compute_type", "int8"),
+                    )
+                job_store.update(
+                    job_id,
+                    progress=52,
+                    message="CUDA 转写进程异常退出，正在切换 CPU 重试",
+                    model_label=label,
+                )
+
         segments = transcribe_audio(
             wav_path,
             language,
