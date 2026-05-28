@@ -91,5 +91,9 @@ class ModelStatus(BaseModel):
     active_device: str | None = None
     active_compute_type: str | None = None
     download_state: ModelDownloadState
+    download_progress: int = 0
+    downloaded_bytes: int | None = None
+    total_bytes: int | None = None
+    download_progress_label: str | None = None
     message: str
     error: str | None = None

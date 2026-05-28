@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import multiprocessing as mp
 import queue
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
@@ -28,6 +29,10 @@ class DownloadTracker:
     message: str = "模型尚未检测"
     error: str | None = None
     cancel_requested: bool = False
+    progress: int = 0
+    downloaded_bytes: int | None = None
+    total_bytes: int | None = None
+    progress_label: str | None = None
 
 
 selected_model_id = settings.model_definition().id
@@ -111,6 +116,10 @@ def model_status() -> ModelStatus:
         state = tracker.state
         message = tracker.message
         error = tracker.error
+        progress = tracker.progress
+        downloaded_bytes = tracker.downloaded_bytes
+        total_bytes = tracker.total_bytes
+        progress_label = tracker.progress_label
         runtime_device = active_device
         runtime_compute_type = active_compute_type
 
@@ -118,8 +127,12 @@ def model_status() -> ModelStatus:
         state = ModelDownloadState.completed
         message = f"已检测到可用 {model.id} 模型"
         error = None
+        progress = 100
+        progress_label = "模型已就绪"
     elif state == ModelDownloadState.idle:
         message = f"未检测到模型，请确认后下载 {model.id}"
+        progress = 0
+        progress_label = None
 
     return ModelStatus(
         available=active_path is not None,
@@ -133,6 +146,10 @@ def model_status() -> ModelStatus:
         active_device=runtime_device,
         active_compute_type=runtime_compute_type,
         download_state=state,
+        download_progress=progress,
+        downloaded_bytes=downloaded_bytes,
+        total_bytes=total_bytes,
+        download_progress_label=progress_label,
         message=message,
         error=error,
     )
@@ -160,12 +177,62 @@ def cleanup_model_download_dir(path: Path) -> None:
 
 
 def _snapshot_download_worker(repo_id: str, managed_path: str, result_queue: mp.Queue) -> None:
+    from tqdm.auto import tqdm
+
+    bars: dict[int, dict[str, Any]] = {}
+    bars_lock = threading.Lock()
+
+    def publish_progress() -> None:
+        with bars_lock:
+            byte_bars = [bar for bar in bars.values() if bar.get("unit") == "B" and bar.get("total")]
+            active_bars = byte_bars or [bar for bar in bars.values() if bar.get("total")]
+            if not active_bars:
+                return
+            downloaded = sum(int(bar.get("n") or 0) for bar in active_bars)
+            total = sum(int(bar.get("total") or 0) for bar in active_bars)
+            if total <= 0:
+                return
+            progress = max(0, min(99, int(downloaded * 100 / total)))
+            label = "下载文件" if byte_bars else "获取文件列表"
+            result_queue.put(
+                {
+                    "type": "progress",
+                    "progress": progress,
+                    "downloaded_bytes": downloaded if byte_bars else None,
+                    "total_bytes": total if byte_bars else None,
+                    "label": label,
+                }
+            )
+
+    class QueueTqdm(tqdm):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__(*args, **kwargs)
+            with bars_lock:
+                bars[id(self)] = {"n": int(self.n or 0), "total": self.total, "unit": getattr(self, "unit", None)}
+            publish_progress()
+
+        def update(self, n: int = 1) -> bool | None:
+            result = super().update(n)
+            with bars_lock:
+                if id(self) in bars:
+                    bars[id(self)] = {"n": int(self.n or 0), "total": self.total, "unit": getattr(self, "unit", None)}
+            publish_progress()
+            return result
+
+        def close(self) -> None:
+            with bars_lock:
+                if id(self) in bars:
+                    bars[id(self)] = {"n": int(self.n or 0), "total": self.total, "unit": getattr(self, "unit", None)}
+            publish_progress()
+            super().close()
+
     try:
         snapshot_download(
             repo_id=repo_id,
             local_dir=managed_path,
             local_dir_use_symlinks=False,
             resume_download=True,
+            tqdm_class=QueueTqdm,
         )
         result_queue.put({"type": "completed"})
     except Exception as exc:
@@ -202,6 +269,10 @@ def download_model(model_id: str | None = None) -> None:
         tracker.message = f"正在下载 {model.id} 模型，文件较大，请保持网络连接"
         tracker.error = None
         tracker.cancel_requested = False
+        tracker.progress = 0
+        tracker.downloaded_bytes = None
+        tracker.total_bytes = None
+        tracker.progress_label = "准备下载"
 
     result_queue: mp.Queue = mp.get_context("spawn").Queue()
     process = mp.get_context("spawn").Process(
@@ -231,16 +302,41 @@ def download_model(model_id: str | None = None) -> None:
                 return
             try:
                 result = result_queue.get(timeout=0.4)
+                if result.get("type") == "progress":
+                    with tracker_lock:
+                        tracker = get_tracker(model.id)
+                        tracker.progress = int(result.get("progress") or 0)
+                        tracker.downloaded_bytes = result.get("downloaded_bytes")
+                        tracker.total_bytes = result.get("total_bytes")
+                        tracker.progress_label = str(result.get("label") or "下载中")
+                        tracker.message = f"{tracker.progress_label}：{tracker.progress}%"
+                    result = None
+                    continue
                 break
             except queue.Empty:
                 continue
 
         process.join(timeout=2)
-        if result is None:
+        while result is None or result.get("type") == "progress":
             try:
-                result = result_queue.get_nowait()
+                next_result = result_queue.get_nowait()
             except queue.Empty:
-                result = {"type": "error", "message": f"模型下载进程异常退出，退出码 {process.exitcode}"}
+                if result is None:
+                    result = {"type": "error", "message": f"模型下载进程异常退出，退出码 {process.exitcode}"}
+                else:
+                    break
+            else:
+                if next_result.get("type") == "progress":
+                    with tracker_lock:
+                        tracker = get_tracker(model.id)
+                        tracker.progress = int(next_result.get("progress") or 0)
+                        tracker.downloaded_bytes = next_result.get("downloaded_bytes")
+                        tracker.total_bytes = next_result.get("total_bytes")
+                        tracker.progress_label = str(next_result.get("label") or "下载中")
+                        tracker.message = f"{tracker.progress_label}：{tracker.progress}%"
+                    result = next_result
+                    continue
+                result = next_result
         if result.get("type") == "error":
             raise RuntimeError(str(result.get("message") or "模型下载失败"))
 
@@ -256,6 +352,8 @@ def download_model(model_id: str | None = None) -> None:
             tracker.message = "模型下载完成"
             tracker.error = None
             tracker.cancel_requested = False
+            tracker.progress = 100
+            tracker.progress_label = "下载完成"
     except Exception as exc:
         if process.is_alive():
             process.terminate()
@@ -266,5 +364,6 @@ def download_model(model_id: str | None = None) -> None:
             tracker.message = "模型下载失败"
             tracker.error = friendly_download_error(str(exc))
             tracker.cancel_requested = False
+            tracker.progress_label = "下载失败"
     finally:
         result_queue.close()

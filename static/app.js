@@ -16,6 +16,9 @@ const modelDownloadButton = document.querySelector("#model-download-button");
 const modelDownloadLabel = document.querySelector("#model-download-label");
 const modelCancelButton = document.querySelector("#model-cancel-button");
 const modelCancelLabel = document.querySelector("#model-cancel-label");
+const modelProgress = document.querySelector("#model-progress");
+const modelProgressFill = document.querySelector("#model-progress-fill");
+const modelProgressLabel = document.querySelector("#model-progress-label");
 const modelRefreshButton = document.querySelector("#model-refresh-button");
 const modelRefreshLabel = document.querySelector("#model-refresh-label");
 
@@ -488,9 +491,25 @@ function renderModelStatus(status) {
   modelRefreshButton.disabled = downloading;
   modelDownloadLabel.textContent = downloading ? "下载中" : status.available ? "模型已就绪" : "下载模型";
   modelCancelLabel.textContent = downloading ? "取消下载" : "取消下载";
+  renderModelDownloadProgress(status, downloading);
   if (!modelRefreshButton.disabled) {
     modelRefreshLabel.textContent = "重新检测";
   }
+}
+
+function renderModelDownloadProgress(status, downloading) {
+  const progress = Math.max(0, Math.min(100, Number(status.download_progress || 0)));
+  const shouldShow = downloading || progress > 0;
+  modelProgress.hidden = !shouldShow;
+  modelProgress.setAttribute("aria-hidden", shouldShow ? "false" : "true");
+  modelProgressFill.style.width = `${progress}%`;
+
+  const byteLabel =
+    status.downloaded_bytes && status.total_bytes
+      ? ` · ${formatBytes(status.downloaded_bytes)} / ${formatBytes(status.total_bytes)}`
+      : "";
+  const label = status.download_progress_label || (downloading ? "下载中" : "下载进度");
+  modelProgressLabel.textContent = `${label} · ${progress}%${byteLabel}`;
 }
 
 function renderModelOptions(status) {

@@ -574,6 +574,37 @@ summary:focus-visible {
   line-height: 1.5;
 }
 
+.model-progress {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 12px;
+}
+
+.model-progress[hidden] {
+  display: none;
+}
+
+.model-progress-track {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(13, 148, 136, 0.13);
+}
+
+.model-progress-track span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  transition: width 220ms ease;
+}
+
+.model-progress small {
+  color: rgba(19, 78, 74, 0.68);
+  font-weight: 900;
+}
+
 .model-selector {
   display: grid;
   gap: 7px;

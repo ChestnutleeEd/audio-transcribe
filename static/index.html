@@ -113,6 +113,10 @@
                 <select id="model-select" aria-label="选择语音转换模型"></select>
               </label>
               <p id="model-message">正在检测 large-v3 模型</p>
+              <div class="model-progress" id="model-progress" aria-hidden="true">
+                <div class="model-progress-track"><span id="model-progress-fill"></span></div>
+                <small id="model-progress-label"></small>
+              </div>
               <span class="device-pill" id="model-device">运行设备：检测中</span>
               <small id="model-path"></small>
             </div>
