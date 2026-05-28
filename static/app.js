@@ -3,6 +3,8 @@ const resetButton = document.querySelector("#reset-button");
 const fileInput = document.querySelector("#file-input");
 const fileLabel = document.querySelector("#file-label");
 const submitButton = form.querySelector(".primary");
+const startTimeInput = form.querySelector('input[name="start_time"]');
+const endTimeInput = form.querySelector('input[name="end_time"]');
 const jobsList = document.querySelector("#jobs-list");
 const jobSummary = document.querySelector("#job-summary");
 const jobsRefreshButton = document.querySelector("#jobs-refresh-button");
@@ -16,6 +18,8 @@ const modelRefreshLabel = document.querySelector("#model-refresh-label");
 
 let jobsPollTimer = null;
 let modelPollTimer = null;
+let clipDefaultsReady = false;
+let clipRangeTouched = false;
 
 refreshModelStatus();
 refreshJobs();
@@ -50,12 +54,30 @@ modelDownloadButton.addEventListener("click", async () => {
 });
 
 fileInput.addEventListener("change", () => {
-  fileLabel.textContent = fileInput.files[0]?.name || "选择本地音频或视频";
+  const file = fileInput.files[0];
+  fileLabel.textContent = file?.name || "选择本地音频或视频";
+  clipDefaultsReady = false;
+  clipRangeTouched = false;
+  setClipRange("00:00:00", "00:00:00");
+  if (file) {
+    loadMediaDuration(file);
+  }
 });
 
 resetButton.addEventListener("click", () => {
   form.reset();
   fileLabel.textContent = "选择本地音频或视频";
+  clipDefaultsReady = false;
+  clipRangeTouched = false;
+  setClipRange("00:00:00", "00:00:00");
+});
+
+startTimeInput.addEventListener("change", () => {
+  clipRangeTouched = true;
+});
+
+endTimeInput.addEventListener("change", () => {
+  clipRangeTouched = true;
 });
 
 form.addEventListener("submit", async (event) => {
@@ -64,6 +86,10 @@ form.addEventListener("submit", async (event) => {
   const selectedFormats = [...form.querySelectorAll('input[name="formats"]:checked')].map((input) => input.value);
   data.set("formats", selectedFormats.join(","));
   data.set("include_timestamps", form.querySelector('input[name="include_timestamps"]').checked ? "true" : "false");
+  if (!clipDefaultsReady && !clipRangeTouched) {
+    data.delete("start_time");
+    data.delete("end_time");
+  }
   for (const fieldName of ["start_time", "end_time"]) {
     if (!data.get(fieldName)) {
       data.delete(fieldName);
@@ -83,6 +109,9 @@ form.addEventListener("submit", async (event) => {
     }
     form.reset();
     fileLabel.textContent = "选择本地音频或视频";
+    clipDefaultsReady = false;
+    clipRangeTouched = false;
+    setClipRange("00:00:00", "00:00:00");
     await refreshJobs();
   } catch (error) {
     window.alert(error.message);
@@ -90,6 +119,46 @@ form.addEventListener("submit", async (event) => {
     submitButton.disabled = false;
   }
 });
+
+function setClipRange(startValue, endValue) {
+  startTimeInput.value = startValue;
+  endTimeInput.value = endValue;
+}
+
+function loadMediaDuration(file) {
+  const media = document.createElement(file.type.startsWith("video/") ? "video" : "audio");
+  const objectUrl = URL.createObjectURL(file);
+  media.preload = "metadata";
+  media.addEventListener(
+    "loadedmetadata",
+    () => {
+      URL.revokeObjectURL(objectUrl);
+      if (!Number.isFinite(media.duration) || media.duration <= 0) return;
+      const endValue = formatDurationForTimeInput(media.duration);
+      setClipRange("00:00:00", endValue);
+      clipDefaultsReady = true;
+      clipRangeTouched = false;
+    },
+    { once: true },
+  );
+  media.addEventListener(
+    "error",
+    () => {
+      URL.revokeObjectURL(objectUrl);
+      clipDefaultsReady = false;
+    },
+    { once: true },
+  );
+  media.src = objectUrl;
+}
+
+function formatDurationForTimeInput(durationSeconds) {
+  const totalSeconds = Math.min(Math.max(0, Math.floor(durationSeconds)), 86399);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return [hours, minutes, seconds].map((part) => String(part).padStart(2, "0")).join(":");
+}
 
 function startJobsPolling() {
   clearInterval(jobsPollTimer);
