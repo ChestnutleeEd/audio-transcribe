@@ -52,6 +52,16 @@ def ffmpeg_executable() -> str:
     return settings.ffmpeg_path
 
 
+def ffmpeg_location() -> str | None:
+    configured = Path(settings.ffmpeg_path)
+    if configured.exists():
+        return str(configured.parent if configured.is_file() else configured)
+    found = shutil.which("ffmpeg")
+    if found:
+        return str(Path(found).parent)
+    return None
+
+
 def run_command(command: list[str], is_canceled: Callable[[], bool]) -> subprocess.CompletedProcess[str]:
     process = subprocess.Popen(
         command,
@@ -118,8 +128,11 @@ def download_audio(url: str, output_dir: Path, is_canceled: Callable[[], bool] =
         "m4a",
         "-o",
         output_template,
-        url,
     ]
+    location = ffmpeg_location()
+    if location:
+        command.extend(["--ffmpeg-location", location])
+    command.append(url)
     result = run_command(command, is_canceled)
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or "视频音频下载失败，请检查链接、网络或 yt-dlp 支持情况")

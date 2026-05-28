@@ -7,18 +7,31 @@ from typing import Callable
 
 from faster_whisper import WhisperModel
 
-from app.config import settings
+from app.config import ROOT_DIR, settings
 from app.services.exporters import TranscriptSegment
 from app.services.model_manager import resolve_model_path
 
 
 def configure_runtime() -> None:
     os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
-    dll_dirs = os.getenv("AUDIO_TRANSCRIBE_DLL_DIRS", "")
-    for raw_dir in [item.strip() for item in dll_dirs.split(os.pathsep) if item.strip()]:
-        path = Path(raw_dir)
+    default_dirs = [ROOT_DIR / "origin-code"]
+    env_dirs = [Path(item.strip()) for item in os.getenv("AUDIO_TRANSCRIBE_DLL_DIRS", "").split(os.pathsep) if item.strip()]
+    for path in [*default_dirs, *env_dirs]:
         if path.exists() and hasattr(os, "add_dll_directory"):
             os.add_dll_directory(str(path))
+
+
+def create_model(model_path: Path, device: str, compute_type: str) -> WhisperModel:
+    return WhisperModel(str(model_path), device=device, compute_type=compute_type)
+
+
+def is_cuda_library_error(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return any(token in text for token in ["cublas", "cudnn", "cuda", "could not load library", "cannot be loaded"])
+
+
+def cpu_fallback_enabled() -> bool:
+    return os.getenv("AUDIO_TRANSCRIBE_CPU_FALLBACK", "1") not in {"0", "false", "False"}
 
 
 @lru_cache(maxsize=1)
@@ -30,7 +43,12 @@ def get_model() -> WhisperModel:
             f"未找到 Whisper 模型目录。请下载模型到 {settings.managed_model_path}，"
             f"或设置 AUDIO_TRANSCRIBE_MODEL_PATH。"
         )
-    return WhisperModel(str(model_path), device=settings.device, compute_type=settings.compute_type)
+    try:
+        return create_model(model_path, settings.device, settings.compute_type)
+    except Exception as exc:
+        if settings.device == "cuda" and cpu_fallback_enabled() and is_cuda_library_error(exc):
+            return create_model(model_path, "cpu", "int8")
+        raise
 
 
 def transcribe_audio(
