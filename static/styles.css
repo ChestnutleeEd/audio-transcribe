@@ -439,6 +439,46 @@ summary:focus-visible {
   font-size: 13px;
 }
 
+.job-details {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(13, 148, 136, 0.16);
+  border-radius: var(--radius);
+  background: rgba(240, 253, 250, 0.58);
+  padding: 10px;
+}
+
+.job-detail {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.job-detail span {
+  color: rgba(19, 78, 74, 0.66);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.job-detail strong {
+  color: var(--color-foreground);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.job-warning {
+  border: 1px solid rgba(234, 88, 12, 0.35);
+  border-radius: var(--radius);
+  background: rgba(255, 247, 237, 0.95);
+  color: #c2410c;
+  padding: 9px 10px;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.45;
+}
+
 .job-progress {
   height: 8px;
   overflow: hidden;
@@ -560,8 +600,10 @@ summary:focus-visible {
 }
 
 .device-pill[data-device="cpu"] {
-  border-color: rgba(234, 88, 12, 0.42);
+  border-color: rgba(234, 88, 12, 0.65);
+  background: #fff7ed;
   color: #c2410c;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.12);
 }
 
 .model-actions {

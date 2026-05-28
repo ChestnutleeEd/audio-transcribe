@@ -29,9 +29,15 @@ start-audio-transcribe.bat
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install --use-deprecated=legacy-resolver -r requirements.txt
 uvicorn app.main:app --reload
 ```
+
+### CUDA 11 注意
+
+当前项目会优先尝试 `cuda / int8_float16`。你的原脚本使用的是 CUDA 11 运行时，因此依赖中固定了 `ctranslate2==3.24.0`，安装时需要使用 `--use-deprecated=legacy-resolver`，避免 pip 强制拉取需要 CUDA 12 DLL 的新版 `ctranslate2`。
+
+如果任务卡片显示 `CPU / int8`，说明本次 CUDA 转写失败后已自动降级，结果仍会生成，但速度会慢一些。
 
 然后打开：
 

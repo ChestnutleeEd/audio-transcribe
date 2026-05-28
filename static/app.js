@@ -220,7 +220,7 @@ function renderJob(job) {
   title.textContent = job.source_label || `任务 ${shortId(job.id)}`;
   const meta = document.createElement("p");
   meta.className = "job-meta";
-  meta.textContent = jobMeta(job);
+  meta.textContent = `任务 ${shortId(job.id)}`;
   titleWrap.append(title, meta);
 
   const pill = document.createElement("span");
@@ -237,6 +237,26 @@ function renderJob(job) {
   const message = document.createElement("p");
   message.className = "job-message";
   message.textContent = job.error || job.message || "";
+
+  const details = document.createElement("div");
+  details.className = "job-details";
+  for (const detail of jobDetails(job)) {
+    const row = document.createElement("div");
+    row.className = "job-detail";
+    const label = document.createElement("span");
+    label.textContent = detail.label;
+    const value = document.createElement("strong");
+    value.textContent = detail.value;
+    row.append(label, value);
+    details.append(row);
+  }
+
+  if (modelUsesCpu(job.model_label)) {
+    const warning = document.createElement("div");
+    warning.className = "job-warning";
+    warning.textContent = "当前任务使用 CPU 转写，速度会明显慢于 CUDA。";
+    details.append(warning);
+  }
 
   const actions = document.createElement("div");
   actions.className = "job-actions";
@@ -255,7 +275,7 @@ function renderJob(job) {
     outputs.append(renderOutput(job.id, file));
   }
 
-  item.append(header, bar, message, actions, outputs);
+  item.append(header, details, bar, message, actions, outputs);
   return item;
 }
 
@@ -319,6 +339,20 @@ function stateLabel(state) {
 
 function shortId(id) {
   return String(id || "").slice(0, 10);
+}
+
+function jobDetails(job) {
+  return [
+    { label: "语言", value: languageLabel(job.language) },
+    { label: "截取", value: timeRangeLabel(job.start_time, job.end_time) },
+    { label: "模型", value: job.model_label || "large-v3" },
+    { label: "格式", value: job.formats?.length ? job.formats.map(formatLabel).join(" / ") : "未选择" },
+    { label: "时间轴", value: job.include_timestamps ? "带时间轴" : "纯文本" },
+  ];
+}
+
+function modelUsesCpu(modelLabel) {
+  return /\(cpu\//i.test(modelLabel || "");
 }
 
 function jobMeta(job) {

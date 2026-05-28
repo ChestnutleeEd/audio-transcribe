@@ -7,8 +7,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
 
-from faster_whisper import WhisperModel
-
 from app.config import ROOT_DIR, settings
 from app.services.exporters import TranscriptSegment
 from app.services.media import OperationCanceled
@@ -23,14 +21,30 @@ class TranscriptionProcessError(RuntimeError):
 
 def configure_runtime() -> None:
     os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
-    default_dirs = [ROOT_DIR / "origin-code"]
+    default_dirs = [
+        ROOT_DIR / "origin-code",
+        Path(r"E:\Programming\Anaconda\envs\whisper_env\Lib\site-packages\nvidia\cudnn\bin"),
+        Path(r"E:\Programming\Anaconda\envs\whisper_env\Lib\site-packages\nvidia\cublas\bin"),
+        Path(r"E:\Programming\Anaconda\envs\whisper_env\Lib\site-packages\nvidia\cuda_nvrtc\bin"),
+        Path(r"E:\Programming\Anaconda\envs\whisper_env\Library\bin"),
+    ]
     env_dirs = [Path(item.strip()) for item in os.getenv("AUDIO_TRANSCRIBE_DLL_DIRS", "").split(os.pathsep) if item.strip()]
+    path_entries = os.environ.get("PATH", "").split(os.pathsep)
     for path in [*default_dirs, *env_dirs]:
-        if path.exists() and hasattr(os, "add_dll_directory"):
-            os.add_dll_directory(str(path))
+        if not path.exists():
+            continue
+        path_text = str(path)
+        if path_text not in path_entries:
+            path_entries.insert(0, path_text)
+        if hasattr(os, "add_dll_directory"):
+            os.add_dll_directory(path_text)
+    os.environ["PATH"] = os.pathsep.join(path_entries)
 
 
-def create_model(model_path: Path, device: str, compute_type: str) -> WhisperModel:
+def create_model(model_path: Path, device: str, compute_type: str) -> Any:
+    configure_runtime()
+    from faster_whisper import WhisperModel
+
     return WhisperModel(str(model_path), device=device, compute_type=compute_type)
 
 
@@ -48,7 +62,7 @@ def get_model_bundle(
     model_id: str,
     device: str | None = None,
     compute_type: str | None = None,
-) -> tuple[WhisperModel, dict[str, str]]:
+) -> tuple[Any, dict[str, str]]:
     configure_runtime()
     requested_device = device or settings.device
     requested_compute_type = compute_type or settings.compute_type
@@ -84,7 +98,7 @@ def get_model_bundle(
         raise
 
 
-def get_model() -> WhisperModel:
+def get_model() -> Any:
     return get_model_bundle(current_model_id())[0]
 
 
