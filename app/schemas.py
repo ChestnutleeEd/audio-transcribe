@@ -17,6 +17,7 @@ class JobState(str, Enum):
     running = "running"
     completed = "completed"
     failed = "failed"
+    canceled = "canceled"
 
 
 class OutputFile(BaseModel):
@@ -31,6 +32,8 @@ class JobStatus(BaseModel):
     state: JobState
     progress: int
     message: str
+    source_label: str = "未命名任务"
+    created_at: str | None = None
     outputs: list[OutputFile] = []
     error: str | None = None
 

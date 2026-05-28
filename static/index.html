@@ -95,17 +95,15 @@
         <aside class="panel monitor" aria-live="polite">
           <div class="panel-head">
             <div>
-              <h2>任务状态</h2>
-              <p id="job-id">等待创建任务</p>
+              <h2>任务列表</h2>
+              <p id="job-summary">等待创建任务</p>
             </div>
-            <span class="pill" id="state-pill">idle</span>
+            <button class="icon-button" type="button" id="jobs-refresh-button" aria-label="刷新任务列表" title="刷新任务列表">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
+            </button>
           </div>
 
-          <div class="progress-ring" style="--progress: 0">
-            <span id="progress-text">0%</span>
-          </div>
-          <p class="message" id="message">选择文件或粘贴链接后开始。</p>
-          <div id="outputs" class="outputs"></div>
+          <div id="jobs-list" class="jobs-list"></div>
 
           <div class="model-card" aria-live="polite">
             <div>

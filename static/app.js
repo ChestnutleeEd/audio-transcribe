@@ -2,13 +2,10 @@ const form = document.querySelector("#job-form");
 const resetButton = document.querySelector("#reset-button");
 const fileInput = document.querySelector("#file-input");
 const fileLabel = document.querySelector("#file-label");
-const statePill = document.querySelector("#state-pill");
-const jobId = document.querySelector("#job-id");
-const progressRing = document.querySelector(".progress-ring");
-const progressText = document.querySelector("#progress-text");
-const message = document.querySelector("#message");
-const outputs = document.querySelector("#outputs");
 const submitButton = form.querySelector(".primary");
+const jobsList = document.querySelector("#jobs-list");
+const jobSummary = document.querySelector("#job-summary");
+const jobsRefreshButton = document.querySelector("#jobs-refresh-button");
 const modelMessage = document.querySelector("#model-message");
 const modelPath = document.querySelector("#model-path");
 const modelDownloadButton = document.querySelector("#model-download-button");
@@ -16,10 +13,14 @@ const modelDownloadLabel = document.querySelector("#model-download-label");
 const modelRefreshButton = document.querySelector("#model-refresh-button");
 const modelRefreshLabel = document.querySelector("#model-refresh-label");
 
-let pollTimer = null;
+let jobsPollTimer = null;
 let modelPollTimer = null;
 
 refreshModelStatus();
+refreshJobs();
+startJobsPolling();
+
+jobsRefreshButton.addEventListener("click", refreshJobs);
 
 modelRefreshButton.addEventListener("click", async () => {
   modelRefreshButton.disabled = true;
@@ -54,7 +55,6 @@ fileInput.addEventListener("change", () => {
 resetButton.addEventListener("click", () => {
   form.reset();
   fileLabel.textContent = "选择本地音频或视频";
-  setStatus({ id: "", state: "idle", progress: 0, message: "选择文件或粘贴链接后开始。", outputs: [] });
 });
 
 form.addEventListener("submit", async (event) => {
@@ -69,58 +69,143 @@ form.addEventListener("submit", async (event) => {
   }
 
   submitButton.disabled = true;
-  setStatus({ id: "", state: "queued", progress: 1, message: "正在提交任务", outputs: [] });
-
   try {
     const response = await fetch("/api/jobs", { method: "POST", body: data });
     const payload = await response.json();
     if (!response.ok) {
       throw new Error(payload.detail || "任务创建失败");
     }
-    setStatus(payload);
-    startPolling(payload.id);
+    form.reset();
+    fileLabel.textContent = "选择本地音频或视频";
+    await refreshJobs();
   } catch (error) {
-    setStatus({ id: "", state: "failed", progress: 100, message: "任务创建失败", error: error.message, outputs: [] });
+    window.alert(error.message);
+  } finally {
     submitButton.disabled = false;
   }
 });
 
-function startPolling(id) {
-  clearInterval(pollTimer);
-  pollTimer = setInterval(async () => {
-    const response = await fetch(`/api/jobs/${id}`);
-    const payload = await response.json();
-    setStatus(payload);
-    if (["completed", "failed"].includes(payload.state)) {
-      clearInterval(pollTimer);
-      submitButton.disabled = false;
-    }
-  }, 1600);
+function startJobsPolling() {
+  clearInterval(jobsPollTimer);
+  jobsPollTimer = setInterval(refreshJobs, 1800);
 }
 
-function setStatus(status) {
-  const progress = Number(status.progress || 0);
-  statePill.textContent = status.state;
-  jobId.textContent = status.id ? `任务 ${status.id.slice(0, 10)}` : "等待创建任务";
-  progressRing.style.setProperty("--progress", progress);
-  progressText.textContent = `${progress}%`;
-  message.textContent = status.error || status.message || "";
-  outputs.replaceChildren(...(status.outputs || []).map(renderDownload));
+async function refreshJobs() {
+  const response = await fetch("/api/jobs");
+  if (!response.ok) return;
+  const jobs = await response.json();
+  renderJobs(jobs);
 }
 
-function renderDownload(file) {
+function renderJobs(jobs) {
+  const activeCount = jobs.filter((job) => ["queued", "running"].includes(job.state)).length;
+  jobSummary.textContent = jobs.length ? `${jobs.length} 个任务，${activeCount} 个进行中或排队` : "等待创建任务";
+  jobsList.replaceChildren(...jobs.map(renderJob));
+  if (!jobs.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "还没有任务。提交后会在这里显示队列、进度和文件。";
+    jobsList.append(empty);
+  }
+}
+
+function renderJob(job) {
+  const item = document.createElement("article");
+  item.className = `job-item state-${job.state}`;
+
+  const header = document.createElement("div");
+  header.className = "job-head";
+
+  const titleWrap = document.createElement("div");
+  const title = document.createElement("h3");
+  title.textContent = job.source_label || `任务 ${shortId(job.id)}`;
+  const meta = document.createElement("p");
+  meta.textContent = `任务 ${shortId(job.id)}`;
+  titleWrap.append(title, meta);
+
+  const pill = document.createElement("span");
+  pill.className = "pill";
+  pill.textContent = stateLabel(job.state);
+  header.append(titleWrap, pill);
+
+  const bar = document.createElement("div");
+  bar.className = "job-progress";
+  bar.style.setProperty("--progress", Number(job.progress || 0));
+  const barFill = document.createElement("span");
+  bar.append(barFill);
+
+  const message = document.createElement("p");
+  message.className = "job-message";
+  message.textContent = job.error || job.message || "";
+
+  const actions = document.createElement("div");
+  actions.className = "job-actions";
+  if (["queued", "running"].includes(job.state)) {
+    const stopButton = document.createElement("button");
+    stopButton.className = "danger";
+    stopButton.type = "button";
+    stopButton.textContent = "停止";
+    stopButton.addEventListener("click", () => cancelJob(job.id));
+    actions.append(stopButton);
+  }
+
+  const outputs = document.createElement("div");
+  outputs.className = "outputs";
+  for (const file of job.outputs || []) {
+    outputs.append(renderOutput(job.id, file));
+  }
+
+  item.append(header, bar, message, actions, outputs);
+  return item;
+}
+
+function renderOutput(jobId, file) {
+  const row = document.createElement("div");
+  row.className = "output-row";
+
   const link = document.createElement("a");
   link.className = "download";
   link.href = file.download_url;
   link.download = file.name;
-  link.innerHTML = `<span>${file.name}</span><small>${formatBytes(file.bytes)}</small>`;
-  link.addEventListener("click", () => {
-    setTimeout(() => {
-      link.style.opacity = "0.48";
-      link.querySelector("small").textContent = "已请求删除";
-    }, 500);
-  });
-  return link;
+  link.textContent = file.name;
+
+  const size = document.createElement("small");
+  size.textContent = formatBytes(file.bytes);
+
+  const deleteButton = document.createElement("button");
+  deleteButton.className = "danger ghost";
+  deleteButton.type = "button";
+  deleteButton.textContent = "删除";
+  deleteButton.addEventListener("click", () => deleteOutput(jobId, file.name));
+
+  row.append(link, size, deleteButton);
+  return row;
+}
+
+async function cancelJob(jobId) {
+  await fetch(`/api/jobs/${jobId}/cancel`, { method: "POST" });
+  await refreshJobs();
+}
+
+async function deleteOutput(jobId, fileName) {
+  const approved = window.confirm(`删除转录文件 ${fileName}？`);
+  if (!approved) return;
+  await fetch(`/api/jobs/${jobId}/outputs/${encodeURIComponent(fileName)}`, { method: "DELETE" });
+  await refreshJobs();
+}
+
+function stateLabel(state) {
+  return {
+    queued: "排队中",
+    running: "处理中",
+    completed: "已完成",
+    failed: "失败",
+    canceled: "已停止",
+  }[state] || state;
+}
+
+function shortId(id) {
+  return String(id || "").slice(0, 10);
 }
 
 function formatBytes(bytes) {

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
+from typing import Callable
 
 from faster_whisper import WhisperModel
 
@@ -32,7 +33,11 @@ def get_model() -> WhisperModel:
     return WhisperModel(str(model_path), device=settings.device, compute_type=settings.compute_type)
 
 
-def transcribe_audio(audio_path: Path, language: str | None) -> list[TranscriptSegment]:
+def transcribe_audio(
+    audio_path: Path,
+    language: str | None,
+    is_canceled: Callable[[], bool] = lambda: False,
+) -> list[TranscriptSegment]:
     model = get_model()
     whisper_language = None if language in {None, "", "auto"} else language
     segments, _info = model.transcribe(
@@ -43,8 +48,11 @@ def transcribe_audio(audio_path: Path, language: str | None) -> list[TranscriptS
         vad_parameters={"min_silence_duration_ms": 500},
         condition_on_previous_text=False,
     )
-    return [
-        TranscriptSegment(start=segment.start, end=segment.end, text=segment.text.strip())
-        for segment in segments
-        if segment.text.strip()
-    ]
+    transcript: list[TranscriptSegment] = []
+    for segment in segments:
+        if is_canceled():
+            raise RuntimeError("任务已停止")
+        text = segment.text.strip()
+        if text:
+            transcript.append(TranscriptSegment(start=segment.start, end=segment.end, text=text))
+    return transcript

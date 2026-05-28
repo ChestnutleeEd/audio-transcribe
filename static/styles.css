@@ -370,6 +370,110 @@ summary:focus-visible {
   gap: 10px;
 }
 
+.jobs-list {
+  display: grid;
+  max-height: 520px;
+  gap: 12px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.empty {
+  border: 1px dashed rgba(13, 148, 136, 0.34);
+  border-radius: var(--radius);
+  margin: 0;
+  padding: 18px;
+  color: rgba(19, 78, 74, 0.68);
+  line-height: 1.6;
+}
+
+.job-item {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(13, 148, 136, 0.24);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.82);
+  padding: 14px;
+}
+
+.job-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.job-head h3 {
+  max-width: 220px;
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.job-head p,
+.job-message {
+  margin: 0;
+  color: rgba(19, 78, 74, 0.68);
+  line-height: 1.5;
+}
+
+.job-progress {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(13, 148, 136, 0.13);
+}
+
+.job-progress span {
+  display: block;
+  width: calc(var(--progress) * 1%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  transition: width 180ms ease;
+}
+
+.job-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.danger,
+.ghost {
+  min-height: 40px;
+  border-radius: var(--radius);
+  font-weight: 900;
+}
+
+.danger {
+  border: 1px solid rgba(220, 38, 38, 0.28);
+  color: #b91c1c;
+  background: #fff;
+  padding: 0 12px;
+}
+
+.ghost {
+  min-width: 64px;
+}
+
+.output-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid rgba(13, 148, 136, 0.2);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 8px;
+}
+
+.output-row small {
+  color: rgba(19, 78, 74, 0.62);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .model-card {
   display: grid;
   gap: 14px;
@@ -424,18 +528,19 @@ summary:focus-visible {
   .model-actions {
     grid-template-columns: 1fr;
   }
+
+  .output-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .download {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  min-height: 48px;
-  border: 1px solid rgba(13, 148, 136, 0.28);
+  min-height: 40px;
   border-radius: var(--radius);
-  background: #fff;
   color: var(--color-foreground);
-  padding: 0 12px;
+  overflow-wrap: anywhere;
   text-decoration: none;
   font-weight: 800;
 }

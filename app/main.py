@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -13,7 +13,14 @@ from app.config import ROOT_DIR, settings
 from app.schemas import AppOptions, JobState, JobStatus, OptionItem, OutputFile, OutputFormat
 from app.services.exporters import export_transcript
 from app.services.jobs import Job, job_store
-from app.services.media import SUPPORTED_UPLOAD_SUFFIXES, download_audio, ensure_runtime_dirs, normalize_audio, safe_stem
+from app.services.media import (
+    OperationCanceled,
+    SUPPORTED_UPLOAD_SUFFIXES,
+    download_audio,
+    ensure_runtime_dirs,
+    normalize_audio,
+    safe_stem,
+)
 from app.services.model_manager import download_model, model_status
 from app.services.transcriber import transcribe_audio
 
@@ -44,9 +51,16 @@ def build_status(job: Job) -> JobStatus:
         state=job.state,
         progress=job.progress,
         message=job.message,
+        source_label=job.source_label,
+        created_at=job.created_at,
         outputs=job.outputs,
         error=job.error,
     )
+
+
+def is_job_canceled(job_id: str) -> bool:
+    current = job_store.get(job_id)
+    return current is None or current.cancel_requested
 
 
 def run_job(
@@ -65,24 +79,34 @@ def run_job(
         return
 
     try:
+        if job.cancel_requested:
+            job_store.update(job_id, state=JobState.canceled, progress=100, message="已取消排队任务")
+            return
+
         job_store.update(job_id, state=JobState.running, progress=8, message="准备音频来源")
         work_dir = job.work_dir
         media_path = source_path
-        if source_url:
-            media_path = download_audio(source_url, work_dir)
+        if media_path is None and source_url:
+            media_path = download_audio(source_url, work_dir, lambda: is_job_canceled(job_id))
             base_name = safe_stem(media_path.name)
 
         if media_path is None:
             raise ValueError("缺少上传文件或视频链接")
 
+        if is_job_canceled(job_id):
+            raise OperationCanceled("任务已停止")
+
         job_store.update(job_id, progress=24, message="转换为 Whisper 友好的音频")
         wav_path = work_dir / "input_16k.wav"
-        normalize_audio(media_path, wav_path, start_time, end_time)
+        normalize_audio(media_path, wav_path, start_time, end_time, lambda: is_job_canceled(job_id))
 
         job_store.update(job_id, progress=42, message="加载模型并转写")
-        segments = transcribe_audio(wav_path, language)
+        segments = transcribe_audio(wav_path, language, lambda: is_job_canceled(job_id))
         if not segments:
             raise RuntimeError("没有识别到可用文本")
+
+        if is_job_canceled(job_id):
+            raise OperationCanceled("任务已停止")
 
         job_store.update(job_id, progress=82, message="生成转录文件")
         output_paths = export_transcript(work_dir, base_name, formats, segments, include_timestamps)
@@ -103,9 +127,11 @@ def run_job(
             job_id,
             state=JobState.completed,
             progress=100,
-            message="转录完成，下载后会自动删除对应文件",
+            message="转录完成，可下载或手动删除转录文件",
             outputs=outputs,
         )
+    except OperationCanceled as exc:
+        job_store.update(job_id, state=JobState.canceled, progress=100, message=str(exc), error=None)
     except Exception as exc:
         job_store.update(job_id, state=JobState.failed, progress=100, message="任务失败", error=str(exc))
 
@@ -164,7 +190,10 @@ async def create_job(
     start_time: str | None = Form(default=None),
     end_time: str | None = Form(default=None),
 ) -> JobStatus:
-    if not file and not source_url:
+    has_file = bool(file and file.filename)
+    clean_source_url = source_url.strip() if source_url else None
+
+    if not has_file and not clean_source_url:
         raise HTTPException(status_code=400, detail="请上传本地文件或填写视频链接")
 
     try:
@@ -177,24 +206,26 @@ async def create_job(
     work_dir.mkdir(parents=True, exist_ok=True)
     source_path: Path | None = None
     base_name = "transcript"
+    source_label = clean_source_url or "本地文件"
 
-    if file:
+    if has_file and file is not None:
         suffix = Path(file.filename or "").suffix.lower()
         if suffix not in SUPPORTED_UPLOAD_SUFFIXES:
             raise HTTPException(status_code=400, detail=f"暂不支持该文件格式: {suffix or '未知'}")
         base_name = safe_stem(file.filename or "upload")
+        source_label = file.filename or "本地文件"
         source_path = work_dir / f"source{suffix}"
         with source_path.open("wb") as handle:
             shutil.copyfileobj(file.file, handle)
-    elif source_url:
-        base_name = safe_stem(source_url)
+    elif clean_source_url:
+        base_name = safe_stem(clean_source_url)
 
-    job = job_store.create(job_id, work_dir)
+    job = job_store.create(job_id, work_dir, source_label)
     executor.submit(
         run_job,
         job_id,
         source_path,
-        source_url,
+        clean_source_url,
         base_name,
         language,
         parsed_formats,
@@ -205,6 +236,11 @@ async def create_job(
     return build_status(job)
 
 
+@app.get("/api/jobs", response_model=list[JobStatus])
+def list_jobs() -> list[JobStatus]:
+    return [build_status(job) for job in job_store.list()]
+
+
 @app.get("/api/jobs/{job_id}", response_model=JobStatus)
 def get_job(job_id: str) -> JobStatus:
     job = job_store.get(job_id)
@@ -213,16 +249,39 @@ def get_job(job_id: str) -> JobStatus:
     return build_status(job)
 
 
+@app.post("/api/jobs/{job_id}/cancel", response_model=JobStatus)
+def cancel_job(job_id: str) -> JobStatus:
+    job = job_store.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if job.state in {JobState.completed, JobState.failed, JobState.canceled}:
+        return build_status(job)
+    return build_status(job_store.request_cancel(job_id))
+
+
 @app.get("/api/jobs/{job_id}/download/{filename}")
-def download_output(job_id: str, filename: str, background_tasks: BackgroundTasks) -> FileResponse:
+def download_output(job_id: str, filename: str) -> FileResponse:
     job = job_store.get(job_id)
     if job is None or job.work_dir is None:
         raise HTTPException(status_code=404, detail="任务不存在")
     path = job.work_dir / Path(filename).name
     if not path.exists() or not path.is_file():
         raise HTTPException(status_code=404, detail="文件不存在或已被删除")
-    background_tasks.add_task(unlink_file, path)
     return FileResponse(path, filename=path.name)
+
+
+@app.delete("/api/jobs/{job_id}/outputs/{filename}", response_model=JobStatus)
+def delete_output(job_id: str, filename: str) -> JobStatus:
+    job = job_store.get(job_id)
+    if job is None or job.work_dir is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    safe_name = Path(filename).name
+    path = job.work_dir / safe_name
+    if path.exists() and path.is_file():
+        unlink_file(path)
+    remaining_outputs = [output for output in job.outputs if output.name != safe_name]
+    updated = job_store.update(job_id, outputs=remaining_outputs)
+    return build_status(updated)
 
 
 static_dir = ROOT_DIR / "static"

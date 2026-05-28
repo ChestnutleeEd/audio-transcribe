@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
+import time
 from pathlib import Path
+from typing import Callable
 from urllib.parse import urlparse
 
 from app.config import settings
@@ -21,6 +24,10 @@ SUPPORTED_UPLOAD_SUFFIXES = {
     ".webm",
     ".avi",
 }
+
+
+class OperationCanceled(RuntimeError):
+    pass
 
 
 def safe_stem(name: str) -> str:
@@ -45,7 +52,45 @@ def ffmpeg_executable() -> str:
     return settings.ffmpeg_path
 
 
-def normalize_audio(input_path: Path, output_path: Path, start_time: str | None, end_time: str | None) -> Path:
+def run_command(command: list[str], is_canceled: Callable[[], bool]) -> subprocess.CompletedProcess[str]:
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="ignore",
+    )
+    while process.poll() is None:
+        if is_canceled():
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+            raise OperationCanceled("任务已停止")
+        time.sleep(0.3)
+    stdout, stderr = process.communicate()
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+
+def yt_dlp_command() -> list[str]:
+    local_exe = Path(sys.executable).with_name("yt-dlp.exe")
+    if local_exe.exists():
+        return [str(local_exe)]
+    found = shutil.which("yt-dlp")
+    if found:
+        return [found]
+    return [sys.executable, "-m", "yt_dlp"]
+
+
+def normalize_audio(
+    input_path: Path,
+    output_path: Path,
+    start_time: str | None,
+    end_time: str | None,
+    is_canceled: Callable[[], bool] = lambda: False,
+) -> Path:
     command = [ffmpeg_executable(), "-i", str(input_path)]
     if start_time:
         command.extend(["-ss", start_time])
@@ -53,20 +98,20 @@ def normalize_audio(input_path: Path, output_path: Path, start_time: str | None,
         command.extend(["-to", end_time])
     command.extend(["-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1", str(output_path), "-y"])
 
-    result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="ignore")
+    result = run_command(command, is_canceled)
     if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or "FFmpeg 音频预处理失败")
+        raise RuntimeError(result.stderr.strip() or "FFmpeg 音频预处理失败，请检查文件格式或 FFmpeg 路径")
     return output_path
 
 
-def download_audio(url: str, output_dir: Path) -> Path:
+def download_audio(url: str, output_dir: Path, is_canceled: Callable[[], bool] = lambda: False) -> Path:
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"}:
         raise ValueError("仅支持 http/https 视频链接")
 
     output_template = str(output_dir / "%(title).120s.%(ext)s")
     command = [
-        "yt-dlp",
+        *yt_dlp_command(),
         "--no-playlist",
         "-x",
         "--audio-format",
@@ -75,9 +120,9 @@ def download_audio(url: str, output_dir: Path) -> Path:
         output_template,
         url,
     ]
-    result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="ignore")
+    result = run_command(command, is_canceled)
     if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or "视频音频下载失败")
+        raise RuntimeError(result.stderr.strip() or "视频音频下载失败，请检查链接、网络或 yt-dlp 支持情况")
 
     candidates = sorted(output_dir.glob("*"), key=lambda path: path.stat().st_mtime, reverse=True)
     for candidate in candidates:
