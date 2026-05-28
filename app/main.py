@@ -23,7 +23,14 @@ from app.services.media import (
     normalize_source_url,
     safe_stem,
 )
-from app.services.model_manager import current_model_id, download_model, model_status, select_model, set_runtime_device
+from app.services.model_manager import (
+    current_model_id,
+    download_model,
+    model_status,
+    request_model_download_cancel,
+    select_model,
+    set_runtime_device,
+)
 from app.services.transcriber import transcribe_audio
 
 
@@ -316,6 +323,12 @@ def start_model_download():
     if status.download_state == "downloading":
         return status
     executor.submit(download_model, status.selected_model)
+    return model_status()
+
+
+@app.post("/api/model/download/cancel")
+def cancel_model_download():
+    request_model_download_cancel()
     return model_status()
 
 

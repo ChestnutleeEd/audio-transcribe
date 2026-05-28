@@ -14,6 +14,8 @@ const modelDevice = document.querySelector("#model-device");
 const modelPath = document.querySelector("#model-path");
 const modelDownloadButton = document.querySelector("#model-download-button");
 const modelDownloadLabel = document.querySelector("#model-download-label");
+const modelCancelButton = document.querySelector("#model-cancel-button");
+const modelCancelLabel = document.querySelector("#model-cancel-label");
 const modelRefreshButton = document.querySelector("#model-refresh-button");
 const modelRefreshLabel = document.querySelector("#model-refresh-label");
 
@@ -74,6 +76,20 @@ modelDownloadButton.addEventListener("click", async () => {
   } catch (error) {
     modelMessage.textContent = `模型下载任务启动失败：${error.message}`;
     modelDownloadButton.disabled = false;
+  }
+});
+
+modelCancelButton.addEventListener("click", async () => {
+  modelCancelButton.disabled = true;
+  modelCancelLabel.textContent = "取消中";
+  modelMessage.textContent = "正在取消模型下载并清理已下载内容";
+  try {
+    await fetch("/api/model/download/cancel", { method: "POST" });
+    startModelPolling();
+  } catch (error) {
+    modelMessage.textContent = `取消模型下载失败：${error.message}`;
+    modelCancelButton.disabled = false;
+    modelCancelLabel.textContent = "取消下载";
   }
 });
 
@@ -445,7 +461,7 @@ function startModelPolling() {
   clearInterval(modelPollTimer);
   modelPollTimer = setInterval(async () => {
     const status = await refreshModelStatus();
-    if (!status || ["completed", "failed"].includes(status.download_state)) {
+    if (!status || ["completed", "failed", "canceled"].includes(status.download_state)) {
       clearInterval(modelPollTimer);
     }
   }, 2500);
@@ -468,8 +484,10 @@ function renderModelStatus(status) {
   const downloading = status.download_state === "downloading";
   modelSelect.disabled = downloading;
   modelDownloadButton.disabled = status.available || downloading;
+  modelCancelButton.disabled = !downloading;
   modelRefreshButton.disabled = downloading;
   modelDownloadLabel.textContent = downloading ? "下载中" : status.available ? "模型已就绪" : "下载模型";
+  modelCancelLabel.textContent = downloading ? "取消下载" : "取消下载";
   if (!modelRefreshButton.disabled) {
     modelRefreshLabel.textContent = "重新检测";
   }

@@ -64,6 +64,7 @@ class ModelDownloadState(str, Enum):
     downloading = "downloading"
     completed = "completed"
     failed = "failed"
+    canceled = "canceled"
 
 
 class ModelOption(BaseModel):

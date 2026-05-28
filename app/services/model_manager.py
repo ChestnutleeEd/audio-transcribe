@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import multiprocessing as mp
+import queue
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
+from typing import Any
 
 from huggingface_hub import snapshot_download
 
@@ -14,8 +17,9 @@ REQUIRED_MODEL_FILES = [
     "config.json",
     "model.bin",
     "tokenizer.json",
-    "vocabulary.json",
 ]
+
+VOCABULARY_FILES = ["vocabulary.json", "vocabulary.txt"]
 
 
 @dataclass
@@ -23,6 +27,7 @@ class DownloadTracker:
     state: ModelDownloadState = ModelDownloadState.idle
     message: str = "模型尚未检测"
     error: str | None = None
+    cancel_requested: bool = False
 
 
 selected_model_id = settings.model_definition().id
@@ -67,8 +72,14 @@ def clear_runtime_device() -> None:
         active_compute_type = None
 
 
+def required_model_files() -> list[str]:
+    return [*REQUIRED_MODEL_FILES, "vocabulary.json 或 vocabulary.txt"]
+
+
 def is_valid_model_dir(path: Path) -> bool:
-    return path.exists() and all((path / file_name).exists() for file_name in REQUIRED_MODEL_FILES)
+    has_required = path.exists() and all((path / file_name).exists() for file_name in REQUIRED_MODEL_FILES)
+    has_vocabulary = any((path / file_name).exists() for file_name in VOCABULARY_FILES)
+    return has_required and has_vocabulary
 
 
 def resolve_model_path(model_id: str | None = None) -> Path | None:
@@ -117,7 +128,7 @@ def model_status() -> ModelStatus:
         active_path=str(active_path) if active_path else None,
         managed_path=str(settings.managed_model_path_for(model.id)),
         repo_id=model.repo_id,
-        required_files=REQUIRED_MODEL_FILES,
+        required_files=required_model_files(),
         configured_device=settings.device,
         active_device=runtime_device,
         active_compute_type=runtime_compute_type,
@@ -125,6 +136,59 @@ def model_status() -> ModelStatus:
         message=message,
         error=error,
     )
+
+
+def cleanup_model_download_dir(path: Path) -> None:
+    if not path.exists() or not path.is_dir():
+        return
+    files = [item for item in path.rglob("*") if item.is_file() or item.is_symlink()]
+    for item in files:
+        try:
+            item.unlink()
+        except OSError:
+            pass
+    directories = sorted([item for item in path.rglob("*") if item.is_dir()], key=lambda item: len(item.parts), reverse=True)
+    for item in directories:
+        try:
+            item.rmdir()
+        except OSError:
+            pass
+    try:
+        path.rmdir()
+    except OSError:
+        pass
+
+
+def _snapshot_download_worker(repo_id: str, managed_path: str, result_queue: mp.Queue) -> None:
+    try:
+        snapshot_download(
+            repo_id=repo_id,
+            local_dir=managed_path,
+            local_dir_use_symlinks=False,
+            resume_download=True,
+        )
+        result_queue.put({"type": "completed"})
+    except Exception as exc:
+        result_queue.put({"type": "error", "message": str(exc)})
+
+
+def friendly_download_error(error: str) -> str:
+    text = error.lower()
+    if "connecterror" in text or "ssl" in text or "unexpected_eof" in text or "connection" in text:
+        return (
+            "模型下载失败：连接 Hugging Face 时网络或 SSL 连接中断。"
+            "请检查代理/网络后重试；已保留取消按钮用于中止并清理本次下载。"
+        )
+    return error
+
+
+def request_model_download_cancel(model_id: str | None = None) -> None:
+    model = settings.model_definition(model_id or current_model_id())
+    with tracker_lock:
+        tracker = get_tracker(model.id)
+        if tracker.state == ModelDownloadState.downloading:
+            tracker.cancel_requested = True
+            tracker.message = "正在取消模型下载并清理已下载内容"
 
 
 def download_model(model_id: str | None = None) -> None:
@@ -137,17 +201,53 @@ def download_model(model_id: str | None = None) -> None:
         tracker.state = ModelDownloadState.downloading
         tracker.message = f"正在下载 {model.id} 模型，文件较大，请保持网络连接"
         tracker.error = None
+        tracker.cancel_requested = False
 
+    result_queue: mp.Queue = mp.get_context("spawn").Queue()
+    process = mp.get_context("spawn").Process(
+        target=_snapshot_download_worker,
+        args=(model.repo_id, str(managed_path), result_queue),
+    )
     try:
         managed_path.mkdir(parents=True, exist_ok=True)
-        snapshot_download(
-            repo_id=model.repo_id,
-            local_dir=str(managed_path),
-            local_dir_use_symlinks=False,
-            resume_download=True,
-        )
+        process.start()
+        result: dict[str, Any] | None = None
+        while process.is_alive():
+            with tracker_lock:
+                should_cancel = get_tracker(model.id).cancel_requested
+            if should_cancel:
+                process.terminate()
+                process.join(timeout=5)
+                if process.is_alive():
+                    process.kill()
+                    process.join(timeout=2)
+                cleanup_model_download_dir(managed_path)
+                with tracker_lock:
+                    tracker = get_tracker(model.id)
+                    tracker.state = ModelDownloadState.canceled
+                    tracker.message = "已取消模型下载，并清理本次下载内容"
+                    tracker.error = None
+                    tracker.cancel_requested = False
+                return
+            try:
+                result = result_queue.get(timeout=0.4)
+                break
+            except queue.Empty:
+                continue
+
+        process.join(timeout=2)
+        if result is None:
+            try:
+                result = result_queue.get_nowait()
+            except queue.Empty:
+                result = {"type": "error", "message": f"模型下载进程异常退出，退出码 {process.exitcode}"}
+        if result.get("type") == "error":
+            raise RuntimeError(str(result.get("message") or "模型下载失败"))
+
         if not is_valid_model_dir(managed_path):
             missing = [name for name in REQUIRED_MODEL_FILES if not (managed_path / name).exists()]
+            if not any((managed_path / name).exists() for name in VOCABULARY_FILES):
+                missing.append("vocabulary.json 或 vocabulary.txt")
             raise RuntimeError(f"模型下载后仍缺少文件: {', '.join(missing)}")
 
         with tracker_lock:
@@ -155,9 +255,16 @@ def download_model(model_id: str | None = None) -> None:
             tracker.state = ModelDownloadState.completed
             tracker.message = "模型下载完成"
             tracker.error = None
+            tracker.cancel_requested = False
     except Exception as exc:
+        if process.is_alive():
+            process.terminate()
+            process.join(timeout=5)
         with tracker_lock:
             tracker = get_tracker(model.id)
             tracker.state = ModelDownloadState.failed
             tracker.message = "模型下载失败"
-            tracker.error = str(exc)
+            tracker.error = friendly_download_error(str(exc))
+            tracker.cancel_requested = False
+    finally:
+        result_queue.close()

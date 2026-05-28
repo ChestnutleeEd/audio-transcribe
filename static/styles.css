@@ -628,7 +628,7 @@ summary:focus-visible {
 
 .model-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -648,6 +648,11 @@ summary:focus-visible {
 .secondary:disabled {
   cursor: not-allowed;
   opacity: 0.52;
+}
+
+.model-cancel {
+  border-color: rgba(220, 38, 38, 0.32);
+  color: #b91c1c;
 }
 
 @media (max-width: 480px) {
