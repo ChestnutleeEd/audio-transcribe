@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import multiprocessing as mp
+import os
 import queue
 import threading
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
@@ -21,6 +23,7 @@ REQUIRED_MODEL_FILES = [
 ]
 
 VOCABULARY_FILES = ["vocabulary.json", "vocabulary.txt"]
+MODEL_DOWNLOAD_ALLOW_PATTERNS = [*REQUIRED_MODEL_FILES, *VOCABULARY_FILES]
 
 
 @dataclass
@@ -179,6 +182,7 @@ def cleanup_model_download_dir(path: Path) -> None:
 def _snapshot_download_worker(repo_id: str, managed_path: str, result_queue: mp.Queue) -> None:
     from tqdm.auto import tqdm
 
+    os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
     bars: dict[int, dict[str, Any]] = {}
     bars_lock = threading.Lock()
 
@@ -227,13 +231,48 @@ def _snapshot_download_worker(repo_id: str, managed_path: str, result_queue: mp.
             super().close()
 
     try:
-        snapshot_download(
+        plan = snapshot_download(
             repo_id=repo_id,
             local_dir=managed_path,
             local_dir_use_symlinks=False,
-            resume_download=True,
-            tqdm_class=QueueTqdm,
+            allow_patterns=MODEL_DOWNLOAD_ALLOW_PATTERNS,
+            max_workers=1,
+            etag_timeout=30,
+            dry_run=True,
         )
+        files = [
+            {
+                "name": item.filename,
+                "size": int(item.file_size or 0),
+                "cached": bool(item.is_cached),
+            }
+            for item in plan
+        ]
+        result_queue.put({"type": "plan", "files": files})
+
+        last_error: Exception | None = None
+        for attempt in range(1, 4):
+            try:
+                snapshot_download(
+                    repo_id=repo_id,
+                    local_dir=managed_path,
+                    local_dir_use_symlinks=False,
+                    resume_download=True,
+                    allow_patterns=MODEL_DOWNLOAD_ALLOW_PATTERNS,
+                    max_workers=1,
+                    etag_timeout=30,
+                    tqdm_class=QueueTqdm,
+                )
+                last_error = None
+                break
+            except Exception as exc:
+                last_error = exc
+                if attempt >= 3:
+                    raise
+                result_queue.put({"type": "retry", "attempt": attempt + 1, "message": str(exc)})
+                time.sleep(2 * attempt)
+        if last_error is not None:
+            raise last_error
         result_queue.put({"type": "completed"})
     except Exception as exc:
         result_queue.put({"type": "error", "message": str(exc)})
@@ -247,6 +286,46 @@ def friendly_download_error(error: str) -> str:
             "请检查代理/网络后重试；已保留取消按钮用于中止并清理本次下载。"
         )
     return error
+
+
+def format_bytes(size: int | None) -> str:
+    if not size:
+        return "0 B"
+    units = ["B", "KB", "MB", "GB"]
+    value = float(size)
+    unit_index = 0
+    while value >= 1024 and unit_index < len(units) - 1:
+        value /= 1024
+        unit_index += 1
+    return f"{value:.1f} {units[unit_index]}" if unit_index else f"{int(value)} B"
+
+
+def local_downloaded_bytes(path: Path, planned_files: list[dict[str, Any]]) -> int:
+    downloaded = 0
+    for file_info in planned_files:
+        name = str(file_info.get("name") or "")
+        expected_size = int(file_info.get("size") or 0)
+        candidates = [path / name, *path.glob(f"**/{Path(name).name}")]
+        existing = [candidate for candidate in candidates if candidate.exists() and candidate.is_file()]
+        if existing:
+            downloaded += min(max(candidate.stat().st_size for candidate in existing), expected_size or 0)
+    return downloaded
+
+
+def update_download_progress(
+    model_id: str,
+    label: str,
+    progress: int,
+    downloaded_bytes: int | None,
+    total_bytes: int | None,
+) -> None:
+    with tracker_lock:
+        tracker = get_tracker(model_id)
+        tracker.progress = max(tracker.progress, max(0, min(99, progress)))
+        tracker.downloaded_bytes = downloaded_bytes
+        tracker.total_bytes = total_bytes
+        tracker.progress_label = label
+        tracker.message = f"{label}：{tracker.progress}%"
 
 
 def request_model_download_cancel(model_id: str | None = None) -> None:
@@ -283,6 +362,9 @@ def download_model(model_id: str | None = None) -> None:
         managed_path.mkdir(parents=True, exist_ok=True)
         process.start()
         result: dict[str, Any] | None = None
+        planned_files: list[dict[str, Any]] = []
+        planned_total: int | None = None
+        started_at = time.monotonic()
         while process.is_alive():
             with tracker_lock:
                 should_cancel = get_tracker(model.id).cancel_requested
@@ -302,18 +384,50 @@ def download_model(model_id: str | None = None) -> None:
                 return
             try:
                 result = result_queue.get(timeout=0.4)
+                if result.get("type") == "plan":
+                    planned_files = list(result.get("files") or [])
+                    planned_total = sum(int(item.get("size") or 0) for item in planned_files) or None
+                    update_download_progress(
+                        model.id,
+                        f"准备下载 {len(planned_files)} 个文件",
+                        6,
+                        0,
+                        planned_total,
+                    )
+                    result = None
+                    continue
                 if result.get("type") == "progress":
-                    with tracker_lock:
-                        tracker = get_tracker(model.id)
-                        tracker.progress = int(result.get("progress") or 0)
-                        tracker.downloaded_bytes = result.get("downloaded_bytes")
-                        tracker.total_bytes = result.get("total_bytes")
-                        tracker.progress_label = str(result.get("label") or "下载中")
-                        tracker.message = f"{tracker.progress_label}：{tracker.progress}%"
+                    child_progress = int(result.get("progress") or 0)
+                    progress = 6 + int(child_progress * 0.89)
+                    update_download_progress(
+                        model.id,
+                        str(result.get("label") or "下载文件"),
+                        progress,
+                        result.get("downloaded_bytes"),
+                        result.get("total_bytes") or planned_total,
+                    )
+                    result = None
+                    continue
+                if result.get("type") == "retry":
+                    update_download_progress(
+                        model.id,
+                        f"网络中断，正在第 {result.get('attempt')} 次重试",
+                        8,
+                        local_downloaded_bytes(managed_path, planned_files) if planned_files else None,
+                        planned_total,
+                    )
                     result = None
                     continue
                 break
             except queue.Empty:
+                if planned_files and planned_total:
+                    downloaded = local_downloaded_bytes(managed_path, planned_files)
+                    byte_progress = int(downloaded * 89 / planned_total)
+                    elapsed = max(0, time.monotonic() - started_at)
+                    activity_progress = min(86, int(elapsed / 6))
+                    progress = 6 + max(byte_progress, activity_progress)
+                    label = "下载 model.bin 等大文件"
+                    update_download_progress(model.id, label, progress, downloaded, planned_total)
                 continue
 
         process.join(timeout=2)
@@ -327,13 +441,21 @@ def download_model(model_id: str | None = None) -> None:
                     break
             else:
                 if next_result.get("type") == "progress":
-                    with tracker_lock:
-                        tracker = get_tracker(model.id)
-                        tracker.progress = int(next_result.get("progress") or 0)
-                        tracker.downloaded_bytes = next_result.get("downloaded_bytes")
-                        tracker.total_bytes = next_result.get("total_bytes")
-                        tracker.progress_label = str(next_result.get("label") or "下载中")
-                        tracker.message = f"{tracker.progress_label}：{tracker.progress}%"
+                    child_progress = int(next_result.get("progress") or 0)
+                    progress = 6 + int(child_progress * 0.89)
+                    update_download_progress(
+                        model.id,
+                        str(next_result.get("label") or "下载文件"),
+                        progress,
+                        next_result.get("downloaded_bytes"),
+                        next_result.get("total_bytes") or planned_total,
+                    )
+                    result = next_result
+                    continue
+                if next_result.get("type") == "plan":
+                    planned_files = list(next_result.get("files") or [])
+                    planned_total = sum(int(item.get("size") or 0) for item in planned_files) or None
+                    update_download_progress(model.id, f"准备下载 {len(planned_files)} 个文件", 6, 0, planned_total)
                     result = next_result
                     continue
                 result = next_result
@@ -353,6 +475,8 @@ def download_model(model_id: str | None = None) -> None:
             tracker.error = None
             tracker.cancel_requested = False
             tracker.progress = 100
+            tracker.downloaded_bytes = planned_total
+            tracker.total_bytes = planned_total
             tracker.progress_label = "下载完成"
     except Exception as exc:
         if process.is_alive():
