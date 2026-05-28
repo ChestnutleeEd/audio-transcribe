@@ -223,6 +223,21 @@ svg {
   outline: none;
 }
 
+.field input[type="time"] {
+  color-scheme: light;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.field input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.72;
+}
+
+.field input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
 .field input:focus,
 .field select:focus,
 button:focus-visible,
