@@ -57,8 +57,22 @@ class ModelDownloadState(str, Enum):
     failed = "failed"
 
 
+class ModelOption(BaseModel):
+    id: str
+    label: str
+    repo_id: str
+    managed_path: str
+    available: bool
+
+
+class ModelSelection(BaseModel):
+    model_id: str
+
+
 class ModelStatus(BaseModel):
     available: bool
+    selected_model: str
+    models: list[ModelOption]
     active_path: str | None = None
     managed_path: str
     repo_id: str

@@ -508,6 +508,25 @@ summary:focus-visible {
   line-height: 1.5;
 }
 
+.model-selector {
+  display: grid;
+  gap: 7px;
+  margin: 8px 0 12px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.model-selector select {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid rgba(13, 148, 136, 0.3);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--color-foreground);
+  padding: 0 12px;
+  outline: none;
+}
+
 .model-card small {
   display: block;
   overflow-wrap: anywhere;

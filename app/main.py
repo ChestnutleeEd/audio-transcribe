@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import ROOT_DIR, settings
-from app.schemas import AppOptions, JobState, JobStatus, OptionItem, OutputFile, OutputFormat
+from app.schemas import AppOptions, JobState, JobStatus, ModelSelection, OptionItem, OutputFile, OutputFormat
 from app.services.exporters import export_transcript
 from app.services.jobs import Job, job_store
 from app.services.media import (
@@ -21,7 +21,7 @@ from app.services.media import (
     normalize_audio,
     safe_stem,
 )
-from app.services.model_manager import download_model, model_status
+from app.services.model_manager import download_model, model_status, select_model
 from app.services.transcriber import transcribe_audio
 
 
@@ -169,6 +169,12 @@ def get_model_status():
     return model_status()
 
 
+@app.post("/api/model/select")
+def select_active_model(selection: ModelSelection):
+    select_model(selection.model_id)
+    return model_status()
+
+
 @app.post("/api/model/download")
 def start_model_download():
     status = model_status()
@@ -176,7 +182,7 @@ def start_model_download():
         return status
     if status.download_state == "downloading":
         return status
-    executor.submit(download_model)
+    executor.submit(download_model, status.selected_model)
     return model_status()
 
 
