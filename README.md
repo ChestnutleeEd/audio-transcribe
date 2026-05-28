@@ -14,6 +14,18 @@
 
 ## 运行
 
+### 一键启动
+
+Windows 下可以直接双击项目根目录的：
+
+```text
+start-audio-transcribe.bat
+```
+
+它会自动检测服务是否已启动；如果没有，会启动本地服务并打开浏览器。
+
+### 手动启动
+
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
