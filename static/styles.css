@@ -396,6 +396,12 @@ summary:focus-visible {
   line-height: 1.4;
 }
 
+.model-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .secondary {
   display: inline-flex;
   align-items: center;
@@ -412,6 +418,12 @@ summary:focus-visible {
 .secondary:disabled {
   cursor: not-allowed;
   opacity: 0.52;
+}
+
+@media (max-width: 480px) {
+  .model-actions {
+    grid-template-columns: 1fr;
+  }
 }
 
 .download {

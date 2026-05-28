@@ -113,10 +113,16 @@
               <p id="model-message">正在检测 large-v3 模型</p>
               <small id="model-path"></small>
             </div>
-            <button class="secondary" type="button" id="model-download-button">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>
-              <span id="model-download-label">下载模型</span>
-            </button>
+            <div class="model-actions">
+              <button class="secondary" type="button" id="model-refresh-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
+                <span id="model-refresh-label">重新检测</span>
+              </button>
+              <button class="secondary" type="button" id="model-download-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>
+                <span id="model-download-label">下载模型</span>
+              </button>
+            </div>
           </div>
         </aside>
       </section>

@@ -13,11 +13,22 @@ const modelMessage = document.querySelector("#model-message");
 const modelPath = document.querySelector("#model-path");
 const modelDownloadButton = document.querySelector("#model-download-button");
 const modelDownloadLabel = document.querySelector("#model-download-label");
+const modelRefreshButton = document.querySelector("#model-refresh-button");
+const modelRefreshLabel = document.querySelector("#model-refresh-label");
 
 let pollTimer = null;
 let modelPollTimer = null;
 
 refreshModelStatus();
+
+modelRefreshButton.addEventListener("click", async () => {
+  modelRefreshButton.disabled = true;
+  modelRefreshLabel.textContent = "检测中";
+  modelMessage.textContent = "正在重新检测 large-v3 模型";
+  await refreshModelStatus();
+  modelRefreshButton.disabled = false;
+  modelRefreshLabel.textContent = "重新检测";
+});
 
 modelDownloadButton.addEventListener("click", async () => {
   const approved = window.confirm(
@@ -150,5 +161,9 @@ function renderModelStatus(status) {
 
   const downloading = status.download_state === "downloading";
   modelDownloadButton.disabled = status.available || downloading;
+  modelRefreshButton.disabled = downloading;
   modelDownloadLabel.textContent = downloading ? "下载中" : status.available ? "模型已就绪" : "下载模型";
+  if (!modelRefreshButton.disabled) {
+    modelRefreshLabel.textContent = "重新检测";
+  }
 }

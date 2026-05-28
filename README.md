@@ -37,6 +37,8 @@ GitHub 仓库不会包含 large-v3 模型文件。模型体积很大，`models/`
 2. `models/large-v3-local`
 3. `origin-code/large-v3-local`
 
+页面右侧会显示模型状态，并提供“重新检测”按钮。点击后会主动检查本地模型是否存在。
+
 如果没有检测到模型，页面右侧会显示“下载模型”按钮。点击并确认后，会从 Hugging Face 下载：
 
 ```text
