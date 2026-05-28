@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import ROOT_DIR, settings
 from app.schemas import AppOptions, JobState, JobStatus, ModelSelection, OptionItem, OutputFile, OutputFormat
-from app.services.exporters import export_transcript
+from app.services.exporters import TranscriptSegment, export_transcript
 from app.services.jobs import Job, job_store
 from app.services.media import (
     OperationCanceled,
@@ -33,6 +33,36 @@ executor = ThreadPoolExecutor(max_workers=1)
 
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def parse_time_offset(value: str | None) -> float:
+    if not value:
+        return 0.0
+    parts = value.split(":")
+    if len(parts) not in {2, 3}:
+        return 0.0
+    try:
+        numbers = [float(part) for part in parts]
+    except ValueError:
+        return 0.0
+    if len(numbers) == 2:
+        minutes, seconds = numbers
+        return minutes * 60 + seconds
+    hours, minutes, seconds = numbers
+    return hours * 3600 + minutes * 60 + seconds
+
+
+def offset_segments(segments: list[TranscriptSegment], offset_seconds: float) -> list[TranscriptSegment]:
+    if offset_seconds <= 0:
+        return segments
+    return [
+        TranscriptSegment(
+            start=segment.start + offset_seconds,
+            end=segment.end + offset_seconds,
+            text=segment.text,
+        )
+        for segment in segments
+    ]
 
 
 def parse_formats(raw_formats: list[str] | str) -> list[OutputFormat]:
@@ -196,6 +226,7 @@ def run_job(
             raise OperationCanceled("任务已停止")
 
         job_store.update(job_id, progress=82, message="生成转录文件")
+        segments = offset_segments(segments, parse_time_offset(start_time))
         output_paths = export_transcript(work_dir, base_name, formats, segments, include_timestamps)
         outputs = [
             OutputFile(
