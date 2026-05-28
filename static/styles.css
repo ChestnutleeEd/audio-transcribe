@@ -433,6 +433,12 @@ summary:focus-visible {
   line-height: 1.5;
 }
 
+.job-meta {
+  max-width: 300px;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
 .job-progress {
   height: 8px;
   overflow: hidden;

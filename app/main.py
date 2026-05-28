@@ -21,7 +21,7 @@ from app.services.media import (
     normalize_audio,
     safe_stem,
 )
-from app.services.model_manager import download_model, model_status
+from app.services.model_manager import download_model, model_status, set_runtime_device
 from app.services.transcriber import transcribe_audio
 
 
@@ -52,6 +52,12 @@ def build_status(job: Job) -> JobStatus:
         progress=job.progress,
         message=job.message,
         source_label=job.source_label,
+        language=job.language,
+        start_time=job.start_time,
+        end_time=job.end_time,
+        model_label=job.model_label,
+        formats=job.formats,
+        include_timestamps=job.include_timestamps,
         created_at=job.created_at,
         outputs=job.outputs,
         error=job.error,
@@ -61,6 +67,18 @@ def build_status(job: Job) -> JobStatus:
 def is_job_canceled(job_id: str) -> bool:
     current = job_store.get(job_id)
     return current is None or current.cancel_requested
+
+
+def planned_model_label() -> str:
+    return f"large-v3（计划 {settings.device}/{settings.compute_type}）"
+
+
+def loaded_model_label(model_meta: dict[str, str] | None) -> str:
+    if not model_meta:
+        return planned_model_label()
+    device = model_meta.get("device", settings.device)
+    compute_type = model_meta.get("compute_type", settings.compute_type)
+    return f"large-v3（{device}/{compute_type}）"
 
 
 def run_job(
@@ -100,8 +118,36 @@ def run_job(
         wav_path = work_dir / "input_16k.wav"
         normalize_audio(media_path, wav_path, start_time, end_time, lambda: is_job_canceled(job_id))
 
-        job_store.update(job_id, progress=42, message="加载模型并转写")
-        segments = transcribe_audio(wav_path, language, lambda: is_job_canceled(job_id))
+        job_store.update(job_id, progress=42, message="加载 large-v3 模型")
+
+        def update_transcribe_status(stage: str, model_meta: dict[str, str] | None) -> None:
+            if is_job_canceled(job_id):
+                return
+            if stage == "loading_model":
+                job_store.update(job_id, progress=42, message="加载 large-v3 模型")
+            elif stage == "model_loaded":
+                label = loaded_model_label(model_meta)
+                if model_meta:
+                    set_runtime_device(
+                        model_meta.get("device", settings.device),
+                        model_meta.get("compute_type", settings.compute_type),
+                    )
+                job_store.update(
+                    job_id,
+                    progress=50,
+                    message="模型已加载，开始转写",
+                    model_label=label,
+                )
+            elif stage == "transcribing":
+                label = loaded_model_label(model_meta)
+                job_store.update(
+                    job_id,
+                    progress=58,
+                    message="正在转写音频",
+                    model_label=label,
+                )
+
+        segments = transcribe_audio(wav_path, language, lambda: is_job_canceled(job_id), update_transcribe_status)
         if not segments:
             raise RuntimeError("没有识别到可用文本")
 
@@ -220,7 +266,17 @@ async def create_job(
     elif clean_source_url:
         base_name = safe_stem(clean_source_url)
 
-    job = job_store.create(job_id, work_dir, source_label)
+    job = job_store.create(
+        job_id,
+        work_dir,
+        source_label,
+        language,
+        start_time,
+        end_time,
+        planned_model_label(),
+        parsed_formats,
+        include_timestamps,
+    )
     executor.submit(
         run_job,
         job_id,
