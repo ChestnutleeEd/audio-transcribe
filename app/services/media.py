@@ -4,6 +4,8 @@ import shutil
 import subprocess
 import sys
 import time
+import os
+import socket
 from pathlib import Path
 from typing import Callable
 from urllib.parse import urlparse
@@ -63,6 +65,14 @@ def ffmpeg_location() -> str | None:
 
 
 def run_command(command: list[str], is_canceled: Callable[[], bool]) -> subprocess.CompletedProcess[str]:
+    return run_command_with_env(command, is_canceled)
+
+
+def run_command_with_env(
+    command: list[str],
+    is_canceled: Callable[[], bool],
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     process = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
@@ -70,6 +80,7 @@ def run_command(command: list[str], is_canceled: Callable[[], bool]) -> subproce
         text=True,
         encoding="utf-8",
         errors="ignore",
+        env=env,
     )
     while process.poll() is None:
         if is_canceled():
@@ -92,6 +103,49 @@ def yt_dlp_command() -> list[str]:
     if found:
         return [found]
     return [sys.executable, "-m", "yt_dlp"]
+
+
+def node_runtime_path() -> str | None:
+    bundled = Path.home() / ".cache" / "codex-runtimes" / "codex-primary-runtime" / "dependencies" / "node" / "bin" / "node.exe"
+    if bundled.exists():
+        return str(bundled)
+    found = shutil.which("node")
+    return found
+
+
+def env_proxy() -> str | None:
+    for key in ["AUDIO_TRANSCRIBE_PROXY", "HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"]:
+        value = os.getenv(key)
+        if value:
+            return value
+    return None
+
+
+def port_open(port: int) -> bool:
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=0.4):
+            return True
+    except OSError:
+        return False
+
+
+def detected_proxy() -> str | None:
+    configured = env_proxy()
+    if configured:
+        return configured
+    for port in [7892, 7890]:
+        if port_open(port):
+            return f"http://127.0.0.1:{port}"
+    return None
+
+
+def proxy_env(proxy: str | None) -> dict[str, str] | None:
+    if not proxy:
+        return None
+    env = os.environ.copy()
+    for key in ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"]:
+        env[key] = proxy
+    return env
 
 
 def normalize_audio(
@@ -123,6 +177,8 @@ def download_audio(url: str, output_dir: Path, is_canceled: Callable[[], bool] =
     command = [
         *yt_dlp_command(),
         "--no-playlist",
+        "--remote-components",
+        "ejs:github",
         "-x",
         "--audio-format",
         "m4a",
@@ -132,8 +188,14 @@ def download_audio(url: str, output_dir: Path, is_canceled: Callable[[], bool] =
     location = ffmpeg_location()
     if location:
         command.extend(["--ffmpeg-location", location])
+    node_path = node_runtime_path()
+    if node_path:
+        command.extend(["--js-runtimes", f"node:{node_path}"])
+    proxy = detected_proxy()
+    if proxy:
+        command.extend(["--proxy", proxy])
     command.append(url)
-    result = run_command(command, is_canceled)
+    result = run_command_with_env(command, is_canceled, proxy_env(proxy))
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or "视频音频下载失败，请检查链接、网络或 yt-dlp 支持情况")
 
