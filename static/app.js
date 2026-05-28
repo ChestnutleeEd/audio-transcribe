@@ -64,6 +64,11 @@ form.addEventListener("submit", async (event) => {
   const selectedFormats = [...form.querySelectorAll('input[name="formats"]:checked')].map((input) => input.value);
   data.set("formats", selectedFormats.join(","));
   data.set("include_timestamps", form.querySelector('input[name="include_timestamps"]').checked ? "true" : "false");
+  for (const fieldName of ["start_time", "end_time"]) {
+    if (!data.get(fieldName)) {
+      data.delete(fieldName);
+    }
+  }
 
   if (!fileInput.files.length) {
     data.delete("file");
