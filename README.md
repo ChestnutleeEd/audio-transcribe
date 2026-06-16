@@ -18,6 +18,8 @@
 - 任务失败会在卡片中显示错误信息，不会一直停在准备阶段
 - 输出文件可下载，也可在页面中手动删除
 - 支持模型选择、模型检测、模型下载进度、下载取消和 CUDA 失败后的 CPU 降级提示
+- 可显式选择转录引擎：稳定 Whisper，或实验性 Gemma 4 12B direct audio transcription
+- 可显式启用 Ollama polish 后处理，用本地大模型清洗明显识别错误、标点、空格和断句
 
 ## 安装
 
@@ -130,6 +132,7 @@ start-audio-transcribe.command
 
 ```bash
 source .venv/bin/activate
+pip install -r requirements.txt
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
@@ -148,6 +151,74 @@ http://127.0.0.1:8000
 5. 如需只转写片段，展开“截取时间段”并设置开始 / 结束时间。
 6. 点击“开始转写”，右侧任务列表会显示进度、状态、处理耗时、模型和输出文件。
 7. 链接任务完成下载后，任务标题会更新为视频名称，点击标题可回到原视频链接。
+
+## Ollama 和本地大模型
+
+Ollama 是可选能力。稳定 ASR 仍由 `faster-whisper` 完成，并继续支持逐段时间轴。Ollama 在当前阶段有两类用途：
+
+- `Gemma 4 12B direct audio transcription`：实验性转录引擎。用户选择该引擎时，应用会尝试通过 Ollama 使用 `gemma4:12b` 直接处理音频；如果 direct audio 调用失败，任务会失败并显示原因，不会自动改用 Whisper。
+- `Polish 转录结果`：独立可选后处理。Whisper 或 Gemma 4 direct audio 的结果都可以启用 polish。polish 失败不会覆盖或破坏原始转录结果，任务会保留原始结果并在 warnings 中说明失败原因。
+
+当前 Ollama REST API 的稳定文档主要覆盖文本输入和 `images` 字段。应用不会把音频 base64 硬塞进 prompt，也不会用图片字段冒充音频；如果当前 Ollama HTTP API 不支持所选模型的直接音频输入，会返回明确错误。
+
+### 安装和启动 Ollama
+
+macOS 可从 Ollama 官网安装，或使用 Homebrew：
+
+```bash
+brew install ollama
+ollama serve
+```
+
+如果 Ollama 已作为桌面应用运行，通常不需要手动执行 `ollama serve`。默认服务地址是：
+
+```text
+http://localhost:11434
+```
+
+可通过环境变量覆盖：
+
+```bash
+export OLLAMA_BASE_URL="http://localhost:11434"
+```
+
+### 下载 Ollama 模型
+
+可以在页面中确认下载，也可以手动执行：
+
+```bash
+ollama pull gemma4:12b
+ollama pull gemma3:1b
+```
+
+`gemma4:12b` 是默认 direct audio 转录模型，也是默认 polish 模型；`gemma3:1b` 是轻量 polish 备用模型。Ollama 模型由 Ollama 自己管理，不会下载到项目仓库。
+
+### Mock / Dry Run 模式
+
+开发或验收 UI 流程时，可以开启 mock 模式：
+
+```bash
+AUDIO_TRANSCRIBE_MOCK=1 .venv/bin/uvicorn app.main:app --reload
+```
+
+Mock 模式下：
+
+- 不调用真实 `faster-whisper`
+- 不调用真实 Ollama
+- Whisper 转录返回固定 mock segments
+- Gemma 4 direct audio 返回固定 mock transcription
+- Ollama polish 返回固定 mock polished segments
+- Ollama 模型检测会模拟 `gemma4:12b` 和 `gemma3:1b` 已存在
+- Ollama pull 会模拟下载进度，并支持取消
+- 前端会显示“Mock 模式：不会调用真实模型”
+
+如需验证 polish 失败但保留原始转录结果：
+
+```bash
+AUDIO_TRANSCRIBE_MOCK=1 AUDIO_TRANSCRIBE_MOCK_POLISH_FAIL=1 .venv/bin/uvicorn app.main:app --reload
+```
+
+任务卡片会显示 events 时间线，用于观察 job created、模型检查、转录、polish 和导出等关键阶段。
 
 ## 链接下载说明
 

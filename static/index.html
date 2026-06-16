@@ -13,6 +13,7 @@
           <p class="eyebrow">Local Whisper Workstation</p>
           <h1 id="page-title">Audio Transcribe</h1>
           <p class="lede">本地 large-v3 模型驱动的面试录音转写台。上传文件或粘贴视频链接，选择语言、格式和时间轴，一次生成可下载文档。</p>
+          <p class="mock-banner" id="mock-banner" hidden>Mock 模式：不会调用真实模型</p>
         </div>
         <div class="status-strip" aria-label="运行信息">
           <span>本地优先</span>
@@ -65,6 +66,39 @@
             </label>
           </div>
 
+          <fieldset class="choice-group">
+            <legend>转录引擎</legend>
+            <label>
+              <input type="radio" name="transcription_engine" value="whisper" checked />
+              <span>
+                <strong>Whisper</strong>
+                <small>稳定本地转录，支持时间轴</small>
+              </span>
+            </label>
+            <label>
+              <input type="radio" name="transcription_engine" value="ollama_audio" />
+              <span>
+                <strong>Gemma 4 12B direct audio transcription</strong>
+                <small>实验性；失败时不会自动改用 Whisper</small>
+              </span>
+            </label>
+          </fieldset>
+
+          <section class="post-processing" aria-label="后处理选项">
+            <label class="switch post-switch">
+              <input type="checkbox" name="enable_polish" id="enable-polish" />
+              <span></span>
+              <b>使用本地大模型 Polish 转录结果</b>
+            </label>
+            <label class="field polish-field" id="polish-field">
+              <span>Polish 模型</span>
+              <select name="polish_model_id" id="polish-model-select">
+                <option value="gemma4:12b">Gemma 4 12B（默认，高质量）</option>
+                <option value="gemma3:1b">Gemma 3 1B（轻量备用）</option>
+              </select>
+            </label>
+          </section>
+
           <fieldset class="formats">
             <legend>转录文件格式</legend>
             <label><input type="checkbox" name="formats" value="txt" checked /> <span>TXT</span></label>
@@ -107,7 +141,7 @@
 
           <div class="model-card" aria-live="polite">
             <div>
-              <h3>模型状态</h3>
+              <h3>Whisper 模型状态</h3>
               <label class="model-selector">
                 <span>选择模型</span>
                 <select id="model-select" aria-label="选择语音转换模型"></select>
@@ -132,6 +166,46 @@
               <button class="secondary model-cancel" type="button" id="model-cancel-button">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
                 <span id="model-cancel-label">取消下载</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="model-card ollama-card" aria-live="polite">
+            <div>
+              <h3>Ollama 状态</h3>
+              <p id="ollama-message">正在检测 Ollama 服务</p>
+              <label class="model-selector">
+                <span>Direct audio 模型</span>
+                <select id="ollama-transcription-model-select" aria-label="选择 Ollama 直转模型">
+                  <option value="gemma4:12b">Gemma 4 12B（实验性）</option>
+                </select>
+              </label>
+              <label class="model-selector">
+                <span>模型下载状态</span>
+                <select id="ollama-managed-model-select" aria-label="选择要检查或下载的 Ollama 模型">
+                  <option value="gemma4:12b">Gemma 4 12B</option>
+                  <option value="gemma3:1b">Gemma 3 1B</option>
+                </select>
+              </label>
+              <div class="model-progress" id="ollama-progress" aria-hidden="true">
+                <div class="model-progress-track"><span id="ollama-progress-fill"></span></div>
+                <small id="ollama-progress-label"></small>
+              </div>
+              <span class="device-pill" id="ollama-service-pill">服务：检测中</span>
+              <small id="ollama-model-path">Ollama 模型由 Ollama 管理，不下载到项目目录。</small>
+            </div>
+            <div class="model-actions">
+              <button class="secondary" type="button" id="ollama-refresh-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
+                <span id="ollama-refresh-label">重新检测</span>
+              </button>
+              <button class="secondary" type="button" id="ollama-download-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>
+                <span id="ollama-download-label">下载模型</span>
+              </button>
+              <button class="secondary model-cancel" type="button" id="ollama-cancel-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                <span id="ollama-cancel-label">取消下载</span>
               </button>
             </div>
           </div>

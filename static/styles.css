@@ -89,6 +89,22 @@ h2 {
   line-height: 1.7;
 }
 
+.mock-banner {
+  display: inline-flex;
+  margin: 16px 0 0;
+  border: 1px solid rgba(234, 88, 12, 0.36);
+  border-radius: var(--radius);
+  background: rgba(255, 247, 237, 0.95);
+  color: #c2410c;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.mock-banner[hidden] {
+  display: none;
+}
+
 .status-strip {
   display: grid;
   gap: 8px;
@@ -304,6 +320,64 @@ summary:focus-visible {
   border: 0;
 }
 
+.choice-group {
+  display: grid;
+  gap: 10px;
+  margin: 2px 0 16px;
+  padding: 0;
+  border: 0;
+}
+
+.choice-group legend {
+  margin-bottom: 8px;
+  font-weight: 800;
+}
+
+.choice-group label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  border: 1px solid rgba(13, 148, 136, 0.28);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 12px 13px;
+}
+
+.choice-group input {
+  margin-top: 4px;
+}
+
+.choice-group strong,
+.choice-group small {
+  display: block;
+}
+
+.choice-group small {
+  margin-top: 4px;
+  color: rgba(19, 78, 74, 0.68);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.post-processing {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(13, 148, 136, 0.18);
+  border-radius: var(--radius);
+  background: rgba(240, 253, 250, 0.48);
+  padding: 12px;
+}
+
+.post-switch {
+  margin-top: 0;
+}
+
+.polish-field {
+  margin-bottom: 0;
+}
+
 .formats legend {
   width: 100%;
   margin-bottom: 8px;
@@ -497,6 +571,51 @@ summary:focus-visible {
   font-size: 13px;
   font-weight: 900;
   line-height: 1.45;
+}
+
+.job-warnings,
+.job-events {
+  display: grid;
+  gap: 8px;
+}
+
+.job-events {
+  border: 1px solid rgba(13, 148, 136, 0.14);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.66);
+  padding: 10px;
+}
+
+.job-events h4 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.job-event {
+  display: grid;
+  grid-template-columns: 86px 54px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.job-event time,
+.job-event span {
+  color: rgba(19, 78, 74, 0.66);
+  font-weight: 900;
+}
+
+.job-event strong {
+  overflow-wrap: anywhere;
+}
+
+.job-event[data-level="warning"] strong {
+  color: #c2410c;
+}
+
+.job-event[data-level="error"] strong {
+  color: #b91c1c;
 }
 
 .job-progress {
