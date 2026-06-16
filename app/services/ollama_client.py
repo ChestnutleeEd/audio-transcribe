@@ -110,12 +110,16 @@ class OllamaClient:
         model_id: str,
         prompt: str,
         response_format: str | dict[str, Any] | None = None,
+        options: dict[str, Any] | None = None,
     ) -> OllamaGenerateResult:
+        merged_options = {"temperature": 0}
+        if options:
+            merged_options.update(options)
         payload: dict[str, Any] = {
             "model": model_id,
             "prompt": prompt,
             "stream": False,
-            "options": {"temperature": 0},
+            "options": merged_options,
         }
         if response_format is not None:
             payload["format"] = response_format

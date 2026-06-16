@@ -193,6 +193,22 @@ ollama pull gemma3:1b
 
 `gemma4:12b` 是默认 direct audio 转录模型，也是默认 polish 模型；`gemma3:1b` 是轻量 polish 备用模型。Ollama 模型由 Ollama 自己管理，不会下载到项目仓库。
 
+### Polish 分批处理
+
+Ollama polish 会把较长的转录结果按 segment 分批处理，降低小模型漏段、合并段落或输出截断的概率。默认批大小：
+
+- `gemma3:1b`：5 个 segments
+- `gemma4:12b`：10 个 segments
+- 其他模型：8 个 segments
+
+可以通过环境变量覆盖：
+
+```bash
+OLLAMA_POLISH_BATCH_SIZE=5 .venv/bin/uvicorn app.main:app --reload
+```
+
+每个 batch 会独立调用 Ollama structured output，并独立校验返回结果。如果某个 batch polish 失败，该批次会保留原始转录文本，其他 batch 会继续处理。任务仍会完成，失败批次会写入任务 warnings 和 events。
+
 ### Mock / Dry Run 模式
 
 开发或验收 UI 流程时，可以开启 mock 模式：

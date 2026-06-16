@@ -49,6 +49,17 @@ OLLAMA_POLISH_MODELS: tuple[OllamaModelDefinition, ...] = (
 )
 
 
+def optional_positive_int_env(name: str) -> int | None:
+    value = os.getenv(name)
+    if not value:
+        return None
+    try:
+        parsed = int(value)
+    except ValueError:
+        return None
+    return parsed if parsed > 0 else None
+
+
 @dataclass(frozen=True)
 class Settings:
     app_name: str = "Audio Transcribe"
@@ -66,6 +77,7 @@ class Settings:
     default_ollama_polish_model_id: str = os.getenv("OLLAMA_POLISH_MODEL_ID", "gemma4:12b")
     mock_mode: bool = os.getenv("AUDIO_TRANSCRIBE_MOCK", "0") in {"1", "true", "True", "yes", "YES"}
     mock_polish_fail: bool = os.getenv("AUDIO_TRANSCRIBE_MOCK_POLISH_FAIL", "0") in {"1", "true", "True", "yes", "YES"}
+    ollama_polish_batch_size: int | None = optional_positive_int_env("OLLAMA_POLISH_BATCH_SIZE")
 
     @property
     def jobs_dir(self) -> Path:

@@ -345,15 +345,25 @@ def run_job(
                 message=f"正在使用 {active_polish_model} 整理转录文本",
             )
             add_event(job_id, "polish started")
-            polish_result = polish_segments(segments, active_polish_model)
-            if polish_result.success:
-                segments = polish_result.segments
+            polish_result = polish_segments(
+                segments,
+                active_polish_model,
+                on_event=lambda message, level="info": add_event(job_id, message, level),
+                on_warning=lambda warning: append_job_warning(job_id, warning),
+            )
+            segments = polish_result.segments
+            if polish_result.failed_batches:
+                job_store.update(
+                    job_id,
+                    progress=80,
+                    message=(
+                        "文本整理部分完成，失败批次已保留原始转录结果"
+                        if polish_result.success_batches
+                        else "文本整理失败，已保留原始转录结果"
+                    ),
+                )
+            else:
                 job_store.update(job_id, progress=80, message="文本整理完成")
-                add_event(job_id, "polish completed")
-            elif polish_result.warning:
-                append_job_warning(job_id, polish_result.warning)
-                job_store.update(job_id, progress=80, message="文本整理失败，已保留原始转录结果")
-                add_event(job_id, "polish failed", "warning")
 
         job_store.update(job_id, progress=82, message="生成转录文件")
         segments = offset_segments(segments, parse_time_offset(start_time))
