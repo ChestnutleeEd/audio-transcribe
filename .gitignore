@@ -26,3 +26,5 @@ origin-code/
 *.mkv
 *.mov
 *.avi
+
+.DS_Store
