@@ -19,6 +19,9 @@ set "APP_URL=http://127.0.0.1:8000/"
 set "APP_HOST=127.0.0.1"
 set "APP_PORT=8000"
 set "PYTHON_EXE=%CD%\.venv\Scripts\python.exe"
+if exist "%CD%\.runtime\python\python.exe" (
+  set "PYTHON_EXE=%CD%\.runtime\python\python.exe"
+)
 
 echo ==================================================
 echo Audio-Transcribe Windows 启动器
@@ -30,15 +33,22 @@ echo 网页地址：
 echo   %APP_URL%
 echo.
 
-echo [1/4] 正在检查 Audio-Transcribe 是否已经运行...
+echo [1/5] 正在检查 Audio-Transcribe 是否已经运行...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Invoke-WebRequest -UseBasicParsing -Uri '%APP_URL%' -TimeoutSec 2 > $null; exit 0 } catch { exit 1 }"
 if "%ERRORLEVEL%"=="0" goto open_existing_app
 
-echo [2/4] 正在检查 Python 虚拟环境...
+echo [2/5] 正在检查 Python 运行环境...
 if not exist "%PYTHON_EXE%" (
   if exist "%CD%\scripts\setup-windows.ps1" (
-    echo 未找到 Python 虚拟环境，正在执行首次安装...
+    echo 未找到 Python 运行环境，正在执行首次安装...
     powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\setup-windows.ps1"
+    if not "%ERRORLEVEL%"=="0" (
+      echo.
+      echo 首次安装未完成。请按照上方中文提示处理后重新双击启动。
+      echo.
+      pause
+      exit /b 1
+    )
   ) else (
     echo.
     echo 找不到：
@@ -55,19 +65,29 @@ if not exist "%PYTHON_EXE%" (
 
 if not exist "%PYTHON_EXE%" (
   echo.
-  echo 安装后仍未找到 Python 虚拟环境。
+  echo 安装后仍未找到 Python 运行环境。
   echo 请确认 Python 已安装，然后重新运行 scripts\setup-windows.ps1。
   echo.
   pause
   exit /b 1
 )
 
-echo [3/4] 正在启动后端服务：%APP_HOST%:%APP_PORT%...
+echo [3/5] 正在检查 Python 依赖和 FFmpeg...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\runtime-check-windows.ps1" -Root "%CD%"
+if not "%ERRORLEVEL%"=="0" (
+  echo.
+  echo 运行环境检查未通过。请按照上方中文提示处理后重新双击启动。
+  echo.
+  pause
+  exit /b 1
+)
+
+echo [4/5] 正在启动后端服务：%APP_HOST%:%APP_PORT%...
 echo.
 echo 如果启动失败并提示 "address already in use"，说明端口 %APP_PORT% 被占用。
 echo 请关闭占用端口的程序，或双击 stop-audio-transcribe.bat 后重试。
 echo.
-echo [4/4] 服务启动后将自动打开网页...
+echo [5/5] 服务启动后将自动打开网页...
 powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command "Start-Sleep -Seconds 3; Start-Process '%APP_URL%'" >nul 2>nul
 
 echo ==================================================

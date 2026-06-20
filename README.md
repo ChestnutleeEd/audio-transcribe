@@ -1,359 +1,134 @@
-# Audio Transcribe
+# Audio-Transcribe
 
-本地优先的音视频转写工作台。后端使用 FastAPI、FFmpeg、yt-dlp、faster-whisper 和本地 Whisper 模型，前端是无需构建的静态页面。适合面试录音、YouTube / Bilibili 视频、课程或会议音频的本地转写。
+Audio-Transcribe 是一个本地优先的音视频转写桌面工作台。它在本机启动一个本地网页应用，用于上传音频、视频或粘贴视频链接，然后使用本地 Whisper / MLX Whisper / Ollama 工作流完成转写、整理、导出和复查。
 
-![Audio Transcribe 首页](docs/assets/audio-transcribe-home.png)
+![Audio-Transcribe 首页](docs/assets/audio-transcribe-home.png)
 
-## 功能
+## 1. 项目简介
 
-- 上传本地音频/视频文件：`mp3`、`m4a`、`wav`、`flac`、`aac`、`ogg`、`mp4`、`mov`、`mkv`、`webm`、`avi`
-- 粘贴 YouTube、Bilibili 等 `yt-dlp` 支持的视频链接并抽取音频
-- 自动清理 YouTube 浏览记录链接里的时间参数，例如 `&t=459s`，避免卡在“准备音频来源”
-- 链接任务下载成功后，会用视频标题作为任务名称；任务名称本身会保留原视频链接
-- 转写语言选择：自动识别、中文、日语、英语、韩语
-- 输出格式多选：默认生成 `TXT`，也可选择 `Markdown`、`JSON`、`SRT` 和 `Word`
-- 导出内容可选择原始文本、整理后文本或“原始 + 整理后”；SRT 仅在开启时间轴时可用
-- 可选择带时间轴或纯文本
-- 可截取本地媒体的指定时间段；选择本地媒体后会自动填入完整时长
-- 每个任务会显示实时处理耗时；完成、失败或停止后显示总耗时
-- 任务失败会在卡片中显示错误信息，不会一直停在准备阶段
-- 输出文件可下载，也可在页面中手动删除
-- 支持模型选择、模型检测、模型下载进度、下载取消和 CUDA 失败后的 CPU 降级提示
-- 可显式选择转录引擎：稳定 Whisper、MLX Whisper（Apple Silicon 推荐），或实验性本地大模型音频转录
-- 可显式启用 Ollama 文本整理后处理，并选择标点修复、保守清理、日语自然断句、中文会议纪要、双语翻译等配置
-- 文本整理支持提示词预览和追加自定义指令；自定义指令会追加在基础安全模板之后，不会替换原始转录保存逻辑
-- 原始文本 / 整理后文本同屏展示，支持复制、重新整理和段落级对比
-- 浏览器本地保存最近 5 条任务历史，便于恢复查看最近结果；长文本会截断，避免无限占用 localStorage
-- 任务失败会显示错误诊断卡片，包含错误标题、处理建议和默认折叠的技术细节
-- 页面提供环境检查，覆盖 faster-whisper、Whisper 模型、FFmpeg、Ollama 服务和本地 Ollama 模型
+Audio-Transcribe 适合处理面试录音、会议音频、课程视频、YouTube / Bilibili 链接和本地素材。项目默认优先保留原始转写文本，文本整理、翻译、会议纪要和本地大模型能力都是可选增强。
 
-## 快速启动
+主要能力：
 
-### Windows
+- 上传本地音频或视频文件，支持 `mp3`、`m4a`、`wav`、`flac`、`aac`、`ogg`、`mp4`、`mov`、`mkv`、`webm`、`avi`。
+- 粘贴 `yt-dlp` 支持的视频链接并抽取音频。
+- 自动清理 YouTube 链接中的时间参数，避免链接任务卡在准备阶段。
+- 支持自动识别、中文、日语、英语、韩语。
+- 支持 TXT、Markdown、JSON、SRT、Word 导出。
+- 支持原始文本、整理后文本、原始加整理后三种导出范围。
+- 支持模型检测、模型下载进度、下载取消、CUDA 失败后的 CPU 降级提示。
+- 支持稳定 Whisper、Apple Silicon 推荐的 MLX Whisper、实验性 Ollama 本地大模型音频转录。
+- 支持 Ollama 文本整理，内置标点修复、保守清理、日语自然断句、中文会议纪要、双语翻译。
+- 支持原始文本和整理后文本同屏展示、复制、重新整理、段落级对比。
+- 支持任务耗时、错误诊断、事件时间线和最近任务历史。
 
-双击项目根目录里的：
+## 2. 安装方式
 
-```text
-start-audio-transcribe.bat
-```
+### 🟢 推荐方式：安装器版本
 
-这是 Windows 启动入口。脚本会检查 `.venv`，必要时运行 `scripts\setup-windows.ps1` 安装依赖，然后启动后端并打开：
+安装器版本面向普通用户，是最接近“像普通软件一样安装和使用”的方式。
 
-```text
-http://127.0.0.1:8000/
-```
+下载位置：
 
-### macOS
+- Windows 安装器：`AudioTranscribeSetup.exe`
+- macOS 安装器：`AudioTranscribe.dmg`
 
-双击项目根目录里的：
+推荐原因：
 
-```text
-start-audio-transcribe.command
-```
+- 安装后可从桌面快捷方式、开始菜单或应用程序目录启动。
+- Windows 安装器目标是随包携带 Python runtime，并自动创建卸载入口。
+- macOS 安装器目标是提供 `.app` 应用包和 `.dmg` 拖拽安装体验。
+- 安装器会写入默认配置文件，方便后续升级为真正的一键桌面应用。
 
-这是 macOS 启动入口。若 macOS 提示无法打开或双击无反应，先在终端执行：
+当前阶段说明：
 
-```bash
-chmod +x start-audio-transcribe.command stop-audio-transcribe.command
-```
+- Windows 安装器构建依赖 Inno Setup，构建入口是 `scripts/build-release.ps1 -Target installer-windows`。
+- macOS 安装器构建依赖 macOS 的 `hdiutil`，构建入口是 `scripts/build-release.ps1 -Target installer-macos`。
+- 如果构建机没有准备 Python runtime、FFmpeg 或安装器工具，构建脚本会用中文报错，不会生成误导性的安装包。
 
-然后重新双击 `start-audio-transcribe.command`。
+### 🟡 便携版（ZIP）
 
-更多启动和关闭细节见 [docs/START_AND_STOP.md](docs/START_AND_STOP.md)。
+便携版适合开发者、测试用户、临时使用或不想安装软件的用户。
 
-## 如何关闭
+下载位置：
 
-### Windows
+- Windows 便携版：`AudioTranscribe-v版本号-windows-x64.zip`
+- macOS 便携版：`AudioTranscribe-v版本号-macos.zip`
 
-- 在启动窗口按 `Ctrl + C`，如果 Windows 询问是否终止批处理操作，输入 `Y`。
-- 或直接关闭启动命令行窗口。
-- 或双击 `stop-audio-transcribe.bat`，按 PID 文件或端口停止服务。
+使用方式：
 
-### macOS
+1. 下载对应系统的 ZIP。
+2. 解压到一个普通目录。
+3. Windows 双击 `start-audio-transcribe.bat`。
+4. macOS 双击 `start-audio-transcribe.command`。
+5. 浏览器会打开 `http://127.0.0.1:8000/`。
 
-- 回到启动时打开的 Terminal 窗口，按 `Control + C`。
-- 或关闭该 Terminal 窗口。
-- 或双击 `stop-audio-transcribe.command`，按 PID 文件或端口停止服务。
-
-## 首次使用前准备
-
-- Python：建议使用 Python 3.10 或更新版本。Windows 发行版通常已包含虚拟环境；源码安装会在 `.venv` 中安装依赖。
-- FFmpeg：音视频预处理依赖 FFmpeg。macOS 推荐 `brew install ffmpeg`；Windows 可使用发行版内置 FFmpeg，或把 `ffmpeg.exe` / `ffprobe.exe` 放到 `origin-code/`。
-- Python 依赖：启动脚本会在缺少 `.venv` 时调用 `scripts/setup-windows.ps1` 或 `scripts/setup-macos.sh`。也可以手动执行 `pip install -r requirements.txt`。
-- Whisper 模型：项目和发行版不会内置模型，也不会在启动脚本中自动下载模型。进入页面后选择模型并确认下载，或手动把模型放到 `models/`。
-- Windows 模型路径：优先使用页面内模型下载；已有 faster-whisper 模型时可放到 `models/<model>-local/`，或用 `AUDIO_TRANSCRIBE_MODEL_PATH` 指向现有目录。
-- Apple Silicon Mac：可考虑 MLX Whisper，但需要自行安装 `mlx-whisper`、准备模型并配置环境变量；启动脚本不会自动安装 MLX 依赖或下载 MLX 模型。
-
-## 安装
-
-### Windows
-
-#### 方式一：下载发行版便携包
-
-1. 打开 [GitHub Releases](https://github.com/ChestnutleeEd/audio-transcribe/releases)，下载 `AudioTranscribe-v0.2.0-windows-x64.zip`。
-2. 解压 zip 到任意目录。
-3. 双击 `start-audio-transcribe.bat`。
-
-Windows 发行版包含项目文件和启动/停止脚本。首次启动时，如果目录中没有 `.venv`，脚本会调用 `scripts\setup-windows.ps1` 安装 Python 依赖。发行版不内置 Whisper 模型，启动后请在页面右侧选择模型并下载，或按“本地模型”部分手动放置模型文件。若需要处理媒体文件，请确保系统能访问 FFmpeg，或把 `ffmpeg.exe` / `ffprobe.exe` 放到 `origin-code/`。
-
-#### 方式二：从源码安装
-
-```powershell
-git clone https://github.com/ChestnutleeEd/audio-transcribe.git
-cd audio-transcribe
-.\scripts\setup-windows.ps1
-```
-
-源码安装会在项目目录下创建 `.venv` 并安装 Python 依赖。若需要处理链接或媒体文件，请确保系统能访问 FFmpeg，或把 `ffmpeg.exe` / `ffprobe.exe` 放到 `origin-code/`。
-
-### macOS
-
-#### 方式一：下载发行版便携包
-
-1. 打开 [GitHub Releases](https://github.com/ChestnutleeEd/audio-transcribe/releases)，下载 `AudioTranscribe-v0.2.0-macos.zip`。
-2. 解压 zip 到任意目录。
-3. 安装系统依赖：
-
-```bash
-brew install ffmpeg
-```
-
-4. 首次运行前给启动脚本授权：
+macOS 如果提示无法打开，进入解压目录后执行：
 
 ```bash
 chmod +x scripts/setup-macos.sh start-audio-transcribe.command stop-audio-transcribe.command
 ```
 
-macOS 发行版不内置 Python 虚拟环境。首次运行 `start-audio-transcribe.command` 时，会自动创建 `.venv` 并安装依赖。
+## 3. 是否真正开箱即用
 
-#### 方式二：从源码安装
+必须透明说明：
+
+- ZIP 便携版是“半开箱即用”。它包含项目文件、启动脚本和中文引导，但仍依赖本机 Python 和 FFmpeg，首次启动可能需要安装 Python 依赖。
+- Windows 安装器版本的目标是“尽量全自动”。当构建机提供 Python runtime 和 FFmpeg 时，安装包可以随包携带运行环境。
+- macOS 安装器版本的目标是“拖拽安装”。如果无法合法或稳定地随包携带某些系统依赖，首次运行会显示中文引导。
+- Whisper、MLX Whisper、Ollama 模型体积较大，仓库和发行包默认不内置模型。首次使用时请在页面中下载或手动放置模型。
+
+## 4. 环境依赖
+
+基础依赖：
+
+- Python：建议 Python 3.10 或更新版本。
+- FFmpeg / FFprobe：用于音视频预处理、读取媒体时长和抽取音频。
+- 浏览器：用于打开本地网页界面。
+
+可选依赖：
+
+- Ollama：用于本地大模型音频转录和文本整理。
+- MLX Whisper：Apple Silicon Mac 可选，适合本地加速转写。
+- CUDA：Windows 或 Linux 上可选，配置正确时 faster-whisper 可以使用显卡。
+
+Windows FFmpeg 处理方式：
+
+- 安装 FFmpeg，并确保 `ffmpeg` 和 `ffprobe` 可以在命令行中直接运行。
+- 或把 `ffmpeg.exe` 和 `ffprobe.exe` 放到项目目录的 `origin-code/`。
+
+macOS FFmpeg 推荐安装方式：
 
 ```bash
-git clone https://github.com/ChestnutleeEd/audio-transcribe.git
-cd audio-transcribe
 brew install ffmpeg
-chmod +x scripts/setup-macos.sh start-audio-transcribe.command stop-audio-transcribe.command
-./scripts/setup-macos.sh
 ```
 
-## 最新版本更新
+## 5. 首次启动流程
 
-### v0.2.0
+Windows：
 
-- 新增 MLX Whisper 工作流，Apple Silicon Mac 可选择本地 MLX Whisper 模型或已缓存的 Hugging Face repo id。
-- 新增 Ollama 文本整理后处理，支持标点修复、保守清理、日语自然断句、中文会议纪要和双语翻译。
-- 新增提示词预览、追加自定义整理指令、原始文本 / 整理后文本同屏展示、复制、重新整理和段落级对比。
-- 新增实验性本地大模型音频转录入口，可显式选择 Ollama 本地多模态模型。
-- 改进长文本整理，按 segment 分批处理；整理失败时保留原始转录并写入 warnings。
-- 改进环境检查和模型管理，覆盖 faster-whisper、Whisper 模型、FFmpeg、Ollama 服务、本地 Ollama 模型、下载进度和取消下载。
-- 改进启动/停止体验，新增 Windows 和 macOS 停止脚本，并补充 `docs/START_AND_STOP.md`。
-- 改进任务卡片，显示阶段耗时、总耗时、失败诊断、事件时间线和更清晰的错误建议。
-- 改进导出能力，支持 TXT、Markdown、JSON、SRT、Word，并可选择导出原始文本、整理后文本或两者同时导出。
-- 改进链接任务，清理 YouTube 时间参数，下载成功后使用视频标题作为任务名称。
+1. 双击 `start-audio-transcribe.bat`。
+2. 启动器检查本地服务是否已经运行。
+3. 启动器检查 Python runtime 或 `.venv`。
+4. 如果没有虚拟环境，启动器会调用 `scripts\setup-windows.ps1` 创建环境并安装依赖。
+5. 启动器检查 Python 依赖和 FFmpeg。
+6. 检查通过后启动本地服务。
+7. 浏览器打开 `http://127.0.0.1:8000/`。
 
-完整发行说明见 [docs/release-notes/v0.2.0.md](docs/release-notes/v0.2.0.md)。
+macOS：
 
-## 运行
+1. 双击 `start-audio-transcribe.command`。
+2. 启动器检查 `.venv`。
+3. 如果没有虚拟环境，启动器会调用 `scripts/setup-macos.sh` 创建环境并安装依赖。
+4. 启动器检查 Python 依赖和 FFmpeg。
+5. 检查通过后启动本地服务。
+6. 浏览器打开 `http://127.0.0.1:8000/`。
 
-### Windows
+如果依赖缺失，启动器不会直接崩溃，会显示中文安装步骤。按提示处理后重新双击启动即可。
 
-#### 方式一：双击启动
+## 6. 常见问题
 
-双击项目根目录或发行版目录里的：
-
-```text
-start-audio-transcribe.bat
-```
-
-脚本会检测本地服务是否已经启动。如果未启动，会启动服务并打开：
-
-```text
-http://127.0.0.1:8000/
-```
-
-启动窗口会保持打开。需要关闭服务时，在该窗口按 `Ctrl + C` 后输入 `Y`，或双击 `stop-audio-transcribe.bat`。
-
-#### 方式二：命令行启动
-
-```powershell
-.\start-audio-transcribe.bat
-```
-
-#### 方式三：手动启动开发服务
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
-
-然后在浏览器打开：
-
-```text
-http://127.0.0.1:8000
-```
-
-### macOS
-
-#### 方式一：双击启动
-
-双击发行版或源码目录里的：
-
-```text
-start-audio-transcribe.command
-```
-
-首次运行会自动安装 Python 依赖；之后会直接启动服务并打开浏览器。
-
-启动 Terminal 窗口会保持打开。需要关闭服务时，在该窗口按 `Control + C`，或双击 `stop-audio-transcribe.command`。
-
-#### 方式二：命令行启动
-
-```bash
-./start-audio-transcribe.command
-```
-
-#### 方式三：手动启动开发服务
-
-```bash
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
-
-然后在浏览器打开：
-
-```text
-http://127.0.0.1:8000
-```
-
-## 使用方法
-
-1. 打开页面后，在“新建任务”中上传本地文件，或粘贴视频链接。
-2. 选择语言。大多数情况下可保持“自动识别”。
-3. 选择是否带时间轴。
-4. 选择输出格式。默认选中 `TXT`，也可额外勾选 `Markdown`、`JSON`、`SRT` 或 `Word`。SRT 需要开启时间轴。
-5. 如启用文本整理，选择模型和配置。默认优先使用 `gemma4:12b-it-qat`；如果本地没有该模型，可以改用 `gemma3:1b`。
-6. 高级用户可以展开提示词预览，并追加自定义指令，例如“保留语气词”“不要翻译”“更适合字幕”。追加指令会保存在当前浏览器。
-7. 如需只转写片段，展开“截取时间段”并设置开始 / 结束时间。
-8. 点击“开始转写”，右侧任务列表会显示进度、状态、阶段耗时、模型、原始转录文本、整理后转录文本和输出文件。
-9. 链接任务完成下载后，任务标题会更新为视频名称，点击标题可回到原视频链接。
-
-## Ollama 和本地大模型
-
-Ollama 是可选能力。稳定 ASR 仍由 `faster-whisper` 完成，并继续支持逐段时间轴。Ollama 在当前阶段有两类用途：
-
-- `本地大模型音频转录`：实验性转录引擎。用户选择该引擎时，应用会尝试通过 Ollama 使用所选本地多模态模型直接处理音频；如果音频直转调用失败，任务会失败并显示原因，不会自动改用 Whisper。
-- `文本整理转录结果`：独立可选后处理。Whisper、MLX Whisper 或本地大模型音频转录的结果都可以启用文本整理。文本整理失败不会覆盖或破坏原始转录文本，任务会保留原始结果并在警告中说明失败原因。
-
-当前 Ollama REST API 的稳定文档主要覆盖文本输入和 `images` 字段。应用不会把音频 base64 硬塞进 prompt，也不会用图片字段冒充音频；如果当前 Ollama HTTP API 不支持所选模型的直接音频输入，会返回明确错误。
-
-## MLX Whisper
-
-MLX Whisper 是可选能力，适用于 macOS Apple Silicon。应用只做配置、检测、选择和调用，不会安装 `mlx-whisper`，也不会下载 MLX 模型。
-
-可用配置示例：
-
-```bash
-AUDIO_TRANSCRIBE_MLX_WHISPER_ENABLED=1
-AUDIO_TRANSCRIBE_MLX_WHISPER_MODEL=/Users/me/models/whisper-large-v3-mlx
-AUDIO_TRANSCRIBE_MLX_WHISPER_LABEL=whisper-large-v3-mlx
-AUDIO_TRANSCRIBE_MLX_WHISPER_LANGUAGE=auto
-```
-
-也可以在页面里选择 `MLX Whisper（Apple Silicon 推荐）` 后填写本地模型目录或已预先缓存的 Hugging Face repo id。为了避免自动下载，repo id 调用时会启用 Hugging Face 离线模式；如模型未缓存，任务会失败并显示明确提示。
-
-### 安装和启动 Ollama
-
-macOS 可从 Ollama 官网安装，或使用 Homebrew：
-
-```bash
-brew install ollama
-ollama serve
-```
-
-如果 Ollama 已作为桌面应用运行，通常不需要手动执行 `ollama serve`。默认服务地址是：
-
-```text
-http://localhost:11434
-```
-
-可通过环境变量覆盖：
-
-```bash
-export OLLAMA_BASE_URL="http://localhost:11434"
-```
-
-### 下载 Ollama 模型
-
-可以在页面中确认下载，也可以手动执行：
-
-```bash
-ollama pull gemma4:12b-it-qat
-ollama pull gemma3:1b
-```
-
-`gemma4:12b-it-qat` 是默认音频直转模型，也是默认文本整理模型；`gemma3:1b` 是轻量文本整理备用模型。Ollama 模型由 Ollama 自己管理，不会下载到项目仓库。
-
-### 文本整理分批处理
-
-Ollama polish 会把较长的转录结果按 segment 分批处理，降低小模型漏段、合并段落或输出截断的概率。默认批大小：
-
-- `gemma3:1b`：5 个 segments
-- `gemma4:12b-it-qat`：10 个 segments
-- 其他模型：8 个 segments
-
-可以通过环境变量覆盖：
-
-```bash
-OLLAMA_POLISH_BATCH_SIZE=5 .venv/bin/uvicorn app.main:app --reload
-```
-
-每个 batch 会独立调用 Ollama structured output，并独立校验返回结果。如果某个 batch polish 失败，该批次会保留原始转录文本，其他 batch 会继续处理。任务仍会完成，失败批次会写入任务 warnings 和 events。
-
-### 文本整理配置
-
-内置配置集中定义在 `app/services/polish_profiles.py`：
-
-- 标点修复：只补标点和自然断句，尽量不改原文。
-- 保守清理：去除明显口癖、重复和识别噪声，不改核心语义。
-- 日语自然断句：适合日语新闻、访谈和视频字幕。
-- 中文会议纪要：把中文转录整理成结构化纪要，要求不编造参会人、日期或结论。
-- 双语翻译：保留原文，并根据原文语言补充中文或英文翻译。
-
-提示词预览会展示当前配置的基础指令。追加自定义指令只会附加到基础指令之后，不会替换结构化 JSON、安全校验和原始转录保存逻辑。
-
-### 导出格式
-
-- `TXT`：按导出范围输出纯文本，可包含时间轴。
-- `Markdown`：包含元数据、原始转录文本、整理后转录文本区块。
-- `JSON`：包含 metadata、segments、rawText、polishedText 和参数配置。
-- `SRT`：仅在开启时间轴时可用；如果选择整理后文本但没有整理结果，任务会提示并安全降级导出原始文本。
-- `Word`：生成基础 `.docx` 文档。
-
-导出范围可选择原始文本、整理后文本或“原始 + 整理后”。无论文本整理是否成功，原始转录文本都会优先保留。
-
-## 常见问题
-
-### 1. 双击 `.command` 没反应或提示无法打开
-
-macOS 可能没有给脚本执行权限。进入项目目录后执行：
-
-```bash
-chmod +x start-audio-transcribe.command stop-audio-transcribe.command
-```
-
-如果仍被系统拦截，可右键脚本选择“打开”，或在“系统设置 > 隐私与安全性”中允许本次打开。
-
-### 2. 端口被占用
-
-Audio-Transcribe 默认使用 `127.0.0.1:8000`。如果启动窗口提示 `address already in use`，说明 8000 端口已有程序在监听。先关闭另一个程序，或运行：
-
-- Windows：双击 `stop-audio-transcribe.bat`
-- macOS：双击 `stop-audio-transcribe.command`
-
-停止脚本会优先使用 `data/tmp/audio-transcribe-server.pid`，没有 PID 时再检查 8000 端口。
-
-### 3. 页面打不开
+### 页面打不开
 
 确认启动窗口仍在运行，并手动打开：
 
@@ -361,122 +136,114 @@ Audio-Transcribe 默认使用 `127.0.0.1:8000`。如果启动窗口提示 `addre
 http://127.0.0.1:8000/
 ```
 
-如果浏览器仍打不开，查看启动窗口是否有 Python、依赖、FFmpeg、端口占用或模型路径错误。
+如果仍打不开，查看启动窗口中的中文错误提示，通常是 Python、FFmpeg、端口占用或模型路径问题。
 
-### 4. 启动后不知道怎么关闭
+### 提示缺少 Python
 
-Windows 在启动窗口按 `Ctrl + C` 后输入 `Y`，或双击 `stop-audio-transcribe.bat`。macOS 在启动 Terminal 窗口按 `Control + C`，或双击 `stop-audio-transcribe.command`。
-
-### 5. 清空历史后仍显示旧任务
-
-页面最近任务历史存放在浏览器 localStorage，后端输出文件存放在 `data/jobs/`。如果清空页面历史后仍看到旧任务，先刷新页面；如果是输出文件仍存在，需要在页面中删除对应输出，或手动检查 `data/jobs/`。
-
-### 6. Mac 上 faster-whisper large-v3 很慢
-
-`large-v3` 体积大、资源占用高，在 MacBook Air 等设备上会明显变慢。日常建议先用 `small` 或 `medium`。Apple Silicon Mac 可以考虑自行安装并配置 MLX Whisper，但项目不会自动安装 MLX 依赖或下载 MLX 模型。
-
-### 7. 模型未配置或模型路径不存在
-
-进入页面右侧模型区选择模型并确认下载，或把 faster-whisper 模型文件放入 `models/<model>-local/`。也可以用环境变量指定已有模型目录：
+Windows 请安装 Python 3.10 或更新版本，并在安装时勾选加入系统路径。macOS 推荐使用：
 
 ```bash
-AUDIO_TRANSCRIBE_MODEL_PATH=/path/to/model .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+brew install python
 ```
 
-### 8. FFmpeg 未安装
+### 提示缺少 FFmpeg
 
-macOS 执行：
+Windows 请安装 FFmpeg，或把 `ffmpeg.exe` 和 `ffprobe.exe` 放到 `origin-code/`。macOS 推荐：
 
 ```bash
 brew install ffmpeg
 ```
 
-Windows 可使用发行版内置 FFmpeg，或把 `ffmpeg.exe` / `ffprobe.exe` 放到 `origin-code/`，也可设置 `AUDIO_TRANSCRIBE_FFMPEG` 指向可执行文件。
+### 端口被占用
 
-## 常见错误
+Audio-Transcribe 默认使用 `127.0.0.1:8000`。如果提示端口占用，请先关闭占用端口的程序，或运行停止脚本。
 
-- `OLLAMA_NOT_RUNNING`：启动 Ollama 桌面应用，或执行 `ollama serve`。
-- `OLLAMA_MODEL_MISSING`：执行 `ollama pull gemma4:12b-it-qat` 或 `ollama pull gemma3:1b`，也可以切换到已安装模型。
-- `FFMPEG_MISSING`：安装 FFmpeg，或设置 `AUDIO_TRANSCRIBE_FFMPEG` 指向可执行文件。
-- `WHISPER_MODEL_MISSING`：在页面选择 Whisper 模型并确认下载，或手动把模型文件放入 `models/` 对应目录。
-- `INVALID_AUDIO_FILE`：确认文件能正常播放，或先转换成常见音频格式后重试。
-- `TRANSCRIBE_TIMEOUT`：检查网络、模型运行状态，或先截取较短音频重试。
-- `POLISH_EMPTY_RESPONSE`：切换到保守清理配置或更轻量模型后重新整理。
-- `TASK_CANCELLED`：任务已停止，需要时重新提交。
+### 模型未配置
 
-### Mock / Dry Run 模式
+进入页面右侧模型区选择 faster-whisper 模型并确认下载。也可以手动把模型放到 `models/<模型名>-local/`，或用 `AUDIO_TRANSCRIBE_MODEL_PATH` 指向已有模型目录。
 
-开发或验收 UI 流程时，可以开启 mock 模式：
+### Mac 上 large-v3 很慢
 
-```bash
-AUDIO_TRANSCRIBE_MOCK=1 .venv/bin/uvicorn app.main:app --reload
+`large-v3` 体积大，在 MacBook Air 等设备上可能很慢。日常建议先用 `small` 或 `medium`。Apple Silicon Mac 可以考虑配置 MLX Whisper。
+
+### Ollama 文本整理失败
+
+原始转写文本会保留。可以先确认 Ollama 已运行，再切换到更小模型或更保守的整理配置。
+
+## 7. 关闭方式
+
+Windows：
+
+- 在启动窗口按 `Ctrl + C`，如果 Windows 询问是否终止批处理操作，输入 `Y`。
+- 或直接关闭启动窗口。
+- 或双击 `stop-audio-transcribe.bat`。
+
+macOS：
+
+- 回到启动时打开的 Terminal 窗口，按 `Control + C`。
+- 或关闭该 Terminal 窗口。
+- 或双击 `stop-audio-transcribe.command`。
+
+## 8. Release 下载说明
+
+推荐优先级：
+
+1. 优先下载安装器版本。普通用户优先选择 `AudioTranscribeSetup.exe` 或 `AudioTranscribe.dmg`。
+2. 如果只是临时试用、调试或不想安装软件，再选择 ZIP 便携版。
+3. 如果你要开发或修改项目，可以直接 clone 源码。
+
+ZIP 与安装器差异：
+
+| 类型 | 文件 | 适合用户 | 是否安装 | 依赖处理 |
+| --- | --- | --- | --- | --- |
+| Windows 安装器 | `AudioTranscribeSetup.exe` | 普通 Windows 用户 | 是 | 目标是随包携带 Python runtime，并创建快捷方式和卸载入口 |
+| macOS 安装器 | `AudioTranscribe.dmg` | 普通 macOS 用户 | 拖拽安装 | 目标是提供 `.app` 应用包，Apple Silicon 优先支持 MLX Whisper |
+| Windows ZIP | `AudioTranscribe-v版本号-windows-x64.zip` | 测试和便携用户 | 否 | 需要本机 Python / FFmpeg，启动器会中文引导 |
+| macOS ZIP | `AudioTranscribe-v版本号-macos.zip` | 测试和便携用户 | 否 | 需要本机 Python / FFmpeg，启动器会中文引导 |
+
+## 9. 发行路线
+
+- `v0.2.x`：开发版，重点修正 ZIP 误导说明，并引入双发行体系骨架。
+- `v0.9.x`：安装器测试版，重点验证 Windows 安装器和 macOS dmg。
+- `v1.0.0`：正式桌面应用，目标是普通用户可按安装器方式稳定使用。
+
+详细规划见 [docs/release-notes/v1.0-roadmap.md](docs/release-notes/v1.0-roadmap.md)。
+
+## 10. 构建发行包
+
+Windows PowerShell：
+
+```powershell
+.\scripts\build-release.ps1 -Version v0.2.1 -Target zip
+.\scripts\build-release.ps1 -Version v0.2.1 -Target installer-windows
 ```
 
-Mock 模式下：
+macOS PowerShell：
 
-- 不调用真实 `faster-whisper`
-- 不调用真实 Ollama
-- Whisper 转录返回固定 mock segments
-- 本地大模型音频转录返回固定 mock transcription
-- Ollama polish 返回固定 mock polished segments
-- Ollama 模型检测会模拟 `gemma4:12b-it-qat` 和 `gemma3:1b` 已存在
-- Ollama pull 会模拟下载进度，并支持取消
-- 前端会显示“Mock 模式：不会调用真实模型”
-
-如需验证 polish 失败但保留原始转录结果：
-
-```bash
-AUDIO_TRANSCRIBE_MOCK=1 AUDIO_TRANSCRIBE_MOCK_POLISH_FAIL=1 .venv/bin/uvicorn app.main:app --reload
+```powershell
+./scripts/build-release.ps1 -Version v0.2.1 -Target zip
+./scripts/build-release.ps1 -Version v0.2.1 -Target installer-macos
 ```
 
-任务卡片会显示 events 时间线，用于观察 job created、模型检查、转录、polish 和导出等关键阶段。
-
-## 链接下载说明
-
-应用会在提交任务时标准化视频链接。YouTube 链接会保留 `v` 参数并移除时间戳参数，例如：
+构建输出目录：
 
 ```text
-https://www.youtube.com/watch?v=ecAh4F6CjJY&t=459s
+dist/
+  zip/
+    windows/
+    macos/
+  installer/
+    windows/
+    macos/
 ```
 
-会转换为：
+构建脚本不会批量删除旧产物。如果目标目录已经存在，会停止并要求手动处理。
 
-```text
-https://www.youtube.com/watch?v=ecAh4F6CjJY
-```
+## 11. 本地模型
 
-如果 `yt-dlp` 无法下载、网络不可达、代理不可用或下载超时，任务会进入失败状态并显示错误信息。
+仓库和发行包默认不内置 Whisper 模型。模型体积较大，首次运行后请在页面右侧选择模型并点击下载，也可以手动下载并放入 `models/`。
 
-## 本地模型
-
-GitHub 仓库和发行版便携包都不会内置 Whisper 模型。模型体积较大，首次运行后请在页面右侧选择模型并点击“下载模型”，也可以手动下载并放入 `models/`。`models/` 和 `origin-code/` 都会被 Git 忽略。
-
-应用启动后会自动检测模型，检测顺序：
-
-1. `AUDIO_TRANSCRIBE_MODEL_PATH` 指定的目录
-2. `models/large-v3-local`
-3. `origin-code/large-v3-local`
-
-如果没有检测到模型，页面右侧会显示“下载模型”按钮。点击并确认后，应用会从 Hugging Face 下载所选模型。
-
-### 手动下载模型
-
-手动下载时，把 Hugging Face 仓库里的必要文件放到对应目录。必要文件是：
-
-- `config.json`
-- `model.bin`
-- `tokenizer.json`
-- `vocabulary.json` 或 `vocabulary.txt`
-
-| 页面选项 | Hugging Face 链接 | 预计大小 | 放置目录 |
-| --- | --- | ---: | --- |
-| `faster-whisper tiny` | [Systran/faster-whisper-tiny](https://huggingface.co/Systran/faster-whisper-tiny/tree/main) | 75 MB | `models/tiny-local/` |
-| `faster-whisper base` | [Systran/faster-whisper-base](https://huggingface.co/Systran/faster-whisper-base/tree/main) | 141 MB | `models/base-local/` |
-| `faster-whisper small` | [Systran/faster-whisper-small](https://huggingface.co/Systran/faster-whisper-small/tree/main) | 464 MB | `models/small-local/` |
-| `faster-whisper medium` | [Systran/faster-whisper-medium](https://huggingface.co/Systran/faster-whisper-medium/tree/main) | 1.43 GB | `models/medium-local/` |
-| `faster-whisper large-v3` | [Systran/faster-whisper-large-v3](https://huggingface.co/Systran/faster-whisper-large-v3/tree/main) | 2.88 GB | `models/large-v3-local/` |
-
-例如手动下载 `small` 时，目录结构应类似：
+常见目录示例：
 
 ```text
 models/
@@ -487,50 +254,29 @@ models/
     vocabulary.txt
 ```
 
-下载过程中会显示阶段进度条、百分比和已下载大小。进度不是只按文件数量计算：应用会先解析 Hugging Face 文件清单，再按必要文件大小、磁盘写入和下载活动综合展示，避免 `model.bin` 这类大文件下载时长时间停在个位数。下载时也会出现“取消下载”按钮；取消后，应用会中止当前下载进程，并清理该模型目录下本次产生的部分文件。
+可用环境变量：
 
-不同 faster-whisper 模型的词表文件可能是 `vocabulary.json` 或 `vocabulary.txt`，应用会兼容两种文件名。
+```bash
+AUDIO_TRANSCRIBE_MODEL_PATH=/path/to/model
+AUDIO_TRANSCRIBE_DEVICE=auto
+AUDIO_TRANSCRIBE_COMPUTE_TYPE=auto
+OLLAMA_BASE_URL=http://localhost:11434
+```
 
-### 运行时配置
+## 12. 开发和测试
 
-可以通过环境变量覆盖模型、设备和 FFmpeg 路径：
+开发模式：
 
-```powershell
-$env:AUDIO_TRANSCRIBE_MODEL_PATH="D:\Projects\audio-transcribe\models\large-v3-local"
-$env:AUDIO_TRANSCRIBE_DEVICE="cuda"
-$env:AUDIO_TRANSCRIBE_COMPUTE_TYPE="int8_float16"
-$env:AUDIO_TRANSCRIBE_FFMPEG="D:\Projects\audio-transcribe\origin-code\ffmpeg.exe"
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-如果 CUDA DLL 不在系统路径里，可以用分号分隔多个目录：
+Mock 模式：
 
-```powershell
-$env:AUDIO_TRANSCRIBE_DLL_DIRS="E:\Programming\Anaconda\envs\whisper_env\Lib\site-packages\nvidia\cudnn\bin;E:\Programming\Anaconda\envs\whisper_env\Lib\site-packages\nvidia\cublas\bin"
+```bash
+AUDIO_TRANSCRIBE_MOCK=1 .venv/bin/uvicorn app.main:app --reload
 ```
 
-当前项目优先尝试 `cuda / int8_float16`。如果任务卡片显示 `CPU / int8`，说明本次 CUDA 转写失败后已经自动降级，结果仍会生成，但速度会慢一些。
-
-## 手动测试清单
-
-1. 启动服务后打开页面，确认环境检查能显示 Python、faster-whisper、FFmpeg、Whisper 模型和 Ollama 状态。
-2. 上传本地音频，选择 Whisper、TXT/Markdown/JSON，提交后确认任务进入阶段状态并最终完成。
-3. 开启文本整理，选择不同配置，确认原始转录文本和整理后转录文本同时显示，且可分别复制。
-4. 点击“对比”，确认能看到段落级 raw/polished 对比；差异较大时会提示使用保守清理。
-5. 输入追加整理指令，刷新页面后确认最近一次指令仍保留。
-6. 选择 SRT 并关闭时间轴，确认 SRT 被禁用；开启时间轴后确认 SRT 可导出。
-7. 停止 Ollama 后尝试启用文本整理，确认页面显示错误诊断卡片且 App 不崩溃。
-8. 任务运行时连续点击开始，确认不会创建并发任务；点击停止后确认任务进入 cancelled。
-9. 完成后点击“重新整理”，确认不重新转录，且原始转录文本保留。
-10. 完成 6 次 mock 任务，确认最近历史最多保留 5 条，并可点击恢复查看。
-
-## 项目目录说明
-
-- `start-audio-transcribe.bat`：Windows 启动入口。
-- `start-audio-transcribe.command`：macOS 启动入口。
-- `stop-audio-transcribe.bat`：Windows 停止脚本。
-- `stop-audio-transcribe.command`：macOS 停止脚本。
-- `models/`：本地 Whisper / faster-whisper 模型目录，Git 默认忽略。
-- `output/`：保留给导出或外部整理输出使用。
-- `data/`：运行时任务、上传文件、临时文件和 PID 文件目录，Git 默认忽略其中运行时内容。
-- `docs/`：补充文档、发行说明和图片资源。
+Mock 模式不会调用真实 Whisper 或 Ollama，适合验证页面流程、错误提示和导出逻辑。

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$APP_DIR/Resources/audio-transcribe"
+
+open -a Terminal "$ROOT/start-audio-transcribe.command"

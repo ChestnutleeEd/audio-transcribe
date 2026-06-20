@@ -4,6 +4,7 @@ __pycache__/
 .env
 .codex/
 release-dist/
+dist/
 
 # Runtime artifacts
 data/uploads/

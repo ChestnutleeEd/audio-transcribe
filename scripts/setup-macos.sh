@@ -5,7 +5,11 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 if ! command -v python3 >/dev/null 2>&1; then
-  echo "需要安装 python3。请从 https://www.python.org/downloads/ 安装，或使用 Homebrew 安装。"
+  echo "未检测到 Python 3。"
+  echo "请先安装 Python 3.10 或更新版本，然后重新运行："
+  echo "  ./start-audio-transcribe.command"
+  echo "推荐命令："
+  echo "  brew install python"
   exit 1
 fi
 

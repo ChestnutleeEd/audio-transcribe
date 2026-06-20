@@ -47,13 +47,18 @@ echo "网页地址："
 echo "  $APP_URL"
 echo
 
-echo "[1/4] 正在检查 Python 虚拟环境..."
+echo "[1/5] 正在检查 Python 虚拟环境..."
 if [ ! -x "$PYTHON_EXE" ]; then
   echo "未找到 Python 虚拟环境，正在执行首次安装..."
-  "$ROOT/scripts/setup-macos.sh"
+  if ! "$ROOT/scripts/setup-macos.sh"; then
+    echo
+    echo "首次安装未完成。请按照上方中文提示处理后重新双击启动。"
+    read -r -p "按回车键关闭窗口。"
+    exit 1
+  fi
 fi
 
-echo "[2/4] 正在检查 Audio-Transcribe 是否已经运行..."
+echo "[2/5] 正在检查 Audio-Transcribe 是否已经运行..."
 if curl --silent --fail --max-time 2 "$APP_URL" >/dev/null; then
   echo "Audio-Transcribe 似乎已经在运行。"
   echo "正在打开现有网页："
@@ -64,9 +69,17 @@ if curl --silent --fail --max-time 2 "$APP_URL" >/dev/null; then
   exit 0
 fi
 
+echo "[3/5] 正在检查 Python 依赖和 FFmpeg..."
+if ! "$ROOT/scripts/runtime-check-macos.sh" "$ROOT"; then
+  echo
+  echo "运行环境检查未通过。请按照上方中文提示处理后重新双击启动。"
+  read -r -p "按回车键关闭窗口。"
+  exit 1
+fi
+
 mkdir -p "$RUNTIME_DIR"
 
-echo "[3/4] 正在启动后端服务：$APP_HOST:$APP_PORT..."
+echo "[4/5] 正在启动后端服务：$APP_HOST:$APP_PORT..."
 echo
 echo "如果启动失败并提示 'address already in use'，说明端口 $APP_PORT 被占用。"
 echo "请关闭占用端口的程序，或双击 stop-audio-transcribe.command 后重试。"
@@ -76,7 +89,7 @@ echo
 SERVER_PID="$!"
 printf "%s\n" "$SERVER_PID" > "$PID_FILE"
 
-echo "[4/4] 正在打开网页..."
+echo "[5/5] 正在打开网页..."
 sleep 3
 open "$APP_URL"
 
