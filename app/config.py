@@ -125,15 +125,15 @@ OLLAMA_TRANSCRIPTION_MODELS: tuple[OllamaModelDefinition, ...] = (
     OllamaModelDefinition(
         "gemma4:12b-it-qat",
         "Gemma 4 12B IT QAT",
-        "direct audio transcription",
+        "音频直转",
         experimental=True,
         default=True,
     ),
 )
 
 OLLAMA_POLISH_MODELS: tuple[OllamaModelDefinition, ...] = (
-    OllamaModelDefinition("gemma4:12b-it-qat", "Gemma 4 12B IT QAT", "high quality polish", default=True),
-    OllamaModelDefinition("gemma3:1b", "Gemma 3 1B", "lightweight polish"),
+    OllamaModelDefinition("gemma4:12b-it-qat", "Gemma 4 12B IT QAT", "高质量文本整理", default=True),
+    OllamaModelDefinition("gemma3:1b", "Gemma 3 1B", "轻量文本整理"),
 )
 
 
@@ -163,6 +163,10 @@ class Settings:
     ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     default_ollama_transcription_model_id: str = os.getenv("OLLAMA_TRANSCRIPTION_MODEL_ID", "gemma4:12b-it-qat")
     default_ollama_polish_model_id: str = os.getenv("OLLAMA_POLISH_MODEL_ID", "gemma4:12b-it-qat")
+    mlx_whisper_enabled: bool = os.getenv("AUDIO_TRANSCRIBE_MLX_WHISPER_ENABLED", "0") in {"1", "true", "True", "yes", "YES"}
+    mlx_whisper_model_path_or_repo: str = os.getenv("AUDIO_TRANSCRIBE_MLX_WHISPER_MODEL", "")
+    mlx_whisper_default_model_label: str = os.getenv("AUDIO_TRANSCRIBE_MLX_WHISPER_LABEL", "whisper-large-v3-mlx")
+    mlx_whisper_language: str = os.getenv("AUDIO_TRANSCRIBE_MLX_WHISPER_LANGUAGE", "auto")
     mock_mode: bool = os.getenv("AUDIO_TRANSCRIBE_MOCK", "0") in {"1", "true", "True", "yes", "YES"}
     mock_polish_fail: bool = os.getenv("AUDIO_TRANSCRIBE_MOCK_POLISH_FAIL", "0") in {"1", "true", "True", "yes", "YES"}
     ollama_polish_batch_size: int | None = optional_positive_int_env("OLLAMA_POLISH_BATCH_SIZE")

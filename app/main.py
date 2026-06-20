@@ -19,6 +19,7 @@ from app.schemas import (
     JobState,
     JobStatus,
     LocalModelDetectionStatus,
+    MLXWhisperStatus,
     ModelSelection,
     OllamaModelCheck,
     OllamaPreflightStatus,
@@ -35,6 +36,7 @@ from app.schemas import (
 from app.services.exporters import TranscriptSegment, export_transcript, segment_text
 from app.services.health import health_check
 from app.services.local_model_detection import detect_local_models
+from app.services.mlx_whisper_provider import mlx_whisper_status, transcribe_with_mlx_whisper
 from app.services.jobs import Job, job_store
 from app.services.media import (
     OperationCanceled,
@@ -119,9 +121,9 @@ def parse_formats(raw_formats: list[str] | str) -> list[OutputFormat]:
 
 def parse_export_scope(value: str | None) -> ExportScope:
     try:
-        return ExportScope(value or ExportScope.both.value)
+        return ExportScope(value or ExportScope.raw.value)
     except ValueError:
-        return ExportScope.both
+        return ExportScope.raw
 
 
 def unlink_file(path: Path) -> None:
@@ -220,7 +222,7 @@ def diagnose_error(error: str, context: str | None = None) -> ErrorDiagnostic:
         return ErrorDiagnostic(
             code="OLLAMA_NOT_RUNNING",
             title="Ollama 未运行",
-            message="本地 Ollama 服务不可用，Polish 或 direct audio 无法继续。",
+            message="本地 Ollama 服务不可用，文本整理或音频直转无法继续。",
             action="启动 Ollama 桌面应用，或在终端执行 ollama serve 后重试。",
             technical_detail=text,
         )
@@ -238,6 +240,14 @@ def diagnose_error(error: str, context: str | None = None) -> ErrorDiagnostic:
             title="FFmpeg 不可用",
             message="音频预处理失败，通常是 FFmpeg 未安装或路径不可用。",
             action="安装 FFmpeg，或设置 AUDIO_TRANSCRIBE_FFMPEG 指向可执行文件。",
+            technical_detail=text,
+        )
+    if "mlx whisper" in lower or "mlx-whisper" in lower or "mlx_whisper" in lower:
+        return ErrorDiagnostic(
+            code="MLX_WHISPER_UNAVAILABLE",
+            title="MLX Whisper 不可用",
+            message="MLX Whisper 转录前置条件未满足。",
+            action="确认当前是 Apple Silicon Mac、已自行安装 mlx-whisper，并配置本地 MLX 模型目录或已缓存 repo id。",
             technical_detail=text,
         )
     if "未检测到模型" in text or "model.bin" in lower:
@@ -267,9 +277,9 @@ def diagnose_error(error: str, context: str | None = None) -> ErrorDiagnostic:
     if "text 为空" in text or "不包含 json" in text or "返回内容" in text:
         return ErrorDiagnostic(
             code="POLISH_EMPTY_RESPONSE",
-            title="Polish 返回内容不可用",
+            title="文本整理返回内容不可用",
             message="Ollama 返回为空、不是 JSON，或不符合 segments 结构。",
-            action="切换到保守清理 profile 或 gemma3:1b 后重新 Polish。",
+            action="切换到保守清理配置或 gemma3:1b 后重新整理。",
             technical_detail=text,
         )
     if context == "cancelled" or "任务已停止" in text:
@@ -368,7 +378,7 @@ def run_job(
 
     try:
         job_store.update(job_id, processing_started_at=utc_now_iso(), processing_finished_at=None)
-        add_event(job_id, "job started")
+        add_event(job_id, "任务开始")
         if job.cancel_requested:
             job_store.update(
                 job_id,
@@ -385,7 +395,7 @@ def run_job(
         media_path = source_path
         if media_path is None and source_url:
             if settings.mock_mode:
-                add_event(job_id, "mock mode skipped source download")
+                add_event(job_id, "Mock 模式：跳过来源下载")
                 media_path = work_dir / "mock_source.wav"
             else:
                 media_path = download_audio(source_url, work_dir, lambda: is_job_canceled(job_id))
@@ -400,13 +410,13 @@ def run_job(
         job_store.update(job_id, state=JobState.preparing_model, progress=24, message="准备 16k 单声道音频")
         wav_path = work_dir / "input_16k.wav"
         if settings.mock_mode:
-            add_event(job_id, "mock mode skipped audio normalization")
+            add_event(job_id, "Mock 模式：跳过音频标准化")
         else:
             normalize_audio(media_path, wav_path, start_time, end_time, lambda: is_job_canceled(job_id))
 
         if transcription_engine == TranscriptionEngine.whisper:
             job_store.update(job_id, state=JobState.preparing_model, progress=42, message=f"加载 {model_id} 模型")
-            add_event(job_id, "whisper transcription started")
+            add_event(job_id, "Whisper 转录开始")
 
             def update_transcribe_status(stage: str, model_meta: dict[str, str] | None) -> None:
                 if is_job_canceled(job_id):
@@ -471,37 +481,73 @@ def run_job(
                         update_transcribe_status,
                         model_id,
                     )
-                add_event(job_id, "whisper transcription completed")
+                add_event(job_id, "Whisper 转录完成")
             except Exception as exc:
-                add_event(job_id, f"whisper transcription failed: {exc}", "error")
+                add_event(job_id, f"Whisper 转录失败：{exc}", "error")
                 raise
+        elif transcription_engine == TranscriptionEngine.mlx_whisper:
+            active_mlx_model = (transcription_model_id or settings.mlx_whisper_model_path_or_repo).strip()
+            job_store.update(
+                job_id,
+                state=JobState.transcribing,
+                progress=50,
+                message="正在使用 MLX Whisper 转录音频",
+                model_label=f"{active_mlx_model or settings.mlx_whisper_default_model_label}（MLX Whisper）",
+            )
+            add_event(job_id, "MLX Whisper 转录开始")
+            try:
+                if settings.mock_mode:
+                    segments = mock_whisper_segments()
+                    job_store.update(
+                        job_id,
+                        state=JobState.transcribing,
+                        progress=58,
+                        message="Mock MLX Whisper 转录完成",
+                        model_label=f"{active_mlx_model or settings.mlx_whisper_default_model_label}（MLX mock）",
+                    )
+                else:
+                    segments = transcribe_with_mlx_whisper(wav_path, active_mlx_model, language)
+                add_event(job_id, "MLX Whisper 转录完成")
+            except Exception as exc:
+                unlink_file(wav_path)
+                add_event(job_id, f"MLX Whisper 转录失败：{exc}", "error")
+                job_store.update(
+                    job_id,
+                    state=JobState.failed,
+                    progress=100,
+                    message=f"MLX Whisper 转录失败：{exc}",
+                    error=str(exc),
+                    error_diagnostic=diagnose_error(str(exc)),
+                    processing_finished_at=utc_now_iso(),
+                )
+                return
         elif transcription_engine == TranscriptionEngine.ollama_audio:
             active_transcription_model = transcription_model_id or settings.default_ollama_transcription_model_id
             job_store.update(
                 job_id,
                 state=JobState.transcribing,
                 progress=50,
-                message=f"正在使用 {active_transcription_model} 直接转录音频",
-                model_label=f"{active_transcription_model}（Ollama direct audio，实验性）",
+                message=f"正在使用本地大模型音频转录：{active_transcription_model}",
+                model_label=f"{active_transcription_model}（本地大模型音频转录，实验性）",
             )
-            add_event(job_id, "ollama direct audio started")
+            add_event(job_id, "本地大模型音频转录开始")
             try:
                 direct_result = transcribe_audio_direct(wav_path, active_transcription_model)
             except OllamaError as exc:
                 unlink_file(wav_path)
-                add_event(job_id, f"ollama direct audio failed: {exc}", "error")
+                add_event(job_id, f"本地大模型音频转录失败：{exc}", "error")
                 job_store.update(
                     job_id,
                     state=JobState.failed,
                     progress=100,
-                    message=f"Gemma 4 12B direct audio transcription failed: {exc}",
+                    message=f"本地大模型音频转录失败：{exc}",
                     error=str(exc),
                     error_diagnostic=diagnose_error(str(exc)),
                     processing_finished_at=utc_now_iso(),
                 )
                 return
             segments = direct_result.segments
-            add_event(job_id, "ollama direct audio completed")
+            add_event(job_id, "本地大模型音频转录完成")
             for warning in direct_result.warnings:
                 append_job_warning(job_id, warning)
         else:
@@ -534,7 +580,7 @@ def run_job(
                 polish_profile_label=profile.label,
                 polish_custom_instruction=(polish_custom_instruction or "").strip() or None,
             )
-            add_event(job_id, "polish started")
+            add_event(job_id, "文本整理开始")
             try:
                 polish_result = polish_segments(
                     raw_segments,
@@ -562,7 +608,7 @@ def run_job(
                 else:
                     job_store.update(job_id, progress=80, message="文本整理完成")
             except Exception as exc:
-                warning = f"Polish 失败，已保留 raw transcript：{exc}"
+                warning = f"文本整理失败，已保留原始转录结果：{exc}"
                 append_job_warning(job_id, warning)
                 add_event(job_id, warning, "warning")
                 polished_segments = None
@@ -573,7 +619,7 @@ def run_job(
         actual_export_scope = export_scope
         if export_scope == ExportScope.polished and not polished_segments:
             actual_export_scope = ExportScope.raw
-            append_job_warning(job_id, "Polished transcript 不可用，本次导出已安全降级为 raw transcript。")
+            append_job_warning(job_id, "整理后的转录结果不可用，本次导出已安全降级为原始转录结果。")
         output_paths = export_transcript(
             work_dir,
             base_name,
@@ -584,7 +630,7 @@ def run_job(
             actual_export_scope,
             export_metadata(job_store.get(job_id) or job),
         )
-        add_event(job_id, "export generated")
+        add_event(job_id, "导出文件已生成")
         outputs = build_output_files(job_id, output_paths)
 
         ensure_not_cancelled(job_id)
@@ -596,7 +642,7 @@ def run_job(
             job_id,
             state=JobState.completed,
             progress=100,
-            message="转录完成，可下载、复制或重新执行 Polish",
+            message="转录完成，可下载、复制或重新执行文本整理",
             outputs=outputs,
             processing_finished_at=utc_now_iso(),
         )
@@ -612,7 +658,7 @@ def run_job(
             processing_finished_at=utc_now_iso(),
         )
     except Exception as exc:
-        add_event(job_id, f"job failed: {exc}", "error")
+        add_event(job_id, f"任务失败：{exc}", "error")
         job_store.update(
             job_id,
             state=JobState.failed,
@@ -734,6 +780,11 @@ def get_local_model_detection() -> LocalModelDetectionStatus:
     return detect_local_models()
 
 
+@app.get("/api/mlx-whisper/status", response_model=MLXWhisperStatus)
+def get_mlx_whisper_status(model_path_or_repo: str | None = None) -> MLXWhisperStatus:
+    return mlx_whisper_status(model_path_or_repo)
+
+
 @app.get("/api/health", response_model=HealthCheckStatus)
 def get_health_check() -> HealthCheckStatus:
     return health_check()
@@ -751,11 +802,12 @@ async def create_job(
     transcription_engine: TranscriptionEngine = Form(default=TranscriptionEngine.whisper),
     whisper_model_id: str | None = Form(default=None),
     transcription_model_id: str | None = Form(default=None),
+    mlx_model_path_or_repo: str | None = Form(default=None),
     enable_polish: bool = Form(default=False),
     polish_model_id: str | None = Form(default=None),
     polish_profile_id: str | None = Form(default=None),
     polish_custom_instruction: str | None = Form(default=None),
-    export_scope: str = Form(default=ExportScope.both.value),
+    export_scope: str = Form(default=ExportScope.raw.value),
 ) -> JobStatus:
     if job_store.has_active_job():
         raise HTTPException(status_code=409, detail="已有任务正在处理。请先等待完成或取消当前任务。")
@@ -781,11 +833,11 @@ async def create_job(
 
     active_transcription_engine = TranscriptionEngine(transcription_engine)
     active_whisper_model_id = settings.model_definition(whisper_model_id or current_model_id()).id
-    active_transcription_model_id = (
-        settings.ollama_transcription_model_definition(transcription_model_id).id
-        if active_transcription_engine == TranscriptionEngine.ollama_audio
-        else None
-    )
+    active_transcription_model_id: str | None = None
+    if active_transcription_engine == TranscriptionEngine.ollama_audio:
+        active_transcription_model_id = settings.ollama_transcription_model_definition(transcription_model_id).id
+    elif active_transcription_engine == TranscriptionEngine.mlx_whisper:
+        active_transcription_model_id = (mlx_model_path_or_repo or settings.mlx_whisper_model_path_or_repo).strip()
     active_polish_model_id = resolve_polish_model_id(polish_model_id) if enable_polish else None
     active_profile = get_profile(polish_profile_id)
 
@@ -795,6 +847,18 @@ async def create_job(
             raise HTTPException(status_code=503, detail="Ollama 服务不可用，请先启动 Ollama。")
         if not check.available:
             raise HTTPException(status_code=409, detail=f"未检测到 {check.model_id}，请先下载模型")
+    elif active_transcription_engine == TranscriptionEngine.mlx_whisper:
+        status = mlx_whisper_status(active_transcription_model_id)
+        if not status.platform_supported:
+            raise HTTPException(status_code=409, detail=status.reason or "MLX Whisper 当前平台不适配")
+        if not status.dependency_installed:
+            raise HTTPException(status_code=409, detail=status.reason or "未安装 mlx-whisper")
+        if not status.model_configured:
+            raise HTTPException(status_code=409, detail=status.reason or "未配置 MLX Whisper 模型")
+        if not status.ffmpeg_available:
+            raise HTTPException(status_code=409, detail=status.reason or "FFmpeg 不可用")
+        if not status.available and status.reason:
+            raise HTTPException(status_code=409, detail=status.reason)
 
     if enable_polish and active_polish_model_id:
         check = check_ollama_model(active_polish_model_id)
@@ -829,7 +893,9 @@ async def create_job(
 
     model_id = active_whisper_model_id
     if active_transcription_engine == TranscriptionEngine.ollama_audio:
-        planned_label = f"{active_transcription_model_id}（Ollama direct audio，实验性）"
+        planned_label = f"{active_transcription_model_id}（本地大模型音频转录，实验性）"
+    elif active_transcription_engine == TranscriptionEngine.mlx_whisper:
+        planned_label = f"{active_transcription_model_id or settings.mlx_whisper_default_model_label}（MLX Whisper）"
     elif enable_polish and active_polish_model_id:
         planned_label = f"{planned_model_label(model_id)} + {active_polish_model_id} polish"
     else:
@@ -860,12 +926,14 @@ async def create_job(
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    add_event(job_id, "job created")
-    add_event(job_id, "model check started")
-    checked_models = [active_transcription_model_id] if active_transcription_engine == TranscriptionEngine.ollama_audio else [model_id]
+    add_event(job_id, "任务已创建")
+    add_event(job_id, "模型检查开始")
+    checked_models = [model_id]
+    if active_transcription_engine in {TranscriptionEngine.ollama_audio, TranscriptionEngine.mlx_whisper}:
+        checked_models = [active_transcription_model_id]
     if enable_polish and active_polish_model_id:
         checked_models.append(active_polish_model_id)
-    add_event(job_id, f"model check completed: {', '.join(model for model in checked_models if model)}")
+    add_event(job_id, f"模型检查完成：{', '.join(model for model in checked_models if model)}")
     executor.submit(
         run_job,
         job_id,
@@ -894,6 +962,11 @@ def list_jobs() -> list[JobStatus]:
     return [build_status(job) for job in job_store.list()]
 
 
+@app.delete("/api/jobs/history", response_model=list[JobStatus])
+def clear_job_history() -> list[JobStatus]:
+    return [build_status(job) for job in job_store.clear_history()]
+
+
 @app.get("/api/jobs/{job_id}", response_model=JobStatus)
 def get_job(job_id: str) -> JobStatus:
     job = job_store.get(job_id)
@@ -918,9 +991,9 @@ def rerun_polish(job_id: str, request: PolishRequest) -> JobStatus:
     if job is None or job.work_dir is None:
         raise HTTPException(status_code=404, detail="任务不存在")
     if not terminal_state(job.state):
-        raise HTTPException(status_code=409, detail="当前任务仍在处理，不能重新执行 Polish。")
+        raise HTTPException(status_code=409, detail="当前任务仍在处理，不能重新执行文本整理。")
     if not job.raw_segments:
-        raise HTTPException(status_code=409, detail="当前任务没有 raw transcript，不能单独执行 Polish。")
+        raise HTTPException(status_code=409, detail="当前任务没有原始转录结果，不能单独执行文本整理。")
 
     model_id = resolve_polish_model_id(request.model_id or job.polish_model_id)
     check = check_ollama_model(model_id)
@@ -953,7 +1026,7 @@ def rerun_polish(job_id: str, request: PolishRequest) -> JobStatus:
         processing_started_at=utc_now_iso(),
         processing_finished_at=None,
     )
-    add_event(job_id, f"polish rerun started: {profile.id}")
+    add_event(job_id, f"重新执行文本整理：{profile.id}")
     try:
         result = polish_segments(
             job.raw_segments,
@@ -968,20 +1041,20 @@ def rerun_polish(job_id: str, request: PolishRequest) -> JobStatus:
             polished_segments=polished or [],
             polished_text=segment_text(polished, include_timestamps=False) if polished else None,
             progress=82,
-            message="Polish 已完成，正在重新生成导出文件",
+            message="文本整理已完成，正在重新生成导出文件",
         )
         outputs = regenerate_exports(job_id)
         updated = job_store.update(
             job_id,
             state=JobState.completed,
             progress=100,
-            message="Polish 已重新生成",
+            message="文本整理已重新生成",
             outputs=outputs,
             processing_finished_at=utc_now_iso(),
         )
         return build_status(updated)
     except Exception as exc:
-        warning = f"Polish 重新执行失败，raw transcript 已保留：{exc}"
+        warning = f"文本整理重新执行失败，原始转录结果已保留：{exc}"
         append_job_warning(job_id, warning)
         add_event(job_id, warning, "warning")
         updated = job_store.update(

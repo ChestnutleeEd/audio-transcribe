@@ -9,6 +9,7 @@ from pathlib import Path
 from app.config import OLLAMA_POLISH_MODELS, SUPPORTED_MODELS
 from app.schemas import HealthCheckItem, HealthCheckStatus
 from app.services.media import ffmpeg_executable
+from app.services.mlx_whisper_provider import mlx_whisper_status
 from app.services.model_manager import model_status
 from app.services.ollama_model_manager import ollama_status
 
@@ -37,6 +38,16 @@ def health_check() -> HealthCheckStatus:
             status="success" if module_available("faster_whisper") else "error",
             message="faster-whisper 可导入。" if module_available("faster_whisper") else "未检测到 faster-whisper Python 包。",
             suggestion=None if module_available("faster_whisper") else "激活虚拟环境后执行 pip install -r requirements.txt。",
+        )
+    )
+    mlx_status = mlx_whisper_status()
+    items.append(
+        HealthCheckItem(
+            id="mlx_whisper",
+            label="MLX Whisper",
+            status="success" if mlx_status.available else "warning",
+            message=mlx_status.reason or "MLX Whisper 可用。",
+            suggestion=mlx_status.hint,
         )
     )
     items.append(

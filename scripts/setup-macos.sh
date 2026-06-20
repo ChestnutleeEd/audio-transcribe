@@ -5,13 +5,13 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 if ! command -v python3 >/dev/null 2>&1; then
-  echo "python3 is required. Install it from https://www.python.org/downloads/ or Homebrew."
+  echo "需要安装 python3。请从 https://www.python.org/downloads/ 安装，或使用 Homebrew 安装。"
   exit 1
 fi
 
 if ! command -v ffmpeg >/dev/null 2>&1; then
-  echo "ffmpeg is required for media preprocessing."
-  echo "Recommended: brew install ffmpeg"
+  echo "需要安装 ffmpeg，用于音视频预处理。"
+  echo "推荐命令：brew install ffmpeg"
   exit 1
 fi
 
@@ -22,5 +22,5 @@ fi
 ".venv/bin/python" -m pip install --upgrade pip
 ".venv/bin/python" -m pip install --use-deprecated=legacy-resolver -r requirements.txt
 
-echo "Audio Transcribe macOS environment is ready."
-echo "Start with: ./start-audio-transcribe.command"
+echo "Audio Transcribe macOS 环境已准备完成。"
+echo "启动命令：./start-audio-transcribe.command"

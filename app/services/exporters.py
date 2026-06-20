@@ -49,11 +49,11 @@ def scope_sections(
 ) -> list[tuple[str, list[TranscriptSegment]]]:
     sections: list[tuple[str, list[TranscriptSegment]]] = []
     if scope in {ExportScope.raw, ExportScope.both}:
-        sections.append(("Raw transcript", raw_segments))
+        sections.append(("原始转录文本", raw_segments))
     if scope in {ExportScope.polished, ExportScope.both} and polished_segments:
-        sections.append(("Polished transcript", polished_segments))
+        sections.append(("整理后转录文本", polished_segments))
     if not sections:
-        sections.append(("Raw transcript", raw_segments))
+        sections.append(("原始转录文本", raw_segments))
     return sections
 
 
@@ -82,7 +82,7 @@ def export_md(
 ) -> None:
     with path.open("w", encoding="utf-8") as handle:
         handle.write(f"# {title}\n\n")
-        handle.write("## Metadata\n\n")
+        handle.write("## 元数据\n\n")
         for key, value in metadata.items():
             if value is not None:
                 handle.write(f"- **{key}**: {value}\n")

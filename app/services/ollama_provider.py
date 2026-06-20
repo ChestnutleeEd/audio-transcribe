@@ -11,7 +11,7 @@ from app.services.exporters import TranscriptSegment
 from app.services.ollama_client import OllamaClient, OllamaError
 
 
-DIRECT_AUDIO_UNSUPPORTED = "Current Ollama API does not support direct audio input for this model."
+DIRECT_AUDIO_UNSUPPORTED = "当前 Ollama API 不支持该模型的直接音频输入。"
 
 
 @dataclass(frozen=True)
@@ -43,10 +43,10 @@ def transcribe_audio_direct(audio_path: Path, model_id: str, audio_duration: flo
                 TranscriptSegment(
                     start=0.0,
                     end=end,
-                    text=f"这是 {model_id} mock direct audio transcription 的完整转录结果。",
+                    text=f"这是 {model_id} Mock 音频直转的完整转录结果。",
                 )
             ],
-            warnings=["Gemma 4 direct audio transcription does not provide precise segment timestamps."],
+            warnings=["本地大模型音频转录暂不提供精确分段时间轴。"],
         )
     _ = (audio_path, model_id, audio_duration)
     raise OllamaError(DIRECT_AUDIO_UNSUPPORTED)
@@ -75,11 +75,11 @@ def polish_segments(
         end = min(start + batch_size, len(segments))
         batch = segments[start:end]
         event_range = f"segments {start}-{end - 1}"
-        publish_event(on_event, f"polish batch started: {batch_index}/{total_batches}, {event_range}")
+        publish_event(on_event, f"文本整理分批开始：{batch_index}/{total_batches}，{event_range}")
         try:
             if settings.mock_mode:
                 if settings.mock_polish_fail:
-                    raise ValueError("mock polish failure")
+                    raise ValueError("Mock 文本整理失败")
                 polished_batch = [
                     TranscriptSegment(start=segment.start, end=segment.end, text=f"{segment.text}（mock polished）")
                     for segment in batch
@@ -95,21 +95,21 @@ def polish_segments(
                 polished_batch = parse_polish_response(result.response, batch)
             output_segments[start:end] = polished_batch
             success_batches += 1
-            publish_event(on_event, f"polish batch completed: {batch_index}/{total_batches}")
+            publish_event(on_event, f"文本整理分批完成：{batch_index}/{total_batches}")
         except Exception as exc:
             failed_batches += 1
             warning = (
-                f"Polish batch failed: {batch_index}/{total_batches}, {event_range}, reason: {exc}. "
-                "Returned original transcription for this batch."
+                f"文本整理分批失败：{batch_index}/{total_batches}，{event_range}，原因：{exc}。"
+                "该批次已保留原始转录文本。"
             )
             warnings.append(warning)
             publish_warning(on_warning, warning)
-            publish_event(on_event, f"polish batch failed: {batch_index}/{total_batches}, reason {exc}", "warning")
+            publish_event(on_event, f"文本整理分批失败：{batch_index}/{total_batches}，原因：{exc}", "warning")
             output_segments[start:end] = batch
 
     publish_event(
         on_event,
-        f"polish completed: success_batches={success_batches}, failed_batches={failed_batches}",
+        f"文本整理完成：成功批次={success_batches}，失败批次={failed_batches}",
         "warning" if failed_batches else "info",
     )
     return PolishResult(

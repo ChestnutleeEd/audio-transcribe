@@ -2,10 +2,10 @@
 set -euo pipefail
 
 # ==================================================
-# Audio-Transcribe macOS Stopper
+# Audio-Transcribe macOS 停止器
 # ==================================================
-# Double-click this file on macOS to stop Audio-Transcribe.
-# If macOS says the file cannot be opened, run:
+# macOS 用户双击此文件即可停止 Audio-Transcribe。
+# 如果 macOS 提示无法打开，请运行：
 #   chmod +x stop-audio-transcribe.command
 # ==================================================
 
@@ -17,45 +17,45 @@ PID_FILE="$ROOT/data/tmp/audio-transcribe-server.pid"
 STOPPED=0
 
 echo "=================================================="
-echo "Audio-Transcribe macOS Stopper"
+echo "Audio-Transcribe macOS 停止器"
 echo "=================================================="
-echo "This file is for macOS. Windows users should open:"
+echo "此文件适用于 macOS。Windows 用户请打开："
 echo "  stop-audio-transcribe.bat"
 echo
 
 if [ -f "$PID_FILE" ]; then
   PID="$(tr -d '[:space:]' < "$PID_FILE")"
   if [ -n "$PID" ] && kill -0 "$PID" >/dev/null 2>&1; then
-    echo "Stopping saved server process PID $PID..."
+    echo "正在停止 PID 文件记录的服务进程：$PID..."
     kill "$PID" >/dev/null 2>&1 || true
     STOPPED=1
   else
-    echo "Saved PID is not running: ${PID:-empty}"
+    echo "PID 文件记录的进程未运行：${PID:-空}"
   fi
   rm "$PID_FILE"
 fi
 
 echo
-echo "Checking port $APP_PORT for remaining Audio-Transcribe server processes..."
+echo "正在检查端口 $APP_PORT 上是否仍有 Audio-Transcribe 服务进程..."
 PORT_PIDS="$(lsof -tiTCP:"$APP_PORT" -sTCP:LISTEN 2>/dev/null || true)"
 if [ -n "$PORT_PIDS" ]; then
-  echo "Processes listening on port $APP_PORT:"
+  echo "监听端口 $APP_PORT 的进程："
   printf "  %s\n" $PORT_PIDS
   for PID in $PORT_PIDS; do
-    echo "Stopping PID $PID..."
+    echo "正在停止 PID $PID..."
     kill "$PID" >/dev/null 2>&1 || true
     STOPPED=1
   done
 else
-  echo "No process is listening on port $APP_PORT."
+  echo "端口 $APP_PORT 上没有监听进程。"
 fi
 
 echo
 if [ "$STOPPED" -eq 1 ]; then
-  echo "Stop command completed."
+  echo "停止命令已完成。"
 else
-  echo "No running Audio-Transcribe server was found."
+  echo "未找到正在运行的 Audio-Transcribe 服务。"
 fi
 echo
-echo "If the page is still open in your browser, refresh it after stopping."
-read -r -p "Press Return to close this window..."
+echo "如果浏览器页面仍然打开，请在停止后刷新页面。"
+read -r -p "按回车键关闭此窗口..."

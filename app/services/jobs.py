@@ -33,7 +33,7 @@ class Job:
     polish_custom_instruction: str | None = None
     model_label: str = "large-v3"
     formats: list[OutputFormat] = field(default_factory=list)
-    export_scope: ExportScope = ExportScope.both
+    export_scope: ExportScope = ExportScope.raw
     include_timestamps: bool = True
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     cancel_requested: bool = False
@@ -77,7 +77,7 @@ class JobStore:
         polish_profile_id: str | None = None,
         polish_profile_label: str | None = None,
         polish_custom_instruction: str | None = None,
-        export_scope: ExportScope = ExportScope.both,
+        export_scope: ExportScope = ExportScope.raw,
         base_name: str = "transcript",
     ) -> Job:
         job = Job(
@@ -129,6 +129,12 @@ class JobStore:
 
     def list(self) -> list[Job]:
         with self._lock:
+            return sorted(self._jobs.values(), key=lambda job: job.created_at, reverse=True)
+
+    def clear_history(self) -> list[Job]:
+        terminal = {JobState.completed, JobState.failed, JobState.cancelled}
+        with self._lock:
+            self._jobs = {job_id: job for job_id, job in self._jobs.items() if job.state not in terminal}
             return sorted(self._jobs.values(), key=lambda job: job.created_at, reverse=True)
 
     def has_active_job(self) -> bool:

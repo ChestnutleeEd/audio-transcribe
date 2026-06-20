@@ -144,7 +144,7 @@ def detect_openai_compatible_models(provider: LocalModelProvider) -> LocalModelP
                 id=model_id,
                 modified_at=modified_at,
                 can_polish=False,
-                recommendation="已检测到；当前版本暂未接入 OpenAI-compatible polish 调用。",
+                recommendation="已检测到；当前版本暂未接入 OpenAI 兼容接口的文本整理调用。",
             )
         )
     return LocalModelProviderStatus(
@@ -154,7 +154,7 @@ def detect_openai_compatible_models(provider: LocalModelProvider) -> LocalModelP
         url=provider.url,
         online=True,
         can_polish=False,
-        message=f"检测到 {len(models)} 个模型；当前仅展示，不会用于 polish 调用。"
+        message=f"检测到 {len(models)} 个模型；当前仅展示，不会用于文本整理调用。"
         if models
         else "服务在线，但 /v1/models 未返回模型。",
         models=models,
@@ -177,7 +177,7 @@ def detect_local_models() -> LocalModelDetectionStatus:
     providers_online = sum(1 for provider in providers if provider.online)
     models_found = sum(len(provider.models) for provider in providers)
     if models_found:
-        message = f"检测到 {providers_online} 个在线 provider，{models_found} 个本地模型。"
+        message = f"检测到 {providers_online} 个在线提供方，{models_found} 个本地模型。"
     else:
         message = "未检测到本地模型服务。请确认 Ollama / LM Studio / llama.cpp server 是否已启动。本功能不会自动下载模型。"
     return LocalModelDetectionStatus(

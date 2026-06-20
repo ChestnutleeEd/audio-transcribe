@@ -34,7 +34,7 @@ function Copy-ReleaseTree {
 }
 
 if (Test-Path $Dist) {
-  throw "Release directory already exists: $Dist. Move it aside manually before rebuilding."
+  throw "发行目录已存在：$Dist。请先手动移走该目录，再重新构建。"
 }
 
 New-Item -ItemType Directory -Path $WindowsStage | Out-Null
@@ -82,4 +82,4 @@ foreach ($Tool in @("ffmpeg.exe", "ffprobe.exe")) {
 Compress-Archive -Path $WindowsStage -DestinationPath (Join-Path $Dist "AudioTranscribe-$Version-windows-x64.zip")
 Compress-Archive -Path $MacStage -DestinationPath (Join-Path $Dist "AudioTranscribe-$Version-macos.zip")
 
-Write-Host "Release assets created in $Dist"
+Write-Host "发行包已创建：$Dist"

@@ -32,6 +32,7 @@ class JobState(str, Enum):
 
 class TranscriptionEngine(str, Enum):
     whisper = "whisper"
+    mlx_whisper = "mlx-whisper"
     ollama_audio = "ollama_audio"
 
 
@@ -78,7 +79,7 @@ class JobStatus(BaseModel):
     polish_custom_instruction: str | None = None
     model_label: str = "large-v3"
     formats: list[OutputFormat] = Field(default_factory=list)
-    export_scope: ExportScope = ExportScope.both
+    export_scope: ExportScope = ExportScope.raw
     include_timestamps: bool = True
     created_at: str | None = None
     outputs: list[OutputFile] = Field(default_factory=list)
@@ -130,6 +131,24 @@ class HealthCheckItem(BaseModel):
 class HealthCheckStatus(BaseModel):
     checked_at: str
     items: list[HealthCheckItem]
+
+
+class MLXWhisperStatus(BaseModel):
+    engine: str = "mlx-whisper"
+    available: bool
+    platform_supported: bool
+    dependency_installed: bool
+    model_configured: bool
+    ffmpeg_available: bool
+    is_macos: bool
+    is_apple_silicon: bool
+    os: str
+    arch: str
+    model_path_or_repo: str = ""
+    default_model_label: str = "whisper-large-v3-mlx"
+    language: str = "auto"
+    reason: str | None = None
+    hint: str | None = None
 
 
 class ModelDownloadState(str, Enum):

@@ -304,7 +304,7 @@ def preflight(model_id: str, task: str) -> OllamaPreflightStatus:
             message=f"未检测到 {model_id}，请选择已安装模型或在应用外手动安装",
         )
     if task == "direct_audio":
-        warnings.append("当前 direct audio 能力为实验性；如果 Ollama HTTP API 不支持音频输入，任务会失败。")
+        warnings.append("当前音频直转能力为实验性；如果 Ollama HTTP API 不支持音频输入，任务会失败。")
     return OllamaPreflightStatus(
         model_id=model_id,
         task=task,
