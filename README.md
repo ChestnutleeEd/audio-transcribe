@@ -90,11 +90,11 @@ chmod +x start-audio-transcribe.command stop-audio-transcribe.command
 
 #### 方式一：下载发行版便携包
 
-1. 打开 [GitHub Releases](https://github.com/ChestnutleeEd/audio-transcribe/releases)，下载 `AudioTranscribe-v0.1.0-windows-x64.zip`。
+1. 打开 [GitHub Releases](https://github.com/ChestnutleeEd/audio-transcribe/releases)，下载 `AudioTranscribe-v0.2.0-windows-x64.zip`。
 2. 解压 zip 到任意目录。
 3. 双击 `start-audio-transcribe.bat`。
 
-Windows 发行版已经包含 Python 虚拟环境和 FFmpeg / FFprobe，首次启动不需要手动安装 Python 依赖。发行版不内置 Whisper 模型，启动后请在页面右侧选择模型并下载，或按“本地模型”部分手动放置模型文件。
+Windows 发行版包含项目文件和启动/停止脚本。首次启动时，如果目录中没有 `.venv`，脚本会调用 `scripts\setup-windows.ps1` 安装 Python 依赖。发行版不内置 Whisper 模型，启动后请在页面右侧选择模型并下载，或按“本地模型”部分手动放置模型文件。若需要处理媒体文件，请确保系统能访问 FFmpeg，或把 `ffmpeg.exe` / `ffprobe.exe` 放到 `origin-code/`。
 
 #### 方式二：从源码安装
 
@@ -110,7 +110,7 @@ cd audio-transcribe
 
 #### 方式一：下载发行版便携包
 
-1. 打开 [GitHub Releases](https://github.com/ChestnutleeEd/audio-transcribe/releases)，下载 `AudioTranscribe-v0.1.0-macos.zip`。
+1. 打开 [GitHub Releases](https://github.com/ChestnutleeEd/audio-transcribe/releases)，下载 `AudioTranscribe-v0.2.0-macos.zip`。
 2. 解压 zip 到任意目录。
 3. 安装系统依赖：
 
@@ -121,7 +121,7 @@ brew install ffmpeg
 4. 首次运行前给启动脚本授权：
 
 ```bash
-chmod +x scripts/setup-macos.sh start-audio-transcribe.command
+chmod +x scripts/setup-macos.sh start-audio-transcribe.command stop-audio-transcribe.command
 ```
 
 macOS 发行版不内置 Python 虚拟环境。首次运行 `start-audio-transcribe.command` 时，会自动创建 `.venv` 并安装依赖。
@@ -132,9 +132,26 @@ macOS 发行版不内置 Python 虚拟环境。首次运行 `start-audio-transcr
 git clone https://github.com/ChestnutleeEd/audio-transcribe.git
 cd audio-transcribe
 brew install ffmpeg
-chmod +x scripts/setup-macos.sh start-audio-transcribe.command
+chmod +x scripts/setup-macos.sh start-audio-transcribe.command stop-audio-transcribe.command
 ./scripts/setup-macos.sh
 ```
+
+## 最新版本更新
+
+### v0.2.0
+
+- 新增 MLX Whisper 工作流，Apple Silicon Mac 可选择本地 MLX Whisper 模型或已缓存的 Hugging Face repo id。
+- 新增 Ollama 文本整理后处理，支持标点修复、保守清理、日语自然断句、中文会议纪要和双语翻译。
+- 新增提示词预览、追加自定义整理指令、原始文本 / 整理后文本同屏展示、复制、重新整理和段落级对比。
+- 新增实验性本地大模型音频转录入口，可显式选择 Ollama 本地多模态模型。
+- 改进长文本整理，按 segment 分批处理；整理失败时保留原始转录并写入 warnings。
+- 改进环境检查和模型管理，覆盖 faster-whisper、Whisper 模型、FFmpeg、Ollama 服务、本地 Ollama 模型、下载进度和取消下载。
+- 改进启动/停止体验，新增 Windows 和 macOS 停止脚本，并补充 `docs/START_AND_STOP.md`。
+- 改进任务卡片，显示阶段耗时、总耗时、失败诊断、事件时间线和更清晰的错误建议。
+- 改进导出能力，支持 TXT、Markdown、JSON、SRT、Word，并可选择导出原始文本、整理后文本或两者同时导出。
+- 改进链接任务，清理 YouTube 时间参数，下载成功后使用视频标题作为任务名称。
+
+完整发行说明见 [docs/release-notes/v0.2.0.md](docs/release-notes/v0.2.0.md)。
 
 ## 运行
 

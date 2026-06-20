@@ -1,5 +1,5 @@
 param(
-  [string]$Version = "v0.1.0"
+  [string]$Version = "v0.2.0"
 )
 
 $ErrorActionPreference = "Stop"
@@ -64,16 +64,20 @@ foreach ($Item in $CommonItems) {
 }
 
 Copy-Item -Path (Join-Path $Root "start-audio-transcribe.bat") -Destination $WindowsStage
+Copy-Item -Path (Join-Path $Root "stop-audio-transcribe.bat") -Destination $WindowsStage
 Copy-Item -Path (Join-Path $Root "start-audio-transcribe.command") -Destination $MacStage
+Copy-Item -Path (Join-Path $Root "stop-audio-transcribe.command") -Destination $MacStage
 
-if (Test-Path (Join-Path $Root ".venv")) {
+$WindowsVenv = Join-Path $Root ".venv"
+if ((Test-Path $WindowsVenv) -and (Test-Path (Join-Path $WindowsVenv "Scripts\Activate.ps1"))) {
   Copy-Item -Path (Join-Path $Root ".venv") -Destination (Join-Path $WindowsStage ".venv") -Recurse
 }
 
 $OriginCodeStage = Join-Path $WindowsStage "origin-code"
 New-Item -ItemType Directory -Path $OriginCodeStage | Out-Null
+$OriginCode = Join-Path $Root "origin-code"
 foreach ($Tool in @("ffmpeg.exe", "ffprobe.exe")) {
-  $ToolPath = Join-Path $Root "origin-code\$Tool"
+  $ToolPath = Join-Path $OriginCode $Tool
   if (Test-Path $ToolPath) {
     Copy-Item -Path $ToolPath -Destination $OriginCodeStage
   }
