@@ -19,13 +19,70 @@
 - 任务失败会在卡片中显示错误信息，不会一直停在准备阶段
 - 输出文件可下载，也可在页面中手动删除
 - 支持模型选择、模型检测、模型下载进度、下载取消和 CUDA 失败后的 CPU 降级提示
-- 可显式选择转录引擎：稳定 Whisper，或实验性 Gemma 4 12B direct audio transcription
+- 可显式选择转录引擎：稳定 Whisper、MLX Whisper（Apple Silicon 推荐），或实验性本地大模型音频转录
 - 可显式启用 Ollama polish 后处理，并选择标点修复、保守清理、日语自然断句、中文会议纪要、双语翻译等 profile
 - Polish 支持 Prompt 预览和追加自定义指令；自定义指令会追加在基础安全模板之后，不会替换 raw transcript 保存逻辑
 - Raw / Polished 同屏展示，支持复制、重新 Polish 和段落级对比
 - 浏览器本地保存最近 5 条任务历史，便于恢复查看最近结果；长文本会截断，避免无限占用 localStorage
 - 任务失败会显示错误诊断卡片，包含错误标题、处理建议和默认折叠的技术细节
 - 页面提供环境检查，覆盖 faster-whisper、Whisper 模型、FFmpeg、Ollama 服务和本地 Ollama 模型
+
+## 快速启动
+
+### Windows
+
+双击项目根目录里的：
+
+```text
+start-audio-transcribe.bat
+```
+
+这是 Windows 启动入口。脚本会检查 `.venv`，必要时运行 `scripts\setup-windows.ps1` 安装依赖，然后启动后端并打开：
+
+```text
+http://127.0.0.1:8000/
+```
+
+### macOS
+
+双击项目根目录里的：
+
+```text
+start-audio-transcribe.command
+```
+
+这是 macOS 启动入口。若 macOS 提示无法打开或双击无反应，先在终端执行：
+
+```bash
+chmod +x start-audio-transcribe.command stop-audio-transcribe.command
+```
+
+然后重新双击 `start-audio-transcribe.command`。
+
+更多启动和关闭细节见 [docs/START_AND_STOP.md](docs/START_AND_STOP.md)。
+
+## 如何关闭
+
+### Windows
+
+- 在启动窗口按 `Ctrl + C`，如果 Windows 询问是否终止批处理操作，输入 `Y`。
+- 或直接关闭启动命令行窗口。
+- 或双击 `stop-audio-transcribe.bat`，按 PID 文件或端口停止服务。
+
+### macOS
+
+- 回到启动时打开的 Terminal 窗口，按 `Control + C`。
+- 或关闭该 Terminal 窗口。
+- 或双击 `stop-audio-transcribe.command`，按 PID 文件或端口停止服务。
+
+## 首次使用前准备
+
+- Python：建议使用 Python 3.10 或更新版本。Windows 发行版通常已包含虚拟环境；源码安装会在 `.venv` 中安装依赖。
+- FFmpeg：音视频预处理依赖 FFmpeg。macOS 推荐 `brew install ffmpeg`；Windows 可使用发行版内置 FFmpeg，或把 `ffmpeg.exe` / `ffprobe.exe` 放到 `origin-code/`。
+- Python 依赖：启动脚本会在缺少 `.venv` 时调用 `scripts/setup-windows.ps1` 或 `scripts/setup-macos.sh`。也可以手动执行 `pip install -r requirements.txt`。
+- Whisper 模型：项目和发行版不会内置模型，也不会在启动脚本中自动下载模型。进入页面后选择模型并确认下载，或手动把模型放到 `models/`。
+- Windows 模型路径：优先使用页面内模型下载；已有 faster-whisper 模型时可放到 `models/<model>-local/`，或用 `AUDIO_TRANSCRIBE_MODEL_PATH` 指向现有目录。
+- Apple Silicon Mac：可考虑 MLX Whisper，但需要自行安装 `mlx-whisper`、准备模型并配置环境变量；启动脚本不会自动安装 MLX 依赖或下载 MLX 模型。
 
 ## 安装
 
@@ -94,8 +151,10 @@ start-audio-transcribe.bat
 脚本会检测本地服务是否已经启动。如果未启动，会启动服务并打开：
 
 ```text
-http://localhost:8000/
+http://127.0.0.1:8000/
 ```
+
+启动窗口会保持打开。需要关闭服务时，在该窗口按 `Ctrl + C` 后输入 `Y`，或双击 `stop-audio-transcribe.bat`。
 
 #### 方式二：命令行启动
 
@@ -127,6 +186,8 @@ start-audio-transcribe.command
 ```
 
 首次运行会自动安装 Python 依赖；之后会直接启动服务并打开浏览器。
+
+启动 Terminal 窗口会保持打开。需要关闭服务时，在该窗口按 `Control + C`，或双击 `stop-audio-transcribe.command`。
 
 #### 方式二：命令行启动
 
@@ -164,10 +225,25 @@ http://127.0.0.1:8000
 
 Ollama 是可选能力。稳定 ASR 仍由 `faster-whisper` 完成，并继续支持逐段时间轴。Ollama 在当前阶段有两类用途：
 
-- `Gemma 4 12B direct audio transcription`：实验性转录引擎。用户选择该引擎时，应用会尝试通过 Ollama 使用 `gemma4:12b-it-qat` 直接处理音频；如果 direct audio 调用失败，任务会失败并显示原因，不会自动改用 Whisper。
-- `Polish 转录结果`：独立可选后处理。Whisper 或 Gemma 4 direct audio 的结果都可以启用 polish。polish 失败不会覆盖或破坏 raw transcript，任务会保留原始结果并在 warnings 中说明失败原因。
+- `本地大模型音频转录`：实验性转录引擎。用户选择该引擎时，应用会尝试通过 Ollama 使用所选本地多模态模型直接处理音频；如果 direct audio 调用失败，任务会失败并显示原因，不会自动改用 Whisper。
+- `Polish 转录结果`：独立可选后处理。Whisper、MLX Whisper 或本地大模型音频转录的结果都可以启用 polish。polish 失败不会覆盖或破坏 raw transcript，任务会保留原始结果并在 warnings 中说明失败原因。
 
 当前 Ollama REST API 的稳定文档主要覆盖文本输入和 `images` 字段。应用不会把音频 base64 硬塞进 prompt，也不会用图片字段冒充音频；如果当前 Ollama HTTP API 不支持所选模型的直接音频输入，会返回明确错误。
+
+## MLX Whisper
+
+MLX Whisper 是可选能力，适用于 macOS Apple Silicon。应用只做配置、检测、选择和调用，不会安装 `mlx-whisper`，也不会下载 MLX 模型。
+
+可用配置示例：
+
+```bash
+AUDIO_TRANSCRIBE_MLX_WHISPER_ENABLED=1
+AUDIO_TRANSCRIBE_MLX_WHISPER_MODEL=/Users/me/models/whisper-large-v3-mlx
+AUDIO_TRANSCRIBE_MLX_WHISPER_LABEL=whisper-large-v3-mlx
+AUDIO_TRANSCRIBE_MLX_WHISPER_LANGUAGE=auto
+```
+
+也可以在页面里选择 `MLX Whisper（Apple Silicon 推荐）` 后填写本地模型目录或已预先缓存的 Hugging Face repo id。为了避免自动下载，repo id 调用时会启用 Hugging Face 离线模式；如模型未缓存，任务会失败并显示明确提示。
 
 ### 安装和启动 Ollama
 
@@ -239,6 +315,67 @@ Prompt 预览会展示当前 profile 的基础指令。追加自定义指令只�
 
 导出范围可选择 `Raw`、`Polished` 或 `Raw + Polished`。无论 Polish 是否成功，raw transcript 都会优先保留。
 
+## 常见问题
+
+### 1. 双击 `.command` 没反应或提示无法打开
+
+macOS 可能没有给脚本执行权限。进入项目目录后执行：
+
+```bash
+chmod +x start-audio-transcribe.command stop-audio-transcribe.command
+```
+
+如果仍被系统拦截，可右键脚本选择“打开”，或在“系统设置 > 隐私与安全性”中允许本次打开。
+
+### 2. 端口被占用
+
+Audio-Transcribe 默认使用 `127.0.0.1:8000`。如果启动窗口提示 `address already in use`，说明 8000 端口已有程序在监听。先关闭另一个程序，或运行：
+
+- Windows：双击 `stop-audio-transcribe.bat`
+- macOS：双击 `stop-audio-transcribe.command`
+
+停止脚本会优先使用 `data/tmp/audio-transcribe-server.pid`，没有 PID 时再检查 8000 端口。
+
+### 3. 页面打不开
+
+确认启动窗口仍在运行，并手动打开：
+
+```text
+http://127.0.0.1:8000/
+```
+
+如果浏览器仍打不开，查看启动窗口是否有 Python、依赖、FFmpeg、端口占用或模型路径错误。
+
+### 4. 启动后不知道怎么关闭
+
+Windows 在启动窗口按 `Ctrl + C` 后输入 `Y`，或双击 `stop-audio-transcribe.bat`。macOS 在启动 Terminal 窗口按 `Control + C`，或双击 `stop-audio-transcribe.command`。
+
+### 5. 清空历史后仍显示旧任务
+
+页面最近任务历史存放在浏览器 localStorage，后端输出文件存放在 `data/jobs/`。如果清空页面历史后仍看到旧任务，先刷新页面；如果是输出文件仍存在，需要在页面中删除对应输出，或手动检查 `data/jobs/`。
+
+### 6. Mac 上 faster-whisper large-v3 很慢
+
+`large-v3` 体积大、资源占用高，在 MacBook Air 等设备上会明显变慢。日常建议先用 `small` 或 `medium`。Apple Silicon Mac 可以考虑自行安装并配置 MLX Whisper，但项目不会自动安装 MLX 依赖或下载 MLX 模型。
+
+### 7. 模型未配置或模型路径不存在
+
+进入页面右侧模型区选择模型并确认下载，或把 faster-whisper 模型文件放入 `models/<model>-local/`。也可以用环境变量指定已有模型目录：
+
+```bash
+AUDIO_TRANSCRIBE_MODEL_PATH=/path/to/model .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+### 8. FFmpeg 未安装
+
+macOS 执行：
+
+```bash
+brew install ffmpeg
+```
+
+Windows 可使用发行版内置 FFmpeg，或把 `ffmpeg.exe` / `ffprobe.exe` 放到 `origin-code/`，也可设置 `AUDIO_TRANSCRIBE_FFMPEG` 指向可执行文件。
+
 ## 常见错误
 
 - `OLLAMA_NOT_RUNNING`：启动 Ollama 桌面应用，或执行 `ollama serve`。
@@ -263,7 +400,7 @@ Mock 模式下：
 - 不调用真实 `faster-whisper`
 - 不调用真实 Ollama
 - Whisper 转录返回固定 mock segments
-- Gemma 4 direct audio 返回固定 mock transcription
+- 本地大模型音频转录返回固定 mock transcription
 - Ollama polish 返回固定 mock polished segments
 - Ollama 模型检测会模拟 `gemma4:12b-it-qat` 和 `gemma3:1b` 已存在
 - Ollama pull 会模拟下载进度，并支持取消
@@ -369,3 +506,14 @@ $env:AUDIO_TRANSCRIBE_DLL_DIRS="E:\Programming\Anaconda\envs\whisper_env\Lib\sit
 8. 任务运行时连续点击开始，确认不会创建并发任务；点击停止后确认任务进入 cancelled。
 9. 完成后点击“重新 Polish”，确认不重新转录，且 raw transcript 保留。
 10. 完成 6 次 mock 任务，确认最近历史最多保留 5 条，并可点击恢复查看。
+
+## 项目目录说明
+
+- `start-audio-transcribe.bat`：Windows 启动入口。
+- `start-audio-transcribe.command`：macOS 启动入口。
+- `stop-audio-transcribe.bat`：Windows 停止脚本。
+- `stop-audio-transcribe.command`：macOS 停止脚本。
+- `models/`：本地 Whisper / faster-whisper 模型目录，Git 默认忽略。
+- `output/`：保留给导出或外部整理输出使用。
+- `data/`：运行时任务、上传文件、临时文件和 PID 文件目录，Git 默认忽略其中运行时内容。
+- `docs/`：补充文档、发行说明和图片资源。
