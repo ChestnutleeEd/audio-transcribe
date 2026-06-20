@@ -11,7 +11,8 @@
 - 自动清理 YouTube 浏览记录链接里的时间参数，例如 `&t=459s`，避免卡在“准备音频来源”
 - 链接任务下载成功后，会用视频标题作为任务名称；任务名称本身会保留原视频链接
 - 转写语言选择：自动识别、中文、日语、英语、韩语
-- 输出格式多选：默认只生成 `TXT`，也可选择 `Markdown` 和 `Word`
+- 输出格式多选：默认生成 `TXT`，也可选择 `Markdown`、`JSON`、`SRT` 和 `Word`
+- 导出内容可选择 `Raw`、`Polished` 或 `Raw + Polished`；SRT 仅在开启时间轴时可用
 - 可选择带时间轴或纯文本
 - 可截取本地媒体的指定时间段；选择本地媒体后会自动填入完整时长
 - 每个任务会显示实时处理耗时；完成、失败或停止后显示总耗时
@@ -19,7 +20,12 @@
 - 输出文件可下载，也可在页面中手动删除
 - 支持模型选择、模型检测、模型下载进度、下载取消和 CUDA 失败后的 CPU 降级提示
 - 可显式选择转录引擎：稳定 Whisper，或实验性 Gemma 4 12B direct audio transcription
-- 可显式启用 Ollama polish 后处理，用本地大模型清洗明显识别错误、标点、空格和断句
+- 可显式启用 Ollama polish 后处理，并选择标点修复、保守清理、日语自然断句、中文会议纪要、双语翻译等 profile
+- Polish 支持 Prompt 预览和追加自定义指令；自定义指令会追加在基础安全模板之后，不会替换 raw transcript 保存逻辑
+- Raw / Polished 同屏展示，支持复制、重新 Polish 和段落级对比
+- 浏览器本地保存最近 5 条任务历史，便于恢复查看最近结果；长文本会截断，避免无限占用 localStorage
+- 任务失败会显示错误诊断卡片，包含错误标题、处理建议和默认折叠的技术细节
+- 页面提供环境检查，覆盖 faster-whisper、Whisper 模型、FFmpeg、Ollama 服务和本地 Ollama 模型
 
 ## 安装
 
@@ -147,17 +153,19 @@ http://127.0.0.1:8000
 1. 打开页面后，在“新建任务”中上传本地文件，或粘贴视频链接。
 2. 选择语言。大多数情况下可保持“自动识别”。
 3. 选择是否带时间轴。
-4. 选择输出格式。默认只选中 `TXT`，如需文档格式，可额外勾选 `Markdown` 或 `Word`。
-5. 如需只转写片段，展开“截取时间段”并设置开始 / 结束时间。
-6. 点击“开始转写”，右侧任务列表会显示进度、状态、处理耗时、模型和输出文件。
-7. 链接任务完成下载后，任务标题会更新为视频名称，点击标题可回到原视频链接。
+4. 选择输出格式。默认选中 `TXT`，也可额外勾选 `Markdown`、`JSON`、`SRT` 或 `Word`。SRT 需要开启时间轴。
+5. 如启用 Polish，选择模型和 profile。默认优先使用 `gemma4:12b-it-qat`；如果本地没有该模型，可以改用 `gemma3:1b`。
+6. 高级用户可以展开 Prompt 预览，并追加自定义指令，例如“保留语气词”“不要翻译”“更适合字幕”。追加指令会保存在当前浏览器。
+7. 如需只转写片段，展开“截取时间段”并设置开始 / 结束时间。
+8. 点击“开始转写”，右侧任务列表会显示进度、状态、阶段耗时、模型、raw transcript、polished transcript 和输出文件。
+9. 链接任务完成下载后，任务标题会更新为视频名称，点击标题可回到原视频链接。
 
 ## Ollama 和本地大模型
 
 Ollama 是可选能力。稳定 ASR 仍由 `faster-whisper` 完成，并继续支持逐段时间轴。Ollama 在当前阶段有两类用途：
 
-- `Gemma 4 12B direct audio transcription`：实验性转录引擎。用户选择该引擎时，应用会尝试通过 Ollama 使用 `gemma4:12b` 直接处理音频；如果 direct audio 调用失败，任务会失败并显示原因，不会自动改用 Whisper。
-- `Polish 转录结果`：独立可选后处理。Whisper 或 Gemma 4 direct audio 的结果都可以启用 polish。polish 失败不会覆盖或破坏原始转录结果，任务会保留原始结果并在 warnings 中说明失败原因。
+- `Gemma 4 12B direct audio transcription`：实验性转录引擎。用户选择该引擎时，应用会尝试通过 Ollama 使用 `gemma4:12b-it-qat` 直接处理音频；如果 direct audio 调用失败，任务会失败并显示原因，不会自动改用 Whisper。
+- `Polish 转录结果`：独立可选后处理。Whisper 或 Gemma 4 direct audio 的结果都可以启用 polish。polish 失败不会覆盖或破坏 raw transcript，任务会保留原始结果并在 warnings 中说明失败原因。
 
 当前 Ollama REST API 的稳定文档主要覆盖文本输入和 `images` 字段。应用不会把音频 base64 硬塞进 prompt，也不会用图片字段冒充音频；如果当前 Ollama HTTP API 不支持所选模型的直接音频输入，会返回明确错误。
 
@@ -187,18 +195,18 @@ export OLLAMA_BASE_URL="http://localhost:11434"
 可以在页面中确认下载，也可以手动执行：
 
 ```bash
-ollama pull gemma4:12b
+ollama pull gemma4:12b-it-qat
 ollama pull gemma3:1b
 ```
 
-`gemma4:12b` 是默认 direct audio 转录模型，也是默认 polish 模型；`gemma3:1b` 是轻量 polish 备用模型。Ollama 模型由 Ollama 自己管理，不会下载到项目仓库。
+`gemma4:12b-it-qat` 是默认 direct audio 转录模型，也是默认 polish 模型；`gemma3:1b` 是轻量 polish 备用模型。Ollama 模型由 Ollama 自己管理，不会下载到项目仓库。
 
 ### Polish 分批处理
 
 Ollama polish 会把较长的转录结果按 segment 分批处理，降低小模型漏段、合并段落或输出截断的概率。默认批大小：
 
 - `gemma3:1b`：5 个 segments
-- `gemma4:12b`：10 个 segments
+- `gemma4:12b-it-qat`：10 个 segments
 - 其他模型：8 个 segments
 
 可以通过环境变量覆盖：
@@ -208,6 +216,39 @@ OLLAMA_POLISH_BATCH_SIZE=5 .venv/bin/uvicorn app.main:app --reload
 ```
 
 每个 batch 会独立调用 Ollama structured output，并独立校验返回结果。如果某个 batch polish 失败，该批次会保留原始转录文本，其他 batch 会继续处理。任务仍会完成，失败批次会写入任务 warnings 和 events。
+
+### Polish Profiles
+
+内置 profiles 集中定义在 `app/services/polish_profiles.py`：
+
+- 标点修复：只补标点和自然断句，尽量不改原文。
+- 保守清理：去除明显口癖、重复和识别噪声，不改核心语义。
+- 日语自然断句：适合日语新闻、访谈和视频字幕。
+- 中文会议纪要：把中文转录整理成结构化纪要，要求不编造参会人、日期或结论。
+- 双语翻译：保留原文，并根据原文语言补充中文或英文翻译。
+
+Prompt 预览会展示当前 profile 的基础指令。追加自定义指令只会附加到基础指令之后，不会替换结构化 JSON、安全校验和 raw transcript 保存逻辑。
+
+### 导出格式
+
+- `TXT`：按导出范围输出纯文本，可包含时间轴。
+- `Markdown`：包含 metadata、Raw transcript、Polished transcript 区块。
+- `JSON`：包含 metadata、segments、rawText、polishedText 和参数配置。
+- `SRT`：仅在开启时间轴时可用；如果选择 `Polished` 但没有 polished transcript，任务会提示并安全降级导出 raw。
+- `Word`：生成基础 `.docx` 文档。
+
+导出范围可选择 `Raw`、`Polished` 或 `Raw + Polished`。无论 Polish 是否成功，raw transcript 都会优先保留。
+
+## 常见错误
+
+- `OLLAMA_NOT_RUNNING`：启动 Ollama 桌面应用，或执行 `ollama serve`。
+- `OLLAMA_MODEL_MISSING`：执行 `ollama pull gemma4:12b-it-qat` 或 `ollama pull gemma3:1b`，也可以切换到已安装模型。
+- `FFMPEG_MISSING`：安装 FFmpeg，或设置 `AUDIO_TRANSCRIBE_FFMPEG` 指向可执行文件。
+- `WHISPER_MODEL_MISSING`：在页面选择 Whisper 模型并确认下载，或手动把模型文件放入 `models/` 对应目录。
+- `INVALID_AUDIO_FILE`：确认文件能正常播放，或先转换成常见音频格式后重试。
+- `TRANSCRIBE_TIMEOUT`：检查网络、模型运行状态，或先截取较短音频重试。
+- `POLISH_EMPTY_RESPONSE`：切换到保守清理 profile 或更轻量模型后重新 Polish。
+- `TASK_CANCELLED`：任务已停止，需要时重新提交。
 
 ### Mock / Dry Run 模式
 
@@ -224,7 +265,7 @@ Mock 模式下：
 - Whisper 转录返回固定 mock segments
 - Gemma 4 direct audio 返回固定 mock transcription
 - Ollama polish 返回固定 mock polished segments
-- Ollama 模型检测会模拟 `gemma4:12b` 和 `gemma3:1b` 已存在
+- Ollama 模型检测会模拟 `gemma4:12b-it-qat` 和 `gemma3:1b` 已存在
 - Ollama pull 会模拟下载进度，并支持取消
 - 前端会显示“Mock 模式：不会调用真实模型”
 
@@ -315,3 +356,16 @@ $env:AUDIO_TRANSCRIBE_DLL_DIRS="E:\Programming\Anaconda\envs\whisper_env\Lib\sit
 ```
 
 当前项目优先尝试 `cuda / int8_float16`。如果任务卡片显示 `CPU / int8`，说明本次 CUDA 转写失败后已经自动降级，结果仍会生成，但速度会慢一些。
+
+## 手动测试清单
+
+1. 启动服务后打开页面，确认环境检查能显示 Python、faster-whisper、FFmpeg、Whisper 模型和 Ollama 状态。
+2. 上传本地音频，选择 Whisper、TXT/Markdown/JSON，提交后确认任务进入阶段状态并最终完成。
+3. 开启 Polish，选择不同 profile，确认 raw transcript 和 polished transcript 同时显示，且可分别复制。
+4. 点击“对比”，确认能看到段落级 raw/polished 对比；差异较大时会提示使用保守清理。
+5. 输入追加 Polish 指令，刷新页面后确认最近一次指令仍保留。
+6. 选择 SRT 并关闭时间轴，确认 SRT 被禁用；开启时间轴后确认 SRT 可导出。
+7. 停止 Ollama 后尝试启用 Polish，确认页面显示错误诊断卡片且 App 不崩溃。
+8. 任务运行时连续点击开始，确认不会创建并发任务；点击停止后确认任务进入 cancelled。
+9. 完成后点击“重新 Polish”，确认不重新转录，且 raw transcript 保留。
+10. 完成 6 次 mock 任务，确认最近历史最多保留 5 条，并可点击恢复查看。

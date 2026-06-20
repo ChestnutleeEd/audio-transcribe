@@ -56,7 +56,7 @@ def model_option(definition, local_models: list[str]) -> OllamaModelOption:
 
 def ollama_status() -> OllamaServiceStatus:
     if settings.mock_mode:
-        local_models = ["gemma4:12b", "gemma3:1b"]
+        local_models = ["gemma4:12b-it-qat", "gemma3:1b"]
         return OllamaServiceStatus(
             available=True,
             base_url=settings.ollama_base_url,
@@ -107,7 +107,7 @@ def ollama_status() -> OllamaServiceStatus:
 
 def check_model(model_id: str) -> OllamaModelCheck:
     if settings.mock_mode:
-        exists = model_id in {"gemma4:12b", "gemma3:1b"}
+        exists = model_id in {"gemma4:12b-it-qat", "gemma4:12b", "gemma3:1b"}
         return OllamaModelCheck(
             model_id=model_id,
             available=exists,
@@ -137,7 +137,7 @@ def check_model(model_id: str) -> OllamaModelCheck:
         model_id=model_id,
         available=exists,
         service_available=True,
-        message=f"已检测到 {model_id}" if exists else f"未检测到 {model_id}，请确认后下载",
+        message=f"已检测到 {model_id}" if exists else f"未检测到 {model_id}，请选择已安装模型或在应用外手动安装",
     )
 
 
@@ -275,7 +275,7 @@ def preflight(model_id: str, task: str) -> OllamaPreflightStatus:
             model_id=model_id,
             task=task,
             service_available=True,
-            model_exists=model_id in {"gemma4:12b", "gemma3:1b"},
+            model_exists=model_id in {"gemma4:12b-it-qat", "gemma4:12b", "gemma3:1b"},
             can_generate=True,
             warnings=["Mock 模式：不会调用真实模型"],
             message="Mock 模式 preflight 通过",
@@ -301,7 +301,7 @@ def preflight(model_id: str, task: str) -> OllamaPreflightStatus:
             model_exists=False,
             can_generate=False,
             warnings=warnings,
-            message=f"未检测到 {model_id}，请先下载模型",
+            message=f"未检测到 {model_id}，请选择已安装模型或在应用外手动安装",
         )
     if task == "direct_audio":
         warnings.append("当前 direct audio 能力为实验性；如果 Ollama HTTP API 不支持音频输入，任务会失败。")

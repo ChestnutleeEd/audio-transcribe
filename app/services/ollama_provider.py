@@ -55,6 +55,7 @@ def transcribe_audio_direct(audio_path: Path, model_id: str, audio_duration: flo
 def polish_segments(
     segments: list[TranscriptSegment],
     model_id: str,
+    profile_instruction: str | None = None,
     client: OllamaClient | None = None,
     on_event: Callable[[str, str], None] | None = None,
     on_warning: Callable[[str], None] | None = None,
@@ -84,7 +85,7 @@ def polish_segments(
                     for segment in batch
                 ]
             else:
-                prompt = build_polish_prompt(batch)
+                prompt = build_polish_prompt(batch, profile_instruction)
                 result = ollama.generate_text(
                     model_id,
                     prompt,
@@ -125,12 +126,12 @@ def resolve_polish_batch_size(model_id: str) -> int:
         return max(1, settings.ollama_polish_batch_size)
     if model_id == "gemma3:1b":
         return 5
-    if model_id == "gemma4:12b":
+    if model_id in {"gemma4:12b", "gemma4:12b-it-qat"}:
         return 10
     return 8
 
 
-def build_polish_prompt(segments: list[TranscriptSegment]) -> str:
+def build_polish_prompt(segments: list[TranscriptSegment], profile_instruction: str | None = None) -> str:
     payload = [
         {
             "index": index,
@@ -152,8 +153,7 @@ def build_polish_prompt(segments: list[TranscriptSegment]) -> str:
     }
     return (
         "你是一个音频转录文本校对器。\n"
-        "只修正明显的语音识别错误、标点、空格和断句。\n"
-        "不要总结。不要翻译。不要扩写。不要删除信息。\n"
+        f"{profile_instruction or '只修正明显的语音识别错误、标点、空格和断句。'}\n"
         "不要合并 segments。不要新增 segments。\n"
         "必须返回与输入完全相同数量的 segments。\n"
         "输出只允许包含 index 和 text。不要返回 start/end。\n"

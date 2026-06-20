@@ -9,15 +9,25 @@ from pydantic import BaseModel, Field
 class OutputFormat(str, Enum):
     txt = "txt"
     md = "md"
+    json = "json"
+    srt = "srt"
     docx = "docx"
 
 
+class ExportScope(str, Enum):
+    raw = "raw"
+    polished = "polished"
+    both = "both"
+
+
 class JobState(str, Enum):
-    queued = "queued"
-    running = "running"
+    validating = "validating"
+    preparing_model = "preparing_model"
+    transcribing = "transcribing"
+    polishing = "polishing"
     completed = "completed"
     failed = "failed"
-    canceled = "canceled"
+    cancelled = "cancelled"
 
 
 class TranscriptionEngine(str, Enum):
@@ -38,6 +48,14 @@ class JobEvent(BaseModel):
     message: str
 
 
+class ErrorDiagnostic(BaseModel):
+    code: str
+    title: str
+    message: str
+    action: str
+    technical_detail: str | None = None
+
+
 class JobStatus(BaseModel):
     id: str
     state: JobState
@@ -55,14 +73,23 @@ class JobStatus(BaseModel):
     transcription_model_id: str | None = None
     enable_polish: bool = False
     polish_model_id: str | None = None
+    polish_profile_id: str | None = None
+    polish_profile_label: str | None = None
+    polish_custom_instruction: str | None = None
     model_label: str = "large-v3"
     formats: list[OutputFormat] = Field(default_factory=list)
+    export_scope: ExportScope = ExportScope.both
     include_timestamps: bool = True
     created_at: str | None = None
     outputs: list[OutputFile] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     events: list[JobEvent] = Field(default_factory=list)
     error: str | None = None
+    error_diagnostic: ErrorDiagnostic | None = None
+    raw_text: str | None = None
+    polished_text: str | None = None
+    has_segments: bool = False
+    duration_seconds: float | None = None
 
 
 class OptionItem(BaseModel):
@@ -77,6 +104,34 @@ class AppOptions(BaseModel):
     supported_sources: list[Literal["upload", "url"]]
 
 
+class PolishProfile(BaseModel):
+    id: str
+    label: str
+    description: str
+    prompt_preview: str | None = None
+
+
+class PolishRequest(BaseModel):
+    model_id: str | None = None
+    profile_id: str | None = None
+    custom_instruction: str | None = None
+    export_scope: ExportScope | None = None
+    formats: list[OutputFormat] | None = None
+
+
+class HealthCheckItem(BaseModel):
+    id: str
+    label: str
+    status: Literal["success", "warning", "error"]
+    message: str
+    suggestion: str | None = None
+
+
+class HealthCheckStatus(BaseModel):
+    checked_at: str
+    items: list[HealthCheckItem]
+
+
 class ModelDownloadState(str, Enum):
     idle = "idle"
     downloading = "downloading"
@@ -85,12 +140,24 @@ class ModelDownloadState(str, Enum):
     canceled = "canceled"
 
 
+class WhisperModelMeta(BaseModel):
+    speed: str
+    accuracy: str
+    resource: str
+    recommended_for: list[str] = Field(default_factory=list)
+    mac_m4_air_advice: str
+    default_recommended: bool = False
+    positioning: str
+    description: str
+
+
 class ModelOption(BaseModel):
     id: str
     label: str
     repo_id: str
     managed_path: str
     available: bool
+    meta: WhisperModelMeta | None = None
 
 
 class ModelSelection(BaseModel):
@@ -170,3 +237,37 @@ class OllamaPreflightStatus(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     message: str
     error: str | None = None
+
+
+class LocalDetectedModel(BaseModel):
+    provider_id: str
+    provider: str
+    provider_type: str
+    name: str
+    id: str
+    size: int | None = None
+    size_label: str | None = None
+    modified_at: str | None = None
+    can_polish: bool = False
+    recommendation: str | None = None
+
+
+class LocalModelProviderStatus(BaseModel):
+    id: str
+    name: str
+    type: str
+    url: str
+    online: bool = False
+    can_polish: bool = False
+    message: str
+    error: str | None = None
+    models: list[LocalDetectedModel] = Field(default_factory=list)
+
+
+class LocalModelDetectionStatus(BaseModel):
+    checked_at: str
+    providers_checked: int
+    providers_online: int
+    models_found: int
+    message: str
+    providers: list[LocalModelProviderStatus] = Field(default_factory=list)

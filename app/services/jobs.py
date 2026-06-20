@@ -5,13 +5,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
 
-from app.schemas import JobEvent, JobState, OutputFile, OutputFormat, TranscriptionEngine
+from app.schemas import ErrorDiagnostic, ExportScope, JobEvent, JobState, OutputFile, OutputFormat, TranscriptionEngine
+from app.services.exporters import TranscriptSegment
 
 
 @dataclass
 class Job:
     id: str
-    state: JobState = JobState.queued
+    state: JobState = JobState.validating
     progress: int = 0
     message: str = "等待处理"
     source_label: str = "未命名任务"
@@ -27,8 +28,12 @@ class Job:
     transcription_model_id: str | None = None
     enable_polish: bool = False
     polish_model_id: str | None = None
+    polish_profile_id: str | None = None
+    polish_profile_label: str | None = None
+    polish_custom_instruction: str | None = None
     model_label: str = "large-v3"
     formats: list[OutputFormat] = field(default_factory=list)
+    export_scope: ExportScope = ExportScope.both
     include_timestamps: bool = True
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     cancel_requested: bool = False
@@ -36,7 +41,14 @@ class Job:
     warnings: list[str] = field(default_factory=list)
     events: list[JobEvent] = field(default_factory=list)
     error: str | None = None
+    error_diagnostic: ErrorDiagnostic | None = None
     work_dir: Path | None = None
+    base_name: str = "transcript"
+    raw_segments: list[TranscriptSegment] = field(default_factory=list)
+    polished_segments: list[TranscriptSegment] = field(default_factory=list)
+    raw_text: str | None = None
+    polished_text: str | None = None
+    duration_seconds: float | None = None
 
 
 class JobStore:
@@ -62,6 +74,11 @@ class JobStore:
         transcription_model_id: str | None = None,
         enable_polish: bool = False,
         polish_model_id: str | None = None,
+        polish_profile_id: str | None = None,
+        polish_profile_label: str | None = None,
+        polish_custom_instruction: str | None = None,
+        export_scope: ExportScope = ExportScope.both,
+        base_name: str = "transcript",
     ) -> Job:
         job = Job(
             id=job_id,
@@ -77,11 +94,19 @@ class JobStore:
             transcription_model_id=transcription_model_id,
             enable_polish=enable_polish,
             polish_model_id=polish_model_id,
+            polish_profile_id=polish_profile_id,
+            polish_profile_label=polish_profile_label,
+            polish_custom_instruction=polish_custom_instruction,
             model_label=model_label,
             formats=formats,
+            export_scope=export_scope,
             include_timestamps=include_timestamps,
+            base_name=base_name,
         )
+        terminal = {JobState.completed, JobState.failed, JobState.cancelled}
         with self._lock:
+            if any(existing.state not in terminal for existing in self._jobs.values()):
+                raise ValueError("已有任务正在处理。请先等待完成或取消当前任务。")
             self._jobs[job_id] = job
         return job
 
@@ -106,15 +131,20 @@ class JobStore:
         with self._lock:
             return sorted(self._jobs.values(), key=lambda job: job.created_at, reverse=True)
 
+    def has_active_job(self) -> bool:
+        terminal = {JobState.completed, JobState.failed, JobState.cancelled}
+        with self._lock:
+            return any(job.state not in terminal for job in self._jobs.values())
+
     def request_cancel(self, job_id: str) -> Job:
         with self._lock:
             job = self._jobs[job_id]
             job.cancel_requested = True
-            if job.state == JobState.queued:
+            if job.state == JobState.validating:
                 job.message = "已取消排队任务"
             else:
                 job.message = "正在停止任务"
-            job.state = JobState.canceled
+            job.state = JobState.cancelled
             job.progress = 100
             return job
 

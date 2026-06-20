@@ -105,6 +105,16 @@ def model_options() -> list[ModelOption]:
             repo_id=settings.model_definition(model.id).repo_id,
             managed_path=str(settings.managed_model_path_for(model.id)),
             available=resolve_model_path(model.id) is not None,
+            meta={
+                "speed": model.meta.speed,
+                "accuracy": model.meta.accuracy,
+                "resource": model.meta.resource,
+                "recommended_for": list(model.meta.recommended_for),
+                "mac_m4_air_advice": model.meta.mac_m4_air_advice,
+                "default_recommended": model.meta.default_recommended,
+                "positioning": model.meta.positioning,
+                "description": model.meta.description,
+            },
         )
         for model in SUPPORTED_MODELS
     ]

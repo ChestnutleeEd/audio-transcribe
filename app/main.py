@@ -13,8 +13,12 @@ from fastapi.staticfiles import StaticFiles
 from app.config import ROOT_DIR, settings
 from app.schemas import (
     AppOptions,
+    ErrorDiagnostic,
+    ExportScope,
+    HealthCheckStatus,
     JobState,
     JobStatus,
+    LocalModelDetectionStatus,
     ModelSelection,
     OllamaModelCheck,
     OllamaPreflightStatus,
@@ -24,9 +28,13 @@ from app.schemas import (
     OptionItem,
     OutputFile,
     OutputFormat,
+    PolishProfile,
+    PolishRequest,
     TranscriptionEngine,
 )
-from app.services.exporters import TranscriptSegment, export_transcript
+from app.services.exporters import TranscriptSegment, export_transcript, segment_text
+from app.services.health import health_check
+from app.services.local_model_detection import detect_local_models
 from app.services.jobs import Job, job_store
 from app.services.media import (
     OperationCanceled,
@@ -55,6 +63,7 @@ from app.services.ollama_model_manager import (
     request_pull_cancel as request_ollama_pull_cancel,
 )
 from app.services.ollama_provider import polish_segments, transcribe_audio_direct
+from app.services.polish_profiles import combine_instruction, get_profile, profile_options
 from app.services.transcriber import transcribe_audio
 
 
@@ -108,6 +117,13 @@ def parse_formats(raw_formats: list[str] | str) -> list[OutputFormat]:
     return formats
 
 
+def parse_export_scope(value: str | None) -> ExportScope:
+    try:
+        return ExportScope(value or ExportScope.both.value)
+    except ValueError:
+        return ExportScope.both
+
+
 def unlink_file(path: Path) -> None:
     if path.exists() and path.is_file():
         path.unlink()
@@ -131,14 +147,23 @@ def build_status(job: Job) -> JobStatus:
         transcription_model_id=job.transcription_model_id,
         enable_polish=job.enable_polish,
         polish_model_id=job.polish_model_id,
+        polish_profile_id=job.polish_profile_id,
+        polish_profile_label=job.polish_profile_label,
+        polish_custom_instruction=job.polish_custom_instruction,
         model_label=job.model_label,
         formats=job.formats,
+        export_scope=job.export_scope,
         include_timestamps=job.include_timestamps,
         created_at=job.created_at,
         outputs=job.outputs,
         warnings=job.warnings,
         events=job.events,
         error=job.error,
+        error_diagnostic=job.error_diagnostic,
+        raw_text=job.raw_text,
+        polished_text=job.polished_text,
+        has_segments=bool(job.raw_segments),
+        duration_seconds=job.duration_seconds,
     )
 
 
@@ -174,6 +199,143 @@ def add_event(job_id: str, message: str, level: str = "info") -> None:
     job_store.add_event(job_id, message, level)
 
 
+def resolve_polish_model_id(model_id: str | None) -> str:
+    candidate = (model_id or "").strip()
+    if not candidate:
+        return settings.ollama_polish_model_definition(None).id
+    known = settings.ollama_polish_model_definition(candidate)
+    if known.id == candidate:
+        return known.id
+    return candidate
+
+
+def terminal_state(state: JobState) -> bool:
+    return state in {JobState.completed, JobState.failed, JobState.cancelled}
+
+
+def diagnose_error(error: str, context: str | None = None) -> ErrorDiagnostic:
+    text = (error or "").strip()
+    lower = text.lower()
+    if "ollama 服务不可用" in text or "connection refused" in lower:
+        return ErrorDiagnostic(
+            code="OLLAMA_NOT_RUNNING",
+            title="Ollama 未运行",
+            message="本地 Ollama 服务不可用，Polish 或 direct audio 无法继续。",
+            action="启动 Ollama 桌面应用，或在终端执行 ollama serve 后重试。",
+            technical_detail=text,
+        )
+    if "未检测到" in text and ("gemma" in lower or "ollama" in lower):
+        return ErrorDiagnostic(
+            code="OLLAMA_MODEL_MISSING",
+            title="Ollama 模型缺失",
+            message="所选 Ollama 模型不在本地模型列表中。",
+            action="切换到已安装模型；如需新增模型，请在应用外手动安装。",
+            technical_detail=text,
+        )
+    if "ffmpeg" in lower:
+        return ErrorDiagnostic(
+            code="FFMPEG_MISSING",
+            title="FFmpeg 不可用",
+            message="音频预处理失败，通常是 FFmpeg 未安装或路径不可用。",
+            action="安装 FFmpeg，或设置 AUDIO_TRANSCRIBE_FFMPEG 指向可执行文件。",
+            technical_detail=text,
+        )
+    if "未检测到模型" in text or "model.bin" in lower:
+        return ErrorDiagnostic(
+            code="WHISPER_MODEL_MISSING",
+            title="Whisper 模型缺失",
+            message="当前 faster-whisper 模型文件不完整或未下载。",
+            action="在页面选择模型并确认下载，或手动把模型文件放入 models/ 对应目录。",
+            technical_detail=text,
+        )
+    if "文件格式" in text or "invalid data" in lower or "音频预处理失败" in text:
+        return ErrorDiagnostic(
+            code="INVALID_AUDIO_FILE",
+            title="音频文件不可处理",
+            message="上传文件可能损坏、格式不支持，或无法被 FFmpeg 解码。",
+            action="换一个音频文件，或先用 FFmpeg/播放器确认文件可正常播放。",
+            technical_detail=text,
+        )
+    if "超时" in text or "timeout" in lower:
+        return ErrorDiagnostic(
+            code="TRANSCRIBE_TIMEOUT",
+            title="处理超时",
+            message="下载、转录或模型调用耗时过长。",
+            action="检查网络和模型运行状态，或先截取较短音频重试。",
+            technical_detail=text,
+        )
+    if "text 为空" in text or "不包含 json" in text or "返回内容" in text:
+        return ErrorDiagnostic(
+            code="POLISH_EMPTY_RESPONSE",
+            title="Polish 返回内容不可用",
+            message="Ollama 返回为空、不是 JSON，或不符合 segments 结构。",
+            action="切换到保守清理 profile 或 gemma3:1b 后重新 Polish。",
+            technical_detail=text,
+        )
+    if context == "cancelled" or "任务已停止" in text:
+        return ErrorDiagnostic(
+            code="TASK_CANCELLED",
+            title="任务已取消",
+            message="当前任务已停止，后续结果会被忽略。",
+            action="需要时重新提交任务。",
+            technical_detail=text,
+        )
+    return ErrorDiagnostic(
+        code="UNKNOWN_ERROR",
+        title="任务失败",
+        message="任务执行过程中发生未分类错误。",
+        action="查看技术细节，确认环境检查通过后重试。",
+        technical_detail=text,
+    )
+
+
+def ensure_not_cancelled(job_id: str) -> None:
+    if is_job_canceled(job_id):
+        raise OperationCanceled("任务已停止")
+
+
+def export_metadata(job: Job) -> dict[str, object]:
+    return {
+        "language": job.language,
+        "transcriptionModel": job.whisper_model_id or job.transcription_model_id or job.model_id,
+        "modelLabel": job.model_label,
+        "enablePolish": job.enable_polish,
+        "polishModel": job.polish_model_id,
+        "polishProfile": job.polish_profile_label,
+        "source": job.source_label,
+        "durationSeconds": job.duration_seconds,
+    }
+
+
+def build_output_files(job_id: str, paths: list[Path]) -> list[OutputFile]:
+    return [
+        OutputFile(
+            name=path.name,
+            format=OutputFormat(path.suffix.lstrip(".")),
+            bytes=path.stat().st_size,
+            download_url=f"/api/jobs/{job_id}/download/{path.name}",
+        )
+        for path in paths
+    ]
+
+
+def regenerate_exports(job_id: str) -> list[OutputFile]:
+    job = job_store.get(job_id)
+    if job is None or job.work_dir is None:
+        return []
+    output_paths = export_transcript(
+        job.work_dir,
+        job.base_name,
+        job.formats,
+        job.raw_segments,
+        job.polished_segments or None,
+        job.include_timestamps,
+        job.export_scope,
+        export_metadata(job),
+    )
+    return build_output_files(job_id, output_paths)
+
+
 def mock_whisper_segments() -> list[TranscriptSegment]:
     return [
         TranscriptSegment(start=0.0, end=2.4, text="这是 mock Whisper 转录的第一段。"),
@@ -196,6 +358,9 @@ def run_job(
     transcription_model_id: str | None,
     enable_polish: bool,
     polish_model_id: str | None,
+    polish_profile_id: str | None,
+    polish_custom_instruction: str | None,
+    export_scope: ExportScope,
 ) -> None:
     job = job_store.get(job_id)
     if job is None or job.work_dir is None:
@@ -207,14 +372,15 @@ def run_job(
         if job.cancel_requested:
             job_store.update(
                 job_id,
-                state=JobState.canceled,
+                state=JobState.cancelled,
                 progress=100,
                 message="已取消排队任务",
+                error_diagnostic=diagnose_error("已取消排队任务", "cancelled"),
                 processing_finished_at=utc_now_iso(),
             )
             return
 
-        job_store.update(job_id, state=JobState.running, progress=8, message="准备音频来源")
+        job_store.update(job_id, state=JobState.validating, progress=8, message="准备音频来源")
         work_dir = job.work_dir
         media_path = source_path
         if media_path is None and source_url:
@@ -229,10 +395,9 @@ def run_job(
         if media_path is None:
             raise ValueError("缺少上传文件或视频链接")
 
-        if is_job_canceled(job_id):
-            raise OperationCanceled("任务已停止")
+        ensure_not_cancelled(job_id)
 
-        job_store.update(job_id, progress=24, message="准备 16k 单声道音频")
+        job_store.update(job_id, state=JobState.preparing_model, progress=24, message="准备 16k 单声道音频")
         wav_path = work_dir / "input_16k.wav"
         if settings.mock_mode:
             add_event(job_id, "mock mode skipped audio normalization")
@@ -240,7 +405,7 @@ def run_job(
             normalize_audio(media_path, wav_path, start_time, end_time, lambda: is_job_canceled(job_id))
 
         if transcription_engine == TranscriptionEngine.whisper:
-            job_store.update(job_id, progress=42, message=f"加载 {model_id} 模型")
+            job_store.update(job_id, state=JobState.preparing_model, progress=42, message=f"加载 {model_id} 模型")
             add_event(job_id, "whisper transcription started")
 
             def update_transcribe_status(stage: str, model_meta: dict[str, str] | None) -> None:
@@ -258,6 +423,7 @@ def run_job(
                         )
                     job_store.update(
                         job_id,
+                        state=JobState.transcribing,
                         progress=50,
                         message="模型已加载，开始转写",
                         model_label=label,
@@ -266,6 +432,7 @@ def run_job(
                     label = loaded_model_label(model_meta)
                     job_store.update(
                         job_id,
+                        state=JobState.transcribing,
                         progress=58,
                         message="正在转写音频",
                         model_label=label,
@@ -280,6 +447,7 @@ def run_job(
                         )
                     job_store.update(
                         job_id,
+                        state=JobState.transcribing,
                         progress=52,
                         message="CUDA 转写进程异常退出，正在切换 CPU 重试",
                         model_label=label,
@@ -288,7 +456,13 @@ def run_job(
             try:
                 if settings.mock_mode:
                     segments = mock_whisper_segments()
-                    job_store.update(job_id, progress=58, message="Mock Whisper 转录完成", model_label=f"{model_id}（mock）")
+                    job_store.update(
+                        job_id,
+                        state=JobState.transcribing,
+                        progress=58,
+                        message="Mock Whisper 转录完成",
+                        model_label=f"{model_id}（mock）",
+                    )
                 else:
                     segments = transcribe_audio(
                         wav_path,
@@ -305,6 +479,7 @@ def run_job(
             active_transcription_model = transcription_model_id or settings.default_ollama_transcription_model_id
             job_store.update(
                 job_id,
+                state=JobState.transcribing,
                 progress=50,
                 message=f"正在使用 {active_transcription_model} 直接转录音频",
                 model_label=f"{active_transcription_model}（Ollama direct audio，实验性）",
@@ -321,6 +496,7 @@ def run_job(
                     progress=100,
                     message=f"Gemma 4 12B direct audio transcription failed: {exc}",
                     error=str(exc),
+                    error_diagnostic=diagnose_error(str(exc)),
                     processing_finished_at=utc_now_iso(),
                 )
                 return
@@ -334,50 +510,84 @@ def run_job(
         if not segments:
             raise RuntimeError("没有识别到可用文本")
 
-        if is_job_canceled(job_id):
-            raise OperationCanceled("任务已停止")
+        ensure_not_cancelled(job_id)
 
+        raw_segments = offset_segments(segments, parse_time_offset(start_time))
+        job_store.update(
+            job_id,
+            raw_segments=raw_segments,
+            raw_text=segment_text(raw_segments, include_timestamps=False),
+            duration_seconds=max((segment.end for segment in raw_segments), default=None),
+        )
+
+        polished_segments: list[TranscriptSegment] | None = None
         if enable_polish:
             active_polish_model = polish_model_id or settings.default_ollama_polish_model_id
+            profile = get_profile(polish_profile_id)
+            profile_instruction = combine_instruction(profile, polish_custom_instruction)
             job_store.update(
                 job_id,
+                state=JobState.polishing,
                 progress=74,
-                message=f"正在使用 {active_polish_model} 整理转录文本",
+                message=f"正在使用 {active_polish_model} 执行 {profile.label}",
+                polish_profile_id=profile.id,
+                polish_profile_label=profile.label,
+                polish_custom_instruction=(polish_custom_instruction or "").strip() or None,
             )
             add_event(job_id, "polish started")
-            polish_result = polish_segments(
-                segments,
-                active_polish_model,
-                on_event=lambda message, level="info": add_event(job_id, message, level),
-                on_warning=lambda warning: append_job_warning(job_id, warning),
-            )
-            segments = polish_result.segments
-            if polish_result.failed_batches:
+            try:
+                polish_result = polish_segments(
+                    raw_segments,
+                    active_polish_model,
+                    profile_instruction,
+                    on_event=lambda message, level="info": add_event(job_id, message, level),
+                    on_warning=lambda warning: append_job_warning(job_id, warning),
+                )
+                polished_segments = polish_result.segments if polish_result.success_batches else None
                 job_store.update(
                     job_id,
-                    progress=80,
-                    message=(
-                        "文本整理部分完成，失败批次已保留原始转录结果"
-                        if polish_result.success_batches
-                        else "文本整理失败，已保留原始转录结果"
-                    ),
+                    polished_segments=polished_segments or [],
+                    polished_text=segment_text(polished_segments, include_timestamps=False) if polished_segments else None,
                 )
-            else:
-                job_store.update(job_id, progress=80, message="文本整理完成")
+                if polish_result.failed_batches:
+                    job_store.update(
+                        job_id,
+                        progress=80,
+                        message=(
+                            "文本整理部分完成，失败批次已保留原始转录结果"
+                            if polish_result.success_batches
+                            else "文本整理失败，已保留原始转录结果"
+                        ),
+                    )
+                else:
+                    job_store.update(job_id, progress=80, message="文本整理完成")
+            except Exception as exc:
+                warning = f"Polish 失败，已保留 raw transcript：{exc}"
+                append_job_warning(job_id, warning)
+                add_event(job_id, warning, "warning")
+                polished_segments = None
+                job_store.update(job_id, polished_segments=[], polished_text=None, progress=80, message=warning)
 
+        ensure_not_cancelled(job_id)
         job_store.update(job_id, progress=82, message="生成转录文件")
-        segments = offset_segments(segments, parse_time_offset(start_time))
-        output_paths = export_transcript(work_dir, base_name, formats, segments, include_timestamps)
+        actual_export_scope = export_scope
+        if export_scope == ExportScope.polished and not polished_segments:
+            actual_export_scope = ExportScope.raw
+            append_job_warning(job_id, "Polished transcript 不可用，本次导出已安全降级为 raw transcript。")
+        output_paths = export_transcript(
+            work_dir,
+            base_name,
+            formats,
+            raw_segments,
+            polished_segments,
+            include_timestamps,
+            actual_export_scope,
+            export_metadata(job_store.get(job_id) or job),
+        )
         add_event(job_id, "export generated")
-        outputs = [
-            OutputFile(
-                name=path.name,
-                format=OutputFormat(path.suffix.lstrip(".")),
-                bytes=path.stat().st_size,
-                download_url=f"/api/jobs/{job_id}/download/{path.name}",
-            )
-            for path in output_paths
-        ]
+        outputs = build_output_files(job_id, output_paths)
+
+        ensure_not_cancelled(job_id)
 
         for temporary in [wav_path]:
             unlink_file(temporary)
@@ -386,7 +596,7 @@ def run_job(
             job_id,
             state=JobState.completed,
             progress=100,
-            message="转录完成，可下载或手动删除转录文件",
+            message="转录完成，可下载、复制或重新执行 Polish",
             outputs=outputs,
             processing_finished_at=utc_now_iso(),
         )
@@ -394,10 +604,11 @@ def run_job(
         add_event(job_id, str(exc), "warning")
         job_store.update(
             job_id,
-            state=JobState.canceled,
+            state=JobState.cancelled,
             progress=100,
             message=str(exc),
             error=None,
+            error_diagnostic=diagnose_error(str(exc), "cancelled"),
             processing_finished_at=utc_now_iso(),
         )
     except Exception as exc:
@@ -408,6 +619,7 @@ def run_job(
             progress=100,
             message="任务失败",
             error=str(exc),
+            error_diagnostic=diagnose_error(str(exc)),
             processing_finished_at=utc_now_iso(),
         )
 
@@ -430,6 +642,8 @@ def options() -> AppOptions:
         formats=[
             OptionItem(value="txt", label="TXT"),
             OptionItem(value="md", label="Markdown"),
+            OptionItem(value="json", label="JSON"),
+            OptionItem(value="srt", label="SRT"),
             OptionItem(value="docx", label="Word"),
         ],
         timestamp_modes=[
@@ -510,6 +724,21 @@ def get_ollama_model_status(model_id: str) -> OllamaModelCheck:
     return check_ollama_model(model_id)
 
 
+@app.get("/api/polish/profiles", response_model=list[PolishProfile])
+def get_polish_profiles() -> list[PolishProfile]:
+    return profile_options()
+
+
+@app.get("/api/local-models/detect", response_model=LocalModelDetectionStatus)
+def get_local_model_detection() -> LocalModelDetectionStatus:
+    return detect_local_models()
+
+
+@app.get("/api/health", response_model=HealthCheckStatus)
+def get_health_check() -> HealthCheckStatus:
+    return health_check()
+
+
 @app.post("/api/jobs", response_model=JobStatus)
 async def create_job(
     file: UploadFile | None = File(default=None),
@@ -524,7 +753,13 @@ async def create_job(
     transcription_model_id: str | None = Form(default=None),
     enable_polish: bool = Form(default=False),
     polish_model_id: str | None = Form(default=None),
+    polish_profile_id: str | None = Form(default=None),
+    polish_custom_instruction: str | None = Form(default=None),
+    export_scope: str = Form(default=ExportScope.both.value),
 ) -> JobStatus:
+    if job_store.has_active_job():
+        raise HTTPException(status_code=409, detail="已有任务正在处理。请先等待完成或取消当前任务。")
+
     has_file = bool(file and file.filename)
     try:
         clean_source_url = normalize_source_url(source_url) if source_url else None
@@ -538,6 +773,11 @@ async def create_job(
         parsed_formats = parse_formats(formats)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    active_export_scope = parse_export_scope(export_scope)
+    if OutputFormat.srt in parsed_formats and not include_timestamps:
+        parsed_formats = [fmt for fmt in parsed_formats if fmt != OutputFormat.srt]
+    if not parsed_formats:
+        raise HTTPException(status_code=400, detail="SRT 需要时间轴；请开启时间轴或选择 TXT / Markdown / JSON。")
 
     active_transcription_engine = TranscriptionEngine(transcription_engine)
     active_whisper_model_id = settings.model_definition(whisper_model_id or current_model_id()).id
@@ -546,7 +786,8 @@ async def create_job(
         if active_transcription_engine == TranscriptionEngine.ollama_audio
         else None
     )
-    active_polish_model_id = settings.ollama_polish_model_definition(polish_model_id).id if enable_polish else None
+    active_polish_model_id = resolve_polish_model_id(polish_model_id) if enable_polish else None
+    active_profile = get_profile(polish_profile_id)
 
     if active_transcription_engine == TranscriptionEngine.ollama_audio:
         check = check_ollama_model(active_transcription_model_id or settings.default_ollama_transcription_model_id)
@@ -560,7 +801,12 @@ async def create_job(
         if not check.service_available:
             raise HTTPException(status_code=503, detail="Ollama 服务不可用，请先启动 Ollama。")
         if not check.available:
-            raise HTTPException(status_code=409, detail=f"未检测到 {check.model_id}，请先下载模型")
+            fallback_id = "gemma3:1b"
+            fallback_check = check_ollama_model(fallback_id) if active_polish_model_id != fallback_id else check
+            if active_polish_model_id != fallback_id and fallback_check.available:
+                active_polish_model_id = fallback_id
+            else:
+                raise HTTPException(status_code=409, detail=f"未检测到 {check.model_id}，请选择已安装模型或在应用外手动安装。")
 
     job_id = uuid4().hex
     work_dir = settings.jobs_dir / job_id
@@ -588,24 +834,32 @@ async def create_job(
         planned_label = f"{planned_model_label(model_id)} + {active_polish_model_id} polish"
     else:
         planned_label = planned_model_label(model_id)
-    job = job_store.create(
-        job_id,
-        work_dir,
-        source_label,
-        clean_source_url,
-        language,
-        start_time,
-        end_time,
-        model_id,
-        planned_label,
-        parsed_formats,
-        include_timestamps,
-        active_transcription_engine,
-        active_whisper_model_id if active_transcription_engine == TranscriptionEngine.whisper else None,
-        active_transcription_model_id,
-        enable_polish,
-        active_polish_model_id,
-    )
+    try:
+        job = job_store.create(
+            job_id,
+            work_dir,
+            source_label,
+            clean_source_url,
+            language,
+            start_time,
+            end_time,
+            model_id,
+            planned_label,
+            parsed_formats,
+            include_timestamps,
+            active_transcription_engine,
+            active_whisper_model_id if active_transcription_engine == TranscriptionEngine.whisper else None,
+            active_transcription_model_id,
+            enable_polish,
+            active_polish_model_id,
+            active_profile.id if enable_polish else None,
+            active_profile.label if enable_polish else None,
+            (polish_custom_instruction or "").strip() if enable_polish else None,
+            active_export_scope,
+            base_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     add_event(job_id, "job created")
     add_event(job_id, "model check started")
     checked_models = [active_transcription_model_id] if active_transcription_engine == TranscriptionEngine.ollama_audio else [model_id]
@@ -628,6 +882,9 @@ async def create_job(
         active_transcription_model_id,
         enable_polish,
         active_polish_model_id,
+        active_profile.id,
+        (polish_custom_instruction or "").strip() if enable_polish else None,
+        active_export_scope,
     )
     return build_status(job)
 
@@ -650,9 +907,93 @@ def cancel_job(job_id: str) -> JobStatus:
     job = job_store.get(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="任务不存在")
-    if job.state in {JobState.completed, JobState.failed, JobState.canceled}:
+    if terminal_state(job.state):
         return build_status(job)
     return build_status(job_store.request_cancel(job_id))
+
+
+@app.post("/api/jobs/{job_id}/polish", response_model=JobStatus)
+def rerun_polish(job_id: str, request: PolishRequest) -> JobStatus:
+    job = job_store.get(job_id)
+    if job is None or job.work_dir is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if not terminal_state(job.state):
+        raise HTTPException(status_code=409, detail="当前任务仍在处理，不能重新执行 Polish。")
+    if not job.raw_segments:
+        raise HTTPException(status_code=409, detail="当前任务没有 raw transcript，不能单独执行 Polish。")
+
+    model_id = resolve_polish_model_id(request.model_id or job.polish_model_id)
+    check = check_ollama_model(model_id)
+    if not check.service_available:
+        raise HTTPException(status_code=503, detail="Ollama 服务不可用，请先启动 Ollama。")
+    if not check.available:
+        fallback = "gemma3:1b" if model_id != "gemma3:1b" else None
+        if fallback and check_ollama_model(fallback).available:
+            model_id = fallback
+            append_job_warning(job_id, f"未检测到 {check.model_id}，已回退到 {fallback}。")
+        else:
+            raise HTTPException(status_code=409, detail=f"未检测到 {check.model_id}，请选择已安装模型或在应用外手动安装。")
+
+    profile = get_profile(request.profile_id or job.polish_profile_id)
+    custom_instruction = (request.custom_instruction or "").strip()
+    profile_instruction = combine_instruction(profile, custom_instruction)
+    job_store.update(
+        job_id,
+        state=JobState.polishing,
+        progress=74,
+        message=f"正在重新执行 {profile.label}",
+        error=None,
+        enable_polish=True,
+        polish_model_id=model_id,
+        polish_profile_id=profile.id,
+        polish_profile_label=profile.label,
+        polish_custom_instruction=custom_instruction or None,
+        export_scope=request.export_scope or job.export_scope,
+        formats=request.formats or job.formats,
+        processing_started_at=utc_now_iso(),
+        processing_finished_at=None,
+    )
+    add_event(job_id, f"polish rerun started: {profile.id}")
+    try:
+        result = polish_segments(
+            job.raw_segments,
+            model_id,
+            profile_instruction,
+            on_event=lambda message, level="info": add_event(job_id, message, level),
+            on_warning=lambda warning: append_job_warning(job_id, warning),
+        )
+        polished = result.segments if result.success_batches else None
+        job_store.update(
+            job_id,
+            polished_segments=polished or [],
+            polished_text=segment_text(polished, include_timestamps=False) if polished else None,
+            progress=82,
+            message="Polish 已完成，正在重新生成导出文件",
+        )
+        outputs = regenerate_exports(job_id)
+        updated = job_store.update(
+            job_id,
+            state=JobState.completed,
+            progress=100,
+            message="Polish 已重新生成",
+            outputs=outputs,
+            processing_finished_at=utc_now_iso(),
+        )
+        return build_status(updated)
+    except Exception as exc:
+        warning = f"Polish 重新执行失败，raw transcript 已保留：{exc}"
+        append_job_warning(job_id, warning)
+        add_event(job_id, warning, "warning")
+        updated = job_store.update(
+            job_id,
+            state=JobState.completed,
+            progress=100,
+            message=warning,
+            error=None,
+            error_diagnostic=diagnose_error(str(exc)),
+            processing_finished_at=utc_now_iso(),
+        )
+        return build_status(updated)
 
 
 @app.get("/api/jobs/{job_id}/download/{filename}")

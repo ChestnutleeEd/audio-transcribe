@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Audio Transcribe</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070707'/%3E%3Cpath d='M18 40V24M28 48V16M38 42V22M48 36V28' stroke='%23d8b15e' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -93,17 +94,60 @@
             <label class="field polish-field" id="polish-field">
               <span>Polish 模型</span>
               <select name="polish_model_id" id="polish-model-select">
-                <option value="gemma4:12b">Gemma 4 12B（默认，高质量）</option>
-                <option value="gemma3:1b">Gemma 3 1B（轻量备用）</option>
+                <option value="gemma4:12b-it-qat">Gemma 4 12B IT QAT — gemma4:12b-it-qat（high quality polish，默认）</option>
+                <option value="gemma3:1b">Gemma 3 1B — gemma3:1b（lightweight polish）</option>
               </select>
             </label>
+            <div class="local-model-tools polish-field" id="local-model-tools">
+              <div class="local-model-actions">
+                <label class="field">
+                  <span>检测到的 provider</span>
+                  <select id="local-provider-select" aria-label="选择检测到的本地模型 provider"></select>
+                </label>
+                <label class="field">
+                  <span>检测到的模型</span>
+                  <select id="local-model-select" aria-label="选择检测到的本地模型"></select>
+                </label>
+              </div>
+              <button class="secondary" type="button" id="local-model-detect-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
+                <span id="local-model-detect-label">检测本地模型</span>
+              </button>
+              <p id="local-model-message">检测只读取本机已存在模型，不会自动下载。</p>
+              <div id="local-model-results" class="local-model-results"></div>
+            </div>
+            <label class="field polish-field" id="polish-profile-field">
+              <span>Polish Profile</span>
+              <select name="polish_profile_id" id="polish-profile-select">
+                <option value="punctuation">标点修复</option>
+              </select>
+              <small id="polish-profile-description">只补标点和自然断句，尽量不改原文。</small>
+            </label>
+            <label class="field polish-field" id="polish-custom-field">
+              <span>追加 Polish 指令</span>
+              <textarea name="polish_custom_instruction" id="polish-custom-instruction" rows="3" placeholder="例如：保留语气词；不要翻译；更适合字幕。"></textarea>
+            </label>
+            <details class="prompt-preview" id="prompt-preview">
+              <summary>Prompt 预览</summary>
+              <pre id="prompt-preview-text"></pre>
+              <button class="secondary" type="button" id="clear-polish-custom-button">清空追加指令</button>
+            </details>
           </section>
 
           <fieldset class="formats">
             <legend>转录文件格式</legend>
             <label><input type="checkbox" name="formats" value="txt" checked /> <span>TXT</span></label>
             <label><input type="checkbox" name="formats" value="md" /> <span>Markdown</span></label>
+            <label><input type="checkbox" name="formats" value="json" /> <span>JSON</span></label>
+            <label><input type="checkbox" name="formats" value="srt" id="srt-format" /> <span>SRT</span></label>
             <label><input type="checkbox" name="formats" value="docx" /> <span>Word</span></label>
+          </fieldset>
+
+          <fieldset class="formats export-scope">
+            <legend>导出内容</legend>
+            <label><input type="radio" name="export_scope" value="both" checked /> <span>Raw + Polished</span></label>
+            <label><input type="radio" name="export_scope" value="raw" /> <span>Raw</span></label>
+            <label><input type="radio" name="export_scope" value="polished" /> <span>Polished</span></label>
           </fieldset>
 
           <details class="advanced">
@@ -127,6 +171,7 @@
         </form>
 
         <aside class="panel monitor" aria-live="polite">
+          <div class="diagnostic-card" id="diagnostic-card" hidden></div>
           <div class="panel-head">
             <div>
               <h2>任务列表</h2>
@@ -139,13 +184,31 @@
 
           <div id="jobs-list" class="jobs-list"></div>
 
+          <div class="model-card history-card">
+            <div>
+              <h3>最近历史</h3>
+              <p id="history-message">最近 5 条结果保存在当前浏览器。</p>
+              <div id="history-list" class="history-list"></div>
+            </div>
+            <div class="model-actions">
+              <button class="secondary model-cancel" type="button" id="history-clear-button">清空历史</button>
+            </div>
+          </div>
+
           <div class="model-card" aria-live="polite">
             <div>
               <h3>Whisper 模型状态</h3>
               <label class="model-selector">
-                <span>选择模型</span>
+                <span class="selector-heading">
+                  选择模型
+                  <button class="info-button" type="button" id="model-info-button" aria-label="查看当前 Whisper 模型说明" title="查看模型说明">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17v-5m0-5h.01"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                  </button>
+                </span>
                 <select id="model-select" aria-label="选择语音转换模型"></select>
               </label>
+              <div class="model-info-popover" id="model-info-popover" hidden></div>
+              <div class="model-description" id="model-description"></div>
               <p id="model-message">正在检测 large-v3 模型</p>
               <div class="model-progress" id="model-progress" aria-hidden="true">
                 <div class="model-progress-track"><span id="model-progress-fill"></span></div>
@@ -177,14 +240,14 @@
               <label class="model-selector">
                 <span>Direct audio 模型</span>
                 <select id="ollama-transcription-model-select" aria-label="选择 Ollama 直转模型">
-                  <option value="gemma4:12b">Gemma 4 12B（实验性）</option>
+                  <option value="gemma4:12b-it-qat">Gemma 4 12B IT QAT — gemma4:12b-it-qat（实验性，direct audio transcription，默认）</option>
                 </select>
               </label>
               <label class="model-selector">
                 <span>模型下载状态</span>
                 <select id="ollama-managed-model-select" aria-label="选择要检查或下载的 Ollama 模型">
-                  <option value="gemma4:12b">Gemma 4 12B</option>
-                  <option value="gemma3:1b">Gemma 3 1B</option>
+                  <option value="gemma4:12b-it-qat">Gemma 4 12B IT QAT — gemma4:12b-it-qat</option>
+                  <option value="gemma3:1b">Gemma 3 1B — gemma3:1b</option>
                 </select>
               </label>
               <div class="model-progress" id="ollama-progress" aria-hidden="true">
@@ -206,6 +269,20 @@
               <button class="secondary model-cancel" type="button" id="ollama-cancel-button">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
                 <span id="ollama-cancel-label">取消下载</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="model-card health-card" aria-live="polite">
+            <div>
+              <h3>环境检查</h3>
+              <p id="health-message">检查 faster-whisper、FFmpeg、Ollama 和本地模型。</p>
+              <div id="health-list" class="health-list"></div>
+            </div>
+            <div class="model-actions">
+              <button class="secondary" type="button" id="health-refresh-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
+                <span id="health-refresh-label">重新检查</span>
               </button>
             </div>
           </div>

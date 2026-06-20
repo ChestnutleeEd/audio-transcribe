@@ -21,10 +21,28 @@ const modelProgressFill = document.querySelector("#model-progress-fill");
 const modelProgressLabel = document.querySelector("#model-progress-label");
 const modelRefreshButton = document.querySelector("#model-refresh-button");
 const modelRefreshLabel = document.querySelector("#model-refresh-label");
+const modelInfoButton = document.querySelector("#model-info-button");
+const modelInfoPopover = document.querySelector("#model-info-popover");
+const modelDescription = document.querySelector("#model-description");
 const mockBanner = document.querySelector("#mock-banner");
 const enablePolishInput = document.querySelector("#enable-polish");
 const polishModelSelect = document.querySelector("#polish-model-select");
 const polishField = document.querySelector("#polish-field");
+const localModelTools = document.querySelector("#local-model-tools");
+const localModelDetectButton = document.querySelector("#local-model-detect-button");
+const localModelDetectLabel = document.querySelector("#local-model-detect-label");
+const localProviderSelect = document.querySelector("#local-provider-select");
+const localModelSelect = document.querySelector("#local-model-select");
+const localModelMessage = document.querySelector("#local-model-message");
+const localModelResults = document.querySelector("#local-model-results");
+const polishProfileField = document.querySelector("#polish-profile-field");
+const polishProfileSelect = document.querySelector("#polish-profile-select");
+const polishProfileDescription = document.querySelector("#polish-profile-description");
+const polishCustomInstruction = document.querySelector("#polish-custom-instruction");
+const clearPolishCustomButton = document.querySelector("#clear-polish-custom-button");
+const promptPreviewText = document.querySelector("#prompt-preview-text");
+const srtFormatInput = document.querySelector("#srt-format");
+const includeTimestampsInput = form.querySelector('input[name="include_timestamps"]');
 const ollamaMessage = document.querySelector("#ollama-message");
 const ollamaServicePill = document.querySelector("#ollama-service-pill");
 const ollamaTranscriptionModelSelect = document.querySelector("#ollama-transcription-model-select");
@@ -38,27 +56,90 @@ const ollamaCancelLabel = document.querySelector("#ollama-cancel-label");
 const ollamaProgress = document.querySelector("#ollama-progress");
 const ollamaProgressFill = document.querySelector("#ollama-progress-fill");
 const ollamaProgressLabel = document.querySelector("#ollama-progress-label");
+const healthMessage = document.querySelector("#health-message");
+const healthList = document.querySelector("#health-list");
+const healthRefreshButton = document.querySelector("#health-refresh-button");
+const healthRefreshLabel = document.querySelector("#health-refresh-label");
+const diagnosticCard = document.querySelector("#diagnostic-card");
+const historyList = document.querySelector("#history-list");
+const historyMessage = document.querySelector("#history-message");
+const historyClearButton = document.querySelector("#history-clear-button");
+
+const HISTORY_KEY = "audio-transcribe:recent-jobs:v1";
+const CUSTOM_INSTRUCTION_KEY = "audio-transcribe:polish-custom-instruction:v1";
+const HISTORY_LIMIT = 5;
+const HISTORY_TEXT_LIMIT = 12000;
 
 let jobsPollTimer = null;
 let modelPollTimer = null;
 let ollamaPollTimer = null;
+let lastModelStatus = null;
 let lastOllamaStatus = null;
+let lastLocalModelDetection = null;
+let lastJobs = [];
+let selectedHistoryJobId = null;
+let polishProfiles = [];
+let submittingJob = false;
 let clipDefaultsReady = false;
 let clipRangeTouched = false;
 
+refreshPolishProfiles();
+loadSavedCustomInstruction();
+renderHistory(loadHistory());
 refreshModelStatus();
 refreshOllamaStatus();
+refreshHealth();
 refreshJobs();
 startJobsPolling();
 updateEngineControls();
 updatePolishControls();
+updateFormatControls();
 
 jobsRefreshButton.addEventListener("click", refreshJobs);
 enablePolishInput.addEventListener("change", updatePolishControls);
+polishProfileSelect.addEventListener("change", () => {
+  updatePolishProfileDescription();
+  updatePromptPreview();
+});
+polishCustomInstruction.addEventListener("input", () => {
+  localStorage.setItem(CUSTOM_INSTRUCTION_KEY, polishCustomInstruction.value);
+  updatePromptPreview();
+});
+clearPolishCustomButton.addEventListener("click", () => {
+  polishCustomInstruction.value = "";
+  localStorage.removeItem(CUSTOM_INSTRUCTION_KEY);
+  updatePromptPreview();
+});
+includeTimestampsInput.addEventListener("change", updateFormatControls);
+historyClearButton.addEventListener("click", () => {
+  if (!window.confirm("清空最近 5 条历史记录？")) return;
+  localStorage.removeItem(HISTORY_KEY);
+  selectedHistoryJobId = null;
+  renderHistory([]);
+});
+healthRefreshButton.addEventListener("click", async () => {
+  healthRefreshButton.disabled = true;
+  healthRefreshLabel.textContent = "检查中";
+  await refreshHealth();
+  healthRefreshButton.disabled = false;
+  healthRefreshLabel.textContent = "重新检查";
+});
 form.querySelectorAll('input[name="transcription_engine"]').forEach((input) => {
   input.addEventListener("change", updateEngineControls);
 });
 ollamaManagedModelSelect.addEventListener("change", refreshSelectedOllamaModel);
+modelInfoButton.addEventListener("click", () => {
+  modelInfoPopover.hidden = !modelInfoPopover.hidden;
+  renderSelectedWhisperModelMeta();
+});
+document.addEventListener("click", (event) => {
+  if (modelInfoPopover.hidden) return;
+  if (modelInfoPopover.contains(event.target) || modelInfoButton.contains(event.target)) return;
+  modelInfoPopover.hidden = true;
+});
+localModelDetectButton.addEventListener("click", refreshLocalModelDetection);
+localProviderSelect.addEventListener("change", renderLocalModelChoices);
+localModelSelect.addEventListener("change", applyDetectedLocalModelSelection);
 
 modelSelect.addEventListener("change", async () => {
   modelSelect.disabled = true;
@@ -75,6 +156,7 @@ modelSelect.addEventListener("change", async () => {
       throw new Error(status.detail || "模型切换失败");
     }
     renderModelStatus(status);
+    modelInfoPopover.hidden = true;
   } catch (error) {
     modelMessage.textContent = `模型切换失败：${error.message}`;
   } finally {
@@ -167,6 +249,10 @@ fileInput.addEventListener("change", () => {
 
 resetButton.addEventListener("click", () => {
   form.reset();
+  loadSavedCustomInstruction();
+  updatePolishControls();
+  updateFormatControls();
+  updatePromptPreview();
   fileLabel.textContent = "选择本地音频或视频";
   clipDefaultsReady = false;
   clipRangeTouched = false;
@@ -183,19 +269,31 @@ endTimeInput.addEventListener("change", () => {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (submittingJob || hasActiveJob()) {
+    showDiagnostic(diagnoseClientError("已有任务正在处理。请先等待完成或取消当前任务。", "TASK_ACTIVE"));
+    return;
+  }
   const ready = await ensureSelectedOllamaModelsReady();
   if (!ready) return;
 
   const data = new FormData(form);
   const selectedFormats = [...form.querySelectorAll('input[name="formats"]:checked')].map((input) => input.value);
+  if (!selectedFormats.length) {
+    showDiagnostic(diagnoseClientError("请至少选择 TXT、Markdown、JSON、SRT 或 Word 中的一种导出格式。", "EXPORT_FORMAT_MISSING"));
+    return;
+  }
   data.set("formats", selectedFormats.join(","));
-  data.set("include_timestamps", form.querySelector('input[name="include_timestamps"]').checked ? "true" : "false");
+  data.set("include_timestamps", includeTimestampsInput.checked ? "true" : "false");
   data.set("transcription_engine", selectedTranscriptionEngine());
   data.set("whisper_model_id", modelSelect.value || "");
-  data.set("transcription_model_id", ollamaTranscriptionModelSelect.value || "gemma4:12b");
+  data.set("transcription_model_id", ollamaTranscriptionModelSelect.value || "gemma4:12b-it-qat");
   data.set("enable_polish", enablePolishInput.checked ? "true" : "false");
+  data.set("export_scope", form.querySelector('input[name="export_scope"]:checked')?.value || "both");
+  data.set("polish_custom_instruction", polishCustomInstruction.value.trim());
   if (!enablePolishInput.checked) {
     data.delete("polish_model_id");
+    data.delete("polish_profile_id");
+    data.delete("polish_custom_instruction");
   }
   if (!clipDefaultsReady && !clipRangeTouched) {
     data.delete("start_time");
@@ -211,6 +309,7 @@ form.addEventListener("submit", async (event) => {
     data.delete("file");
   }
 
+  submittingJob = true;
   submitButton.disabled = true;
   try {
     const response = await fetch("/api/jobs", { method: "POST", body: data });
@@ -219,14 +318,19 @@ form.addEventListener("submit", async (event) => {
       throw new Error(payload.detail || "任务创建失败");
     }
     form.reset();
+    loadSavedCustomInstruction();
+    updatePolishControls();
+    updateFormatControls();
+    updatePromptPreview();
     fileLabel.textContent = "选择本地音频或视频";
     clipDefaultsReady = false;
     clipRangeTouched = false;
     setClipRange("00:00:00", "00:00:00");
     await refreshJobs();
   } catch (error) {
-    window.alert(error.message);
+    showDiagnostic(diagnoseClientError(error.message));
   } finally {
+    submittingJob = false;
     submitButton.disabled = false;
   }
 });
@@ -284,8 +388,11 @@ async function refreshJobs() {
 }
 
 function renderJobs(jobs) {
-  const activeCount = jobs.filter((job) => ["queued", "running"].includes(job.state)).length;
+  lastJobs = jobs;
+  storeCompletedJobs(jobs);
+  const activeCount = jobs.filter((job) => isActiveState(job.state)).length;
   jobSummary.textContent = jobs.length ? `${jobs.length} 个任务，${activeCount} 个进行中或排队` : "等待创建任务";
+  submitButton.disabled = submittingJob || activeCount > 0;
   jobsList.replaceChildren(...jobs.map(renderJob));
   if (!jobs.length) {
     const empty = document.createElement("p");
@@ -295,9 +402,113 @@ function renderJobs(jobs) {
   }
 }
 
+function loadHistory() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed.slice(0, HISTORY_LIMIT) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(items) {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, HISTORY_LIMIT)));
+}
+
+function storeCompletedJobs(jobs) {
+  const completed = jobs.filter((job) => ["completed", "failed", "cancelled"].includes(job.state));
+  if (!completed.length) return;
+  const current = loadHistory();
+  const byId = new Map(current.map((item) => [item.taskId, item]));
+  for (const job of completed) {
+    if (!job.raw_text && !job.polished_text && job.state !== "failed" && job.state !== "cancelled") continue;
+    byId.set(job.id, historySnapshot(job));
+  }
+  const next = [...byId.values()]
+    .sort((a, b) => Date.parse(b.createdAt || "") - Date.parse(a.createdAt || ""))
+    .slice(0, HISTORY_LIMIT);
+  saveHistory(next);
+  renderHistory(next);
+}
+
+function historySnapshot(job) {
+  return {
+    taskId: job.id,
+    fileName: job.source_label || `任务 ${shortId(job.id)}`,
+    createdAt: job.created_at,
+    language: job.language,
+    whisperModel: job.whisper_model_id || job.transcription_model_id || job.model_label,
+    polishProfile: job.polish_profile_label || "",
+    polishModel: job.polish_model_id || "",
+    status: job.state,
+    elapsed: elapsedLabel(job),
+    rawTranscript: limitHistoryText(job.raw_text || ""),
+    polishedTranscript: limitHistoryText(job.polished_text || ""),
+    segments: job.has_segments ? "available" : "none",
+  };
+}
+
+function limitHistoryText(text) {
+  const value = String(text || "");
+  return value.length > HISTORY_TEXT_LIMIT ? value.slice(0, HISTORY_TEXT_LIMIT) : value;
+}
+
+function renderHistory(items) {
+  historyMessage.textContent = items.length ? `${items.length} 条历史，最多保留 ${HISTORY_LIMIT} 条` : `最近 ${HISTORY_LIMIT} 条结果保存在当前浏览器。`;
+  historyList.replaceChildren();
+  if (!items.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty compact-empty";
+    empty.textContent = "暂无历史记录。";
+    historyList.append(empty);
+    return;
+  }
+  for (const item of items) {
+    const button = document.createElement("button");
+    button.className = `history-item${selectedHistoryJobId === item.taskId ? " is-selected" : ""}`;
+    button.type = "button";
+    button.textContent = `${item.fileName} · ${stateLabel(item.status)} · ${item.elapsed}`;
+    button.addEventListener("click", () => {
+      selectedHistoryJobId = item.taskId;
+      renderHistory(loadHistory());
+      showHistorySnapshot(item);
+    });
+    historyList.append(button);
+  }
+}
+
+function showHistorySnapshot(item) {
+  const pseudoJob = {
+    id: item.taskId,
+    source_label: item.fileName,
+    state: item.status,
+    language: item.language,
+    model_label: item.whisperModel,
+    polish_profile_label: item.polishProfile,
+    polish_model_id: item.polishModel,
+    raw_text: item.rawTranscript,
+    polished_text: item.polishedTranscript,
+    events: [],
+    outputs: [],
+    warnings: [],
+    formats: [],
+    include_timestamps: false,
+  };
+  jobsList.prepend(renderJob(pseudoJob));
+}
+
+function hasActiveJob() {
+  return lastJobs.some((job) => isActiveState(job.state));
+}
+
+function isActiveState(state) {
+  return ["validating", "preparing_model", "transcribing", "polishing"].includes(state);
+}
+
 function renderJob(job) {
   const item = document.createElement("article");
   item.className = `job-item state-${job.state}`;
+  item.setAttribute("aria-label", `${stateLabel(job.state)}：${job.source_label || `任务 ${shortId(job.id)}`}`);
 
   const header = document.createElement("div");
   header.className = "job-head";
@@ -323,13 +534,19 @@ function renderJob(job) {
   titleWrap.append(title, meta);
 
   const pill = document.createElement("span");
-  pill.className = "pill";
+  pill.className = `pill state-badge state-${job.state}`;
   pill.textContent = stateLabel(job.state);
   header.append(titleWrap, pill);
 
   const bar = document.createElement("div");
   bar.className = "job-progress";
-  bar.style.setProperty("--progress", Number(job.progress || 0));
+  const progress = Math.max(0, Math.min(100, Number(job.progress || 0)));
+  bar.style.setProperty("--progress", progress);
+  bar.setAttribute("role", "progressbar");
+  bar.setAttribute("aria-label", "任务进度");
+  bar.setAttribute("aria-valuemin", "0");
+  bar.setAttribute("aria-valuemax", "100");
+  bar.setAttribute("aria-valuenow", String(progress));
   const barFill = document.createElement("span");
   bar.append(barFill);
 
@@ -359,13 +576,45 @@ function renderJob(job) {
 
   const actions = document.createElement("div");
   actions.className = "job-actions";
-  if (["queued", "running"].includes(job.state)) {
+  if (isActiveState(job.state)) {
     const stopButton = document.createElement("button");
     stopButton.className = "danger";
     stopButton.type = "button";
     stopButton.textContent = "停止";
     stopButton.addEventListener("click", () => cancelJob(job.id, stopButton));
     actions.append(stopButton);
+  }
+  if (job.raw_text) {
+    const copyRawButton = document.createElement("button");
+    copyRawButton.className = "secondary";
+    copyRawButton.type = "button";
+    copyRawButton.textContent = "复制 Raw";
+    copyRawButton.addEventListener("click", () => copyText(job.raw_text, copyRawButton));
+    actions.append(copyRawButton);
+  }
+  if (job.polished_text) {
+    const copyPolishedButton = document.createElement("button");
+    copyPolishedButton.className = "secondary";
+    copyPolishedButton.type = "button";
+    copyPolishedButton.textContent = "复制 Polished";
+    copyPolishedButton.addEventListener("click", () => copyText(job.polished_text, copyPolishedButton));
+    actions.append(copyPolishedButton);
+  }
+  if (job.raw_text && job.polished_text) {
+    const compareButton = document.createElement("button");
+    compareButton.className = "secondary";
+    compareButton.type = "button";
+    compareButton.textContent = "对比";
+    compareButton.addEventListener("click", () => toggleCompare(item, job, compareButton));
+    actions.append(compareButton);
+  }
+  if (job.raw_text && !isActiveState(job.state)) {
+    const rerunButton = document.createElement("button");
+    rerunButton.className = "secondary";
+    rerunButton.type = "button";
+    rerunButton.textContent = "重新 Polish";
+    rerunButton.addEventListener("click", () => rerunPolish(job.id, rerunButton));
+    actions.append(rerunButton);
   }
 
   const outputs = document.createElement("div");
@@ -384,9 +633,190 @@ function renderJob(job) {
   }
 
   const events = renderJobEvents(job.events || []);
+  const stages = renderStageTimeline(job);
+  const transcripts = renderTranscripts(job);
+  const diagnostic = renderJobDiagnostic(job);
 
-  item.append(header, details, bar, message, warnings, events, actions, outputs);
+  item.append(header, details, bar, message, diagnostic, warnings, stages, transcripts, events, actions, outputs);
   return item;
+}
+
+function renderStageTimeline(job) {
+  const wrap = document.createElement("div");
+  wrap.className = "stage-timeline";
+  const stages = stageRows(job);
+  if (!stages.length) return wrap;
+  for (const stage of stages) {
+    const row = document.createElement("div");
+    row.className = `stage-row stage-${stage.status}`;
+    const label = document.createElement("strong");
+    label.textContent = stage.label;
+    const value = document.createElement("span");
+    value.textContent = stage.duration ? `${stage.statusLabel} · ${stage.duration}` : stage.statusLabel;
+    row.append(label, value);
+    if (stage.slowHint) {
+      const hint = document.createElement("small");
+      hint.textContent = stage.slowHint;
+      row.append(hint);
+    }
+    wrap.append(row);
+  }
+  return wrap;
+}
+
+function stageRows(job) {
+  const events = job.events || [];
+  const createdAt = Date.parse(job.created_at || "");
+  const finishedAt = Date.parse(job.processing_finished_at || "");
+  const now = Date.now();
+  const started = Date.parse(job.processing_started_at || job.created_at || "");
+  const definitions = [
+    { id: "validating", label: "文件校验", start: createdAt, end: eventTime(events, "mock mode skipped audio normalization") || eventTime(events, "whisper transcription started") },
+    { id: "preparing_model", label: "模型准备", start: eventTime(events, "whisper transcription started") || started, end: eventTime(events, "whisper transcription completed") },
+    { id: "transcribing", label: "转录", start: eventTime(events, "whisper transcription started") || eventTime(events, "ollama direct audio started"), end: eventTime(events, "whisper transcription completed") || eventTime(events, "ollama direct audio completed") },
+    { id: "polishing", label: "Polish", start: eventTime(events, "polish started") || eventTime(events, "polish rerun started"), end: eventTime(events, "polish completed") },
+    { id: "exporting", label: "导出准备", start: eventTime(events, "export generated") ? null : eventTime(events, "polish completed"), end: eventTime(events, "export generated") },
+  ];
+  return definitions
+    .filter((stage) => stage.start || stage.end || job.state === stage.id)
+    .map((stage) => {
+      const active = job.state === stage.id;
+      const end = stage.end || (active ? now : Number.isFinite(finishedAt) ? finishedAt : null);
+      const durationSeconds = stage.start && end ? Math.max(0, Math.floor((end - stage.start) / 1000)) : null;
+      const status = active ? "active" : stage.end || terminalJobState(job.state) ? "done" : "pending";
+      return {
+        label: stage.label,
+        status,
+        statusLabel: status === "active" ? "进行中" : status === "done" ? "完成" : "等待",
+        duration: durationSeconds === null ? "" : formatElapsed(durationSeconds),
+        slowHint: active && durationSeconds !== null && durationSeconds > 180 ? "该阶段耗时较长，请检查模型、硬件或网络状态。" : "",
+      };
+    });
+}
+
+function eventTime(events, pattern) {
+  const found = events.find((event) => String(event.message || "").includes(pattern));
+  const value = Date.parse(found?.time || "");
+  return Number.isFinite(value) ? value : null;
+}
+
+function terminalJobState(state) {
+  return ["completed", "failed", "cancelled"].includes(state);
+}
+
+function renderJobDiagnostic(job) {
+  const wrap = document.createElement("div");
+  if (!job.error_diagnostic && !job.error) return wrap;
+  const diagnostic = job.error_diagnostic || diagnoseClientError(job.error);
+  wrap.className = "job-diagnostic";
+  const title = document.createElement("strong");
+  title.textContent = diagnostic.title || "任务失败";
+  const message = document.createElement("p");
+  message.textContent = diagnostic.message || job.error || "";
+  const action = document.createElement("p");
+  action.className = "diagnostic-action";
+  action.textContent = diagnostic.action || "检查环境后重试。";
+  wrap.append(title, message, action);
+  if (diagnostic.technical_detail) {
+    const detail = document.createElement("details");
+    const summary = document.createElement("summary");
+    summary.textContent = "技术细节";
+    const pre = document.createElement("pre");
+    pre.textContent = diagnostic.technical_detail;
+    detail.append(summary, pre);
+    wrap.append(detail);
+  }
+  return wrap;
+}
+
+function toggleCompare(item, job, button) {
+  const existing = item.querySelector(".compare-view");
+  if (existing) {
+    existing.remove();
+    button.textContent = "对比";
+    return;
+  }
+  item.insertBefore(renderCompareView(job), item.querySelector(".job-events"));
+  button.textContent = "收起对比";
+}
+
+function renderCompareView(job) {
+  const wrap = document.createElement("section");
+  wrap.className = "compare-view";
+  const heading = document.createElement("h4");
+  heading.textContent = `Polish 对比 · ${job.polish_profile_label || "未记录 profile"} · ${job.polish_model_id || "未记录模型"}`;
+  wrap.append(heading);
+  const rows = compareParagraphs(job.raw_text || "", job.polished_text || "");
+  if (differenceRatio(job.raw_text || "", job.polished_text || "") > 0.55) {
+    const warning = document.createElement("div");
+    warning.className = "job-warning";
+    warning.textContent = "Raw 和 Polished 差异较大，建议使用“保守清理”重新 Polish。";
+    wrap.append(warning);
+  }
+  const grid = document.createElement("div");
+  grid.className = "compare-grid";
+  for (const row of rows) {
+    const raw = document.createElement("pre");
+    raw.textContent = row.raw;
+    raw.dataset.changed = row.changed ? "true" : "false";
+    const polished = document.createElement("pre");
+    polished.textContent = row.polished;
+    polished.dataset.changed = row.changed ? "true" : "false";
+    grid.append(raw, polished);
+  }
+  wrap.append(grid);
+  return wrap;
+}
+
+function compareParagraphs(rawText, polishedText) {
+  const rawParts = splitParagraphs(rawText);
+  const polishedParts = splitParagraphs(polishedText);
+  const length = Math.max(rawParts.length, polishedParts.length);
+  return Array.from({ length }, (_, index) => {
+    const raw = rawParts[index] || "";
+    const polished = polishedParts[index] || "";
+    return { raw, polished, changed: raw.trim() !== polished.trim() };
+  });
+}
+
+function splitParagraphs(text) {
+  return String(text || "")
+    .split(/\n{2,}/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 30);
+}
+
+function differenceRatio(rawText, polishedText) {
+  const raw = String(rawText || "");
+  const polished = String(polishedText || "");
+  const maxLength = Math.max(raw.length, polished.length, 1);
+  return Math.abs(raw.length - polished.length) / maxLength;
+}
+
+function renderTranscripts(job) {
+  const wrap = document.createElement("div");
+  wrap.className = "transcripts";
+  if (!job.raw_text && !job.polished_text) return wrap;
+
+  if (job.raw_text) {
+    wrap.append(renderTranscriptBlock("Raw transcript", job.raw_text));
+  }
+  if (job.polished_text) {
+    wrap.append(renderTranscriptBlock("Polished transcript", job.polished_text));
+  }
+  return wrap;
+}
+
+function renderTranscriptBlock(title, text) {
+  const block = document.createElement("section");
+  block.className = "transcript-block";
+  const heading = document.createElement("h4");
+  heading.textContent = title;
+  const body = document.createElement("pre");
+  body.textContent = truncateText(text, 1800);
+  block.append(heading, body);
+  return block;
 }
 
 function renderJobEvents(events) {
@@ -450,26 +880,173 @@ async function cancelJob(jobId, button) {
       button.textContent = "停止";
     }
     const payload = await response.json().catch(() => ({}));
-    window.alert(payload.detail || "停止任务失败");
+    showDiagnostic(diagnoseClientError(payload.detail || "停止任务失败", "TASK_CANCELLED"));
     return;
   }
   await refreshJobs();
 }
 
+async function rerunPolish(jobId, button) {
+  if (!enablePolishInput.checked) {
+    enablePolishInput.checked = true;
+    updatePolishControls();
+  }
+  button.disabled = true;
+  button.textContent = "Polish 中";
+  try {
+    const response = await fetch(`/api/jobs/${jobId}/polish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model_id: polishModelSelect.value || "gemma4:12b-it-qat",
+        profile_id: polishProfileSelect.value || "punctuation",
+        custom_instruction: polishCustomInstruction.value.trim(),
+        export_scope: form.querySelector('input[name="export_scope"]:checked')?.value || "both",
+        formats: [...form.querySelectorAll('input[name="formats"]:checked')].map((input) => input.value),
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "重新 Polish 失败");
+    }
+    await refreshJobs();
+  } catch (error) {
+    showDiagnostic(diagnoseClientError(error.message));
+  } finally {
+    button.disabled = false;
+    button.textContent = "重新 Polish";
+  }
+}
+
+async function copyText(text, button) {
+  try {
+    await navigator.clipboard.writeText(text || "");
+    const previous = button.textContent;
+    button.textContent = "已复制";
+    setTimeout(() => {
+      button.textContent = previous;
+    }, 1200);
+  } catch (error) {
+    showDiagnostic(diagnoseClientError(`复制失败：${error.message}`));
+  }
+}
+
 async function deleteOutput(jobId, fileName) {
   const approved = window.confirm(`删除转录文件 ${fileName}？`);
   if (!approved) return;
-  await fetch(`/api/jobs/${jobId}/outputs/${encodeURIComponent(fileName)}`, { method: "DELETE" });
+  const response = await fetch(`/api/jobs/${jobId}/outputs/${encodeURIComponent(fileName)}`, { method: "DELETE" });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    showDiagnostic(diagnoseClientError(payload.detail || "删除导出文件失败"));
+    return;
+  }
   await refreshJobs();
+}
+
+function showDiagnostic(diagnostic) {
+  diagnosticCard.hidden = false;
+  diagnosticCard.replaceChildren();
+  const title = document.createElement("strong");
+  title.textContent = diagnostic.title || "需要处理";
+  const message = document.createElement("p");
+  message.textContent = diagnostic.message || "";
+  const action = document.createElement("p");
+  action.className = "diagnostic-action";
+  action.textContent = diagnostic.action || "";
+  const close = document.createElement("button");
+  close.className = "secondary";
+  close.type = "button";
+  close.textContent = "关闭";
+  close.addEventListener("click", () => {
+    diagnosticCard.hidden = true;
+  });
+  diagnosticCard.append(title, message, action, close);
+  if (diagnostic.technical_detail) {
+    const detail = document.createElement("details");
+    const summary = document.createElement("summary");
+    summary.textContent = "技术细节";
+    const pre = document.createElement("pre");
+    pre.textContent = diagnostic.technical_detail;
+    detail.append(summary, pre);
+    diagnosticCard.append(detail);
+  }
+}
+
+function diagnoseClientError(message, codeHint) {
+  const text = String(message || "");
+  const lower = text.toLowerCase();
+  if (codeHint === "TASK_ACTIVE") {
+    return {
+      code: "TASK_ACTIVE",
+      title: "已有任务正在处理",
+      message: text,
+      action: "等待任务完成，或先取消当前任务。",
+      technical_detail: text,
+    };
+  }
+  if (codeHint === "EXPORT_FORMAT_MISSING") {
+    return {
+      code: "EXPORT_FORMAT_MISSING",
+      title: "未选择导出格式",
+      message: text,
+      action: "至少选择 TXT、Markdown、JSON、SRT 或 Word 中的一种。",
+      technical_detail: text,
+    };
+  }
+  if (text.includes("Ollama 服务不可用") || lower.includes("failed to fetch")) {
+    return {
+      code: "OLLAMA_NOT_RUNNING",
+      title: "Ollama 未运行",
+      message: "本地 Ollama 服务不可用。",
+      action: "启动 Ollama 桌面应用，或执行 ollama serve 后重试。",
+      technical_detail: text,
+    };
+  }
+  if (text.includes("未检测到") && (lower.includes("gemma") || lower.includes("ollama"))) {
+    return {
+      code: "OLLAMA_MODEL_MISSING",
+      title: "Ollama 模型缺失",
+      message: "所选 Ollama 模型不在本地模型列表中。",
+      action: "切换到已安装模型；如需新增模型，请在应用外手动安装。",
+      technical_detail: text,
+    };
+  }
+  if (lower.includes("ffmpeg")) {
+    return {
+      code: "FFMPEG_MISSING",
+      title: "FFmpeg 不可用",
+      message: "音频预处理无法继续。",
+      action: "安装 FFmpeg，或设置 AUDIO_TRANSCRIBE_FFMPEG。",
+      technical_detail: text,
+    };
+  }
+  if (text.includes("任务已停止")) {
+    return {
+      code: "TASK_CANCELLED",
+      title: "任务已取消",
+      message: "当前任务已停止。",
+      action: "需要时重新提交任务。",
+      technical_detail: text,
+    };
+  }
+  return {
+    code: "UNKNOWN_ERROR",
+    title: "操作失败",
+    message: text || "请求未完成。",
+    action: "查看技术细节，确认环境检查通过后重试。",
+    technical_detail: text,
+  };
 }
 
 function stateLabel(state) {
   return {
-    queued: "排队中",
-    running: "处理中",
+    validating: "校验中",
+    preparing_model: "准备模型",
+    transcribing: "转录中",
+    polishing: "Polish 中",
     completed: "已完成",
     failed: "失败",
-    canceled: "已停止",
+    cancelled: "已取消",
   }[state] || state;
 }
 
@@ -551,7 +1128,14 @@ function formatLabel(format) {
     docx: "Word",
     txt: "TXT",
     md: "Markdown",
+    json: "JSON",
+    srt: "SRT",
   }[format] || format;
+}
+
+function truncateText(text, limit) {
+  const value = String(text || "");
+  return value.length > limit ? `${value.slice(0, limit)}\n...` : value;
 }
 
 function formatBytes(bytes) {
@@ -576,16 +1160,117 @@ function updateEngineControls() {
 
 function updatePolishControls() {
   polishField.hidden = !enablePolishInput.checked;
+  localModelTools.hidden = !enablePolishInput.checked;
+  polishProfileField.hidden = !enablePolishInput.checked;
+  document.querySelector("#polish-custom-field").hidden = !enablePolishInput.checked;
+  document.querySelector("#prompt-preview").hidden = !enablePolishInput.checked;
   polishModelSelect.disabled = !enablePolishInput.checked;
+  localProviderSelect.disabled = !enablePolishInput.checked;
+  localModelSelect.disabled = !enablePolishInput.checked;
+  localModelDetectButton.disabled = !enablePolishInput.checked;
+  polishProfileSelect.disabled = !enablePolishInput.checked;
+  polishCustomInstruction.disabled = !enablePolishInput.checked;
+  updatePromptPreview();
+}
+
+function updateFormatControls() {
+  if (!srtFormatInput) return;
+  const enabled = includeTimestampsInput.checked;
+  srtFormatInput.disabled = !enabled;
+  if (!enabled) {
+    srtFormatInput.checked = false;
+  }
+  const label = srtFormatInput.closest("label");
+  if (label) {
+    label.title = enabled ? "包含时间戳 segments 时可导出字幕" : "SRT 需要开启时间轴";
+    label.classList.toggle("is-disabled", !enabled);
+  }
+}
+
+async function refreshPolishProfiles() {
+  try {
+    const response = await fetch("/api/polish/profiles");
+    polishProfiles = await response.json();
+    if (!response.ok) throw new Error("Profile 读取失败");
+    polishProfileSelect.replaceChildren(
+      ...polishProfiles.map((profile) => {
+        const option = document.createElement("option");
+        option.value = profile.id;
+        option.textContent = profile.label;
+        return option;
+      }),
+    );
+    updatePolishProfileDescription();
+    updatePromptPreview();
+  } catch {
+    polishProfiles = [];
+  }
+}
+
+function updatePolishProfileDescription() {
+  const selected = polishProfiles.find((profile) => profile.id === polishProfileSelect.value);
+  polishProfileDescription.textContent = selected?.description || "选择后处理策略。";
+}
+
+function updatePromptPreview() {
+  const selected = polishProfiles.find((profile) => profile.id === polishProfileSelect.value);
+  const base = selected?.prompt_preview || selected?.description || "读取 profile 后显示基础指令。";
+  const custom = polishCustomInstruction.value.trim();
+  promptPreviewText.textContent = custom ? `${base}\n追加用户指令：${custom}` : base;
+}
+
+function loadSavedCustomInstruction() {
+  polishCustomInstruction.value = localStorage.getItem(CUSTOM_INSTRUCTION_KEY) || "";
+}
+
+async function refreshHealth() {
+  try {
+    const response = await fetch("/api/health");
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "环境检查失败");
+    renderHealth(payload);
+    return payload;
+  } catch (error) {
+    healthMessage.textContent = `环境检查失败：${error.message}`;
+    return null;
+  }
+}
+
+function renderHealth(payload) {
+  const items = payload.items || [];
+  const errorCount = items.filter((item) => item.status === "error").length;
+  const warningCount = items.filter((item) => item.status === "warning").length;
+  healthMessage.textContent = errorCount
+    ? `${errorCount} 项错误，${warningCount} 项警告`
+    : warningCount
+      ? `${warningCount} 项需要确认`
+      : "环境检查通过";
+  healthList.replaceChildren(...items.map(renderHealthItem));
+}
+
+function renderHealthItem(item) {
+  const row = document.createElement("div");
+  row.className = `health-item health-${item.status}`;
+  const title = document.createElement("strong");
+  title.textContent = item.label;
+  const message = document.createElement("span");
+  message.textContent = item.message;
+  row.append(title, message);
+  if (item.suggestion) {
+    const suggestion = document.createElement("small");
+    suggestion.textContent = item.suggestion;
+    row.append(suggestion);
+  }
+  return row;
 }
 
 async function ensureSelectedOllamaModelsReady() {
   const required = [];
   if (selectedTranscriptionEngine() === "ollama_audio") {
-    required.push({ modelId: ollamaTranscriptionModelSelect.value || "gemma4:12b", task: "direct_audio" });
+    required.push({ modelId: ollamaTranscriptionModelSelect.value || "gemma4:12b-it-qat", task: "direct_audio" });
   }
   if (enablePolishInput.checked) {
-    required.push({ modelId: polishModelSelect.value || "gemma4:12b", task: "polish" });
+    required.push({ modelId: polishModelSelect.value || "gemma4:12b-it-qat", task: "polish" });
   }
   const uniqueChecks = [];
   const seen = new Set();
@@ -600,25 +1285,28 @@ async function ensureSelectedOllamaModelsReady() {
 
   const status = await refreshOllamaStatus();
   if (!status?.available) {
-    window.alert("Ollama 服务不可用，请先启动 Ollama。");
+    showDiagnostic(diagnoseClientError("Ollama 服务不可用，请先启动 Ollama。"));
     return false;
   }
 
   for (const item of uniqueChecks) {
     const check = await preflightOllamaModel(item.modelId, item.task);
     if (!check.service_available) {
-      window.alert("Ollama 服务不可用，请先启动 Ollama。");
+      showDiagnostic(diagnoseClientError("Ollama 服务不可用，请先启动 Ollama。"));
       return false;
     }
     if (!check.model_exists) {
-      const started = await confirmAndStartOllamaDownload(item.modelId);
-      if (started) {
-        window.alert(`${item.modelId} 下载已开始。请等待下载完成后再提交任务。`);
-      }
+      showDiagnostic({
+        code: "OLLAMA_MODEL_MISSING",
+        title: "Ollama 模型缺失",
+        message: `${item.modelId} 不在本地模型列表中。`,
+        action: "点击“检测本地模型”查看已存在模型，或在应用外手动安装模型。本流程不会自动下载。",
+        technical_detail: check.message || item.modelId,
+      });
       return false;
     }
     if (!check.can_generate) {
-      window.alert(check.error || check.message || `${item.modelId} preflight 未通过`);
+      showDiagnostic(diagnoseClientError(check.error || check.message || `${item.modelId} preflight 未通过`));
       return false;
     }
     if (check.warnings?.length) {
@@ -701,36 +1389,60 @@ function eventTimeLabel(value) {
   });
 }
 
+function formatOllamaModelOption(model, details = []) {
+  const suffix = details.filter(Boolean).join("，");
+  return `${model.label} — ${model.id}${suffix ? `（${suffix}）` : ""}`;
+}
+
 function renderOllamaOptions(status) {
   const transcriptionModels = status.transcription_models || [];
   const polishModels = status.polish_models || [];
+  const configuredIds = new Set([...transcriptionModels, ...polishModels].map((model) => model.id));
+  const localUnmanagedModels = (status.local_models || [])
+    .filter((modelId) => !configuredIds.has(modelId))
+    .map((modelId) => ({
+      id: modelId,
+      label: modelId,
+      role: "local unmanaged model",
+      available: true,
+      unmanaged: true,
+    }));
   if (transcriptionModels.length) {
     ollamaTranscriptionModelSelect.replaceChildren(
       ...transcriptionModels.map((model) => {
         const option = document.createElement("option");
         option.value = model.id;
-        option.textContent = `${model.label}（实验性 direct audio${model.available ? "，已存在" : ""}）`;
+        option.textContent = formatOllamaModelOption(model, [
+          model.experimental ? "实验性" : "",
+          model.role,
+          model.default ? "默认" : "",
+          model.available ? "已存在" : "",
+        ]);
         return option;
       }),
     );
   }
 
   if (polishModels.length) {
-    const currentPolishModel = polishModelSelect.value || "gemma4:12b";
+    const currentPolishModel = polishModelSelect.value || "gemma4:12b-it-qat";
     polishModelSelect.replaceChildren(
       ...polishModels.map((model) => {
         const option = document.createElement("option");
         option.value = model.id;
-        option.textContent = `${model.label}（${model.role}${model.default ? "，默认" : ""}${model.available ? "，已存在" : ""}）`;
+        option.textContent = formatOllamaModelOption(model, [
+          model.role,
+          model.default ? "默认" : "",
+          model.available ? "已存在" : "",
+        ]);
         return option;
       }),
     );
     polishModelSelect.value = [...polishModelSelect.options].some((option) => option.value === currentPolishModel)
       ? currentPolishModel
-      : polishModels[0]?.id || "gemma4:12b";
+      : polishModels[0]?.id || "gemma4:12b-it-qat";
   }
 
-  const combined = [...transcriptionModels, ...polishModels];
+  const combined = [...transcriptionModels, ...polishModels, ...localUnmanagedModels];
   const seen = new Set();
   const options = [];
   for (const model of combined) {
@@ -738,7 +1450,11 @@ function renderOllamaOptions(status) {
     seen.add(model.id);
     const option = document.createElement("option");
     option.value = model.id;
-    option.textContent = `${model.label}${model.experimental ? "（实验性）" : ""}${model.available ? "（已存在）" : ""}`;
+    option.textContent = formatOllamaModelOption(model, [
+      model.experimental ? "实验性" : "",
+      model.unmanaged ? "local unmanaged model" : "",
+      model.available ? "已存在" : "",
+    ]);
     options.push(option);
   }
   if (options.length) {
@@ -750,13 +1466,167 @@ function renderOllamaOptions(status) {
   }
 }
 
+async function refreshLocalModelDetection() {
+  localModelDetectButton.disabled = true;
+  localModelDetectLabel.textContent = "检测中";
+  localModelMessage.textContent = "正在检测 Ollama、LM Studio、llama.cpp server 和 OpenAI-compatible 本地服务";
+  try {
+    const response = await fetch("/api/local-models/detect");
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "本地模型检测失败");
+    renderLocalModelDetection(payload);
+    return payload;
+  } catch (error) {
+    localModelMessage.textContent = `本地模型检测失败：${error.message}`;
+    localModelResults.replaceChildren();
+    return null;
+  } finally {
+    localModelDetectButton.disabled = !enablePolishInput.checked;
+    localModelDetectLabel.textContent = "检测本地模型";
+  }
+}
+
+function renderLocalModelDetection(payload) {
+  lastLocalModelDetection = payload;
+  localModelMessage.textContent = payload.message || "检测完成。本功能不会自动下载模型。";
+  renderLocalProviderChoices();
+  renderLocalModelChoices();
+  const providers = payload.providers || [];
+  localModelResults.replaceChildren(...providers.map(renderLocalProviderResult));
+  if (!providers.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty compact-empty";
+    empty.textContent = "未检测到本地模型服务。请确认 Ollama / LM Studio / llama.cpp server 是否已启动。本功能不会自动下载模型。";
+    localModelResults.append(empty);
+  }
+}
+
+function renderLocalProviderChoices() {
+  const providers = lastLocalModelDetection?.providers || [];
+  const onlineProviders = providers.filter((provider) => provider.online);
+  const selectable = onlineProviders.length ? onlineProviders : providers;
+  if (!selectable.length) {
+    localProviderSelect.replaceChildren(new Option("未检测到 provider", ""));
+    localProviderSelect.disabled = true;
+    localModelSelect.replaceChildren(new Option("未检测到模型", ""));
+    localModelSelect.disabled = true;
+    return;
+  }
+  const current = localProviderSelect.value;
+  localProviderSelect.replaceChildren(
+    ...selectable.map((provider) => {
+      const label = `${provider.name} · ${provider.online ? "在线" : "离线"} · ${provider.models?.length || 0} 个模型`;
+      return new Option(label, provider.id);
+    }),
+  );
+  localProviderSelect.value = selectable.some((provider) => provider.id === current) ? current : selectable[0].id;
+  localProviderSelect.disabled = !enablePolishInput.checked;
+}
+
+function renderLocalModelChoices() {
+  const provider = selectedLocalProvider();
+  const models = provider?.models || [];
+  if (!provider || !models.length) {
+    localModelSelect.replaceChildren(new Option("未检测到模型", ""));
+    localModelSelect.disabled = true;
+    return;
+  }
+  const current = localModelSelect.value;
+  localModelSelect.replaceChildren(
+    ...models.map((model) => {
+      const state = model.can_polish ? "可用于 Polish" : "仅检测展示";
+      const option = new Option(`${model.name} · ${state}`, model.id);
+      option.dataset.providerId = model.provider_id;
+      option.title = model.recommendation || "";
+      return option;
+    }),
+  );
+  localModelSelect.value = models.some((model) => model.id === current) ? current : models[0].id;
+  localModelSelect.disabled = !enablePolishInput.checked;
+  applyDetectedLocalModelSelection();
+}
+
+function selectedLocalProvider() {
+  const providers = lastLocalModelDetection?.providers || [];
+  return providers.find((provider) => provider.id === localProviderSelect.value);
+}
+
+function selectedLocalModel() {
+  const provider = selectedLocalProvider();
+  return (provider?.models || []).find((model) => model.id === localModelSelect.value);
+}
+
+function applyDetectedLocalModelSelection() {
+  const model = selectedLocalModel();
+  if (!model) return;
+  if (model.provider_type === "ollama" && model.can_polish) {
+    ensurePolishOption(model.id, `${model.name} — ${model.id}（Ollama 本地检测，可用于 Polish）`);
+    polishModelSelect.value = model.id;
+    localModelMessage.textContent = `当前 Polish 使用 Ollama / ${model.id}。检测不会下载模型。`;
+    return;
+  }
+  localModelMessage.textContent = `${model.provider} / ${model.name} 已检测到；当前版本暂未接入该 provider 的 polish 调用。`;
+}
+
+function ensurePolishOption(modelId, label) {
+  if ([...polishModelSelect.options].some((option) => option.value === modelId)) return;
+  const option = document.createElement("option");
+  option.value = modelId;
+  option.textContent = label;
+  polishModelSelect.append(option);
+}
+
+function renderLocalProviderResult(provider) {
+  const card = document.createElement("section");
+  card.className = `local-provider-result ${provider.online ? "is-online" : "is-offline"}`;
+  const heading = document.createElement("div");
+  heading.className = "local-provider-head";
+  const title = document.createElement("strong");
+  title.textContent = provider.name;
+  const pill = document.createElement("span");
+  pill.className = "pill";
+  pill.textContent = provider.online ? "在线" : "离线";
+  heading.append(title, pill);
+  const message = document.createElement("p");
+  message.textContent = `${provider.message} ${provider.can_polish ? "可用于当前 polish。" : "当前仅检测展示。"}`;
+  const url = document.createElement("small");
+  url.textContent = provider.url;
+  card.append(heading, message, url);
+  if (provider.error) {
+    const error = document.createElement("small");
+    error.className = "provider-error";
+    error.textContent = provider.error;
+    card.append(error);
+  }
+  const models = provider.models || [];
+  if (models.length) {
+    const list = document.createElement("div");
+    list.className = "local-model-list";
+    for (const model of models) {
+      const row = document.createElement("div");
+      row.className = "local-model-row";
+      const name = document.createElement("strong");
+      name.textContent = model.name;
+      const meta = document.createElement("span");
+      const details = [model.size_label, model.modified_at, model.can_polish ? "可用于 polish" : "仅检测展示"].filter(Boolean);
+      meta.textContent = details.join(" · ");
+      const note = document.createElement("small");
+      note.textContent = model.recommendation || "";
+      row.append(name, meta, note);
+      list.append(row);
+    }
+    card.append(list);
+  }
+  return card;
+}
+
 async function refreshSelectedOllamaModel() {
   const modelId = ollamaManagedModelSelect.value;
   if (!modelId || !lastOllamaStatus) return;
   const option = [...(lastOllamaStatus.transcription_models || []), ...(lastOllamaStatus.polish_models || [])].find(
     (model) => model.id === modelId,
   );
-  const available = Boolean(option?.available);
+  const available = Boolean(option?.available || (lastOllamaStatus.local_models || []).includes(modelId));
   const downloading = await refreshOllamaPullStatus(modelId);
   if (downloading) return;
   ollamaDownloadButton.disabled = !lastOllamaStatus.available || available;
@@ -832,7 +1702,9 @@ function startModelPolling() {
 }
 
 function renderModelStatus(status) {
+  lastModelStatus = status;
   renderModelOptions(status);
+  renderSelectedWhisperModelMeta();
   modelMessage.textContent = status.error || status.message;
   const plannedDevice = (status.configured_device || "unknown").toUpperCase();
   const activeDevice = status.active_device ? status.active_device.toUpperCase() : null;
@@ -884,7 +1756,9 @@ function renderModelOptions(status) {
       ...models.map((model) => {
         const option = document.createElement("option");
         option.value = model.id;
-        option.textContent = model.available ? `${model.label}（已存在）` : model.label;
+        const defaultLabel = model.meta?.default_recommended ? "，推荐默认" : "";
+        option.textContent = model.available ? `${model.label}（已存在${defaultLabel}）` : `${model.label}${defaultLabel ? "（推荐默认）" : ""}`;
+        option.title = model.meta ? `${model.meta.positioning}；${model.meta.description}` : model.label;
         return option;
       }),
     );
@@ -892,10 +1766,68 @@ function renderModelOptions(status) {
     for (const option of modelSelect.options) {
       const model = models.find((item) => item.id === option.value);
       if (model) {
-        option.textContent = model.available ? `${model.label}（已存在）` : model.label;
+        const defaultLabel = model.meta?.default_recommended ? "，推荐默认" : "";
+        option.textContent = model.available ? `${model.label}（已存在${defaultLabel}）` : `${model.label}${defaultLabel ? "（推荐默认）" : ""}`;
+        option.title = model.meta ? `${model.meta.positioning}；${model.meta.description}` : model.label;
       }
     }
   }
 
   modelSelect.value = status.selected_model;
+}
+
+function selectedWhisperModel() {
+  const models = lastModelStatus?.models || [];
+  return models.find((model) => model.id === modelSelect.value) || models.find((model) => model.id === lastModelStatus?.selected_model);
+}
+
+function renderSelectedWhisperModelMeta() {
+  const model = selectedWhisperModel();
+  const meta = model?.meta;
+  if (!model || !meta) {
+    modelDescription.textContent = "";
+    modelInfoPopover.replaceChildren();
+    return;
+  }
+  modelDescription.replaceChildren(renderWhisperSummary(model, meta));
+  modelInfoPopover.replaceChildren(renderWhisperDetail(model, meta));
+}
+
+function renderWhisperSummary(model, meta) {
+  const wrap = document.createElement("div");
+  wrap.className = "model-summary";
+  const title = document.createElement("strong");
+  title.textContent = `${model.label} · ${meta.positioning}`;
+  const text = document.createElement("span");
+  text.textContent = `速度：${meta.speed}；准确率：${meta.accuracy}；资源：${meta.resource}。${meta.mac_m4_air_advice}`;
+  wrap.append(title, text);
+  return wrap;
+}
+
+function renderWhisperDetail(model, meta) {
+  const wrap = document.createElement("div");
+  wrap.className = "model-info-card";
+  const title = document.createElement("strong");
+  title.textContent = `${model.label} 说明`;
+  const description = document.createElement("p");
+  description.textContent = meta.description;
+  const rows = [
+    ["模型定位", meta.positioning],
+    ["速度", meta.speed],
+    ["准确率", meta.accuracy],
+    ["资源占用", meta.resource],
+    ["推荐场景", (meta.recommended_for || []).join(" / ")],
+    ["M 系列 MacBook Air 16GB", meta.mac_m4_air_advice],
+    ["默认推荐", meta.default_recommended ? "推荐作为默认模型" : "不推荐作为默认模型"],
+  ];
+  const grid = document.createElement("dl");
+  for (const [label, value] of rows) {
+    const dt = document.createElement("dt");
+    dt.textContent = label;
+    const dd = document.createElement("dd");
+    dd.textContent = value || "-";
+    grid.append(dt, dd);
+  }
+  wrap.append(title, description, grid);
+  return wrap;
 }
