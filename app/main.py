@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -23,6 +23,7 @@ from app.schemas import (
     AudioModelTestRequest,
     AudioModelTestResult,
     CustomModelRegistration,
+    ModelCapabilities,
     ModelRegistryStatus,
     ModelSelection,
     OllamaModelCheck,
@@ -874,13 +875,23 @@ def probe_model(request: CustomModelRegistration) -> UnifiedModel:
     return probe_custom_model(request)
 
 
-@app.get("/api/models/register")
-def register_model_get_hint():
-    raise HTTPException(status_code=400, detail="注册 custom model 请使用 POST /api/models/register")
-
-
-@app.post("/api/models/register", response_model=UnifiedModel)
-def register_model(request: CustomModelRegistration) -> UnifiedModel:
+@app.api_route("/api/models/register", methods=["GET", "POST"], response_model=UnifiedModel)
+def register_model(
+    http_request: Request,
+    request: CustomModelRegistration | None = Body(default=None),
+    provider: str = Query(default="custom"),
+    path_or_id: str = Query(default=""),
+    audio: bool = Query(default=False),
+    text: bool = Query(default=False),
+) -> UnifiedModel:
+    if http_request.method == "GET":
+        request = CustomModelRegistration(
+            provider=provider,  # type: ignore[arg-type]
+            path_or_id=path_or_id,
+            capabilities=ModelCapabilities(audio=audio, text=text),
+        )
+    if request is None:
+        raise HTTPException(status_code=400, detail="请使用 JSON body 或 query 参数提交模型注册信息")
     path_or_id = request.path_or_id.strip()
     if not path_or_id:
         raise HTTPException(status_code=400, detail="请填写模型路径或模型 ID")

@@ -782,13 +782,7 @@ async function registerCustomModel() {
   addCustomModelButton.disabled = true;
   customModelMessage.textContent = "正在注册 custom model";
   try {
-    const response = await fetch("/api/models/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(customModelPayload(pathOrId)),
-    });
-    const payload = await readJsonResponse(response);
-    if (!response.ok) throw new Error(payload.detail || "custom model 注册失败");
+    const payload = await postCustomModelRegistration(pathOrId);
     customModelMessage.textContent = `已注册：${payload.name || payload.path_or_id}`;
     await refreshModelRegistry({
       audioModelId: payload.capabilities?.audio ? payload.id : "",
@@ -804,6 +798,31 @@ async function registerCustomModel() {
   } finally {
     addCustomModelButton.disabled = false;
   }
+}
+
+async function postCustomModelRegistration(pathOrId) {
+  const modelPayload = customModelPayload(pathOrId);
+  const response = await fetch("/api/models/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(modelPayload),
+  });
+  let payload = await readJsonResponse(response);
+  if (response.status !== 405) {
+    if (!response.ok) throw new Error(payload.detail || "custom model 注册失败");
+    return payload;
+  }
+
+  const params = new URLSearchParams({
+    provider: modelPayload.provider,
+    path_or_id: modelPayload.path_or_id,
+    audio: modelPayload.capabilities.audio ? "true" : "false",
+    text: modelPayload.capabilities.text ? "true" : "false",
+  });
+  const retry = await fetch(`/api/models/register?${params.toString()}`, { method: "GET" });
+  payload = await readJsonResponse(retry);
+  if (!retry.ok) throw new Error(payload.detail || "custom model 注册失败");
+  return payload;
 }
 
 function scheduleCustomModelProbe() {
@@ -886,10 +905,8 @@ async function pickDirectoryPath() {
     if (response.ok && payload.path) return payload.path;
     throw new Error(payload.detail || "后端文件夹选择器不可用");
   } catch (backendError) {
-    const webkitPath = await pickDirectoryWithWebkitInput();
-    if (webkitPath) return webkitPath;
     throw new Error(
-      `${backendError.message}；当前浏览器无法提供文件夹绝对路径，请使用桌面启动器或手动粘贴模型目录。`,
+      `${backendError.message}；浏览器文件夹上传无法提供可靠绝对路径，请手动粘贴模型目录。`,
     );
   }
 }
@@ -922,47 +939,6 @@ function directoryPathFromPickerResult(result) {
   if (Array.isArray(result.filePaths)) return result.filePaths[0] || "";
   if (Array.isArray(result.paths)) return result.paths[0] || "";
   return "";
-}
-
-function pickDirectoryWithWebkitInput() {
-  return new Promise((resolve) => {
-    const input = document.createElement("input");
-    let settled = false;
-    const finish = (path) => {
-      if (settled) return;
-      settled = true;
-      window.removeEventListener("focus", handleFocus);
-      input.remove();
-      resolve(path || "");
-    };
-    const handleFocus = () => {
-      setTimeout(() => {
-        if (!input.files?.length) finish("");
-      }, 350);
-    };
-    input.type = "file";
-    input.webkitdirectory = true;
-    input.directory = true;
-    input.multiple = true;
-    input.hidden = true;
-    input.addEventListener(
-      "change",
-      () => {
-        const file = input.files?.[0];
-        const filePath = file?.path || "";
-        const relativePath = file?.webkitRelativePath || "";
-        if (filePath && relativePath) {
-          finish(filePath.slice(0, -relativePath.length).replace(/\/$/, ""));
-          return;
-        }
-        finish("");
-      },
-      { once: true },
-    );
-    window.addEventListener("focus", handleFocus);
-    document.body.append(input);
-    input.click();
-  });
 }
 
 async function readJsonResponse(response) {
