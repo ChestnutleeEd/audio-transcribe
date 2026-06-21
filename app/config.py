@@ -148,6 +148,16 @@ def optional_positive_int_env(name: str) -> int | None:
     return parsed if parsed > 0 else None
 
 
+def qwen_audio_default_model_path_or_repo() -> str:
+    configured = os.getenv("AUDIO_TRANSCRIBE_QWEN_AUDIO_MODEL")
+    if configured:
+        return configured
+    local_default = Path.home() / "models" / "mlx-community" / "Qwen2-Audio-7B-Instruct-4bit"
+    if local_default.exists():
+        return str(local_default)
+    return "mlx-community/Qwen2-Audio-7B-Instruct-4bit"
+
+
 @dataclass(frozen=True)
 class Settings:
     app_name: str = "Audio Transcribe"
@@ -167,7 +177,7 @@ class Settings:
     mlx_whisper_model_path_or_repo: str = os.getenv("AUDIO_TRANSCRIBE_MLX_WHISPER_MODEL", "")
     mlx_whisper_default_model_label: str = os.getenv("AUDIO_TRANSCRIBE_MLX_WHISPER_LABEL", "whisper-large-v3-mlx")
     mlx_whisper_language: str = os.getenv("AUDIO_TRANSCRIBE_MLX_WHISPER_LANGUAGE", "auto")
-    qwen_audio_model_path_or_repo: str = os.getenv("AUDIO_TRANSCRIBE_QWEN_AUDIO_MODEL", "mlx-community/Qwen2-Audio-7B-Instruct-4bit")
+    qwen_audio_model_path_or_repo: str = qwen_audio_default_model_path_or_repo()
     qwen_audio_default_model_label: str = os.getenv("AUDIO_TRANSCRIBE_QWEN_AUDIO_LABEL", "Qwen2-Audio-7B-Instruct-4bit")
     qwen_audio_prompt: str = os.getenv(
         "AUDIO_TRANSCRIBE_QWEN_AUDIO_PROMPT",

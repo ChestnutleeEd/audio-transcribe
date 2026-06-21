@@ -950,7 +950,7 @@ async def create_job(
     include_timestamps: bool = Form(default=True),
     start_time: str | None = Form(default=None),
     end_time: str | None = Form(default=None),
-    transcription_engine: TranscriptionEngine = Form(default=TranscriptionEngine.whisper),
+    transcription_engine: TranscriptionEngine = Form(default=TranscriptionEngine.qwen_audio),
     whisper_model_id: str | None = Form(default=None),
     transcription_model_id: str | None = Form(default=None),
     mlx_model_path_or_repo: str | None = Form(default=None),

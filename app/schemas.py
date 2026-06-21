@@ -70,7 +70,7 @@ class JobStatus(BaseModel):
     end_time: str | None = None
     processing_started_at: str | None = None
     processing_finished_at: str | None = None
-    transcription_engine: TranscriptionEngine = TranscriptionEngine.whisper
+    transcription_engine: TranscriptionEngine = TranscriptionEngine.qwen_audio
     whisper_model_id: str | None = None
     transcription_model_id: str | None = None
     enable_polish: bool = False

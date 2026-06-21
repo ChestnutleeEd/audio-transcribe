@@ -23,7 +23,7 @@ class Job:
     processing_started_at: str | None = None
     processing_finished_at: str | None = None
     model_id: str = "large-v3"
-    transcription_engine: TranscriptionEngine = TranscriptionEngine.whisper
+    transcription_engine: TranscriptionEngine = TranscriptionEngine.qwen_audio
     whisper_model_id: str | None = None
     transcription_model_id: str | None = None
     enable_polish: bool = False
@@ -70,7 +70,7 @@ class JobStore:
         model_label: str,
         formats: list[OutputFormat],
         include_timestamps: bool,
-        transcription_engine: TranscriptionEngine = TranscriptionEngine.whisper,
+        transcription_engine: TranscriptionEngine = TranscriptionEngine.qwen_audio,
         whisper_model_id: str | None = None,
         transcription_model_id: str | None = None,
         enable_polish: bool = False,
