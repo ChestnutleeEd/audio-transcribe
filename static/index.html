@@ -276,10 +276,14 @@
               <button class="icon-button" type="button" id="jobs-refresh-button" aria-label="刷新任务列表" title="刷新任务列表">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
               </button>
+              <button class="icon-button" type="button" id="jobs-cleanup-button" aria-label="清理过往任务工作文件" title="清理过往任务工作文件">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2m-8 3 1 9h8l1-9"/></svg>
+              </button>
             </div>
           </div>
 
           <div id="jobs-region">
+            <p class="cleanup-status" id="jobs-cleanup-status">正在检查工作文件占用。</p>
             <div id="jobs-list" class="jobs-list"></div>
           </div>
 

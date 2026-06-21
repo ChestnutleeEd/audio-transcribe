@@ -8,6 +8,8 @@ const endTimeInput = form.querySelector('input[name="end_time"]');
 const jobsList = document.querySelector("#jobs-list");
 const jobSummary = document.querySelector("#job-summary");
 const jobsRefreshButton = document.querySelector("#jobs-refresh-button");
+const jobsCleanupButton = document.querySelector("#jobs-cleanup-button");
+const jobsCleanupStatus = document.querySelector("#jobs-cleanup-status");
 const modelSelect = document.querySelector("#model-select");
 const modelMessage = document.querySelector("#model-message");
 const modelDevice = document.querySelector("#model-device");
@@ -114,6 +116,8 @@ const HISTORY_KEY = "audio-transcribe:recent-jobs:v1";
 const CUSTOM_INSTRUCTION_KEY = "audio-transcribe:polish-custom-instruction:v1";
 const PROMPT_OVERRIDES_KEY = "audio-transcribe:polish-prompts:v1";
 const JOBS_COLLAPSED_KEY = "audio-transcribe:jobs-collapsed:v1";
+const JOB_DETAIL_COLLAPSED_KEY = "audio-transcribe:job-detail-collapsed:v1";
+const JOB_COMPARE_EXPANDED_KEY = "audio-transcribe:job-compare-expanded:v1";
 const HISTORY_LIMIT = 5;
 const HISTORY_TEXT_LIMIT = 12000;
 
@@ -134,6 +138,8 @@ let submittingJob = false;
 let clipDefaultsReady = false;
 let clipRangeTouched = false;
 let customModelProbeTimer = null;
+let collapsedJobIds = loadStoredIdSet(JOB_DETAIL_COLLAPSED_KEY);
+let compareExpandedJobIds = loadStoredIdSet(JOB_COMPARE_EXPANDED_KEY);
 
 refreshPolishProfiles();
 loadSavedCustomInstruction();
@@ -146,12 +152,14 @@ refreshQwenStatus();
 refreshOllamaStatus();
 refreshHealth();
 refreshJobs();
+refreshCleanupStatus();
 startJobsPolling();
 updateEngineControls();
 updatePolishControls();
 updateFormatControls();
 
 jobsRefreshButton.addEventListener("click", refreshJobs);
+jobsCleanupButton.addEventListener("click", cleanupJobWorkFiles);
 jobsCollapseButton.addEventListener("click", toggleJobsCollapsed);
 registryRefreshButton.addEventListener("click", refreshModelRegistry);
 audioModelSelect.addEventListener("change", () => {
@@ -531,7 +539,12 @@ function renderPolishModelOptions(models, preferredPath = "") {
   const current = preferredPath || polishModelSelect.value;
   const options = [
     new Option(models.length ? "请选择检测到的 Text 模型" : "未检测到 Text 模型", ""),
-    ...models.map((model) => new Option(modelOptionLabel(model), model.path_or_id)),
+    ...models.map((model) => {
+      const option = new Option(modelOptionLabel(model), model.path_or_id);
+      option.dataset.provider = model.provider;
+      option.dataset.modelId = model.id;
+      return option;
+    }),
   ];
   polishModelSelect.replaceChildren(...options);
   polishModelSelect.value = models.some((model) => model.path_or_id === current) ? current : "";
@@ -544,6 +557,22 @@ function modelOptionLabel(model) {
 function selectedAudioModel() {
   const models = lastModelRegistry?.models || [];
   return models.find((model) => model.id === audioModelSelect.value) || null;
+}
+
+function selectedPolishModel() {
+  const value = polishModelSelect.value;
+  const models = lastModelRegistry?.models || [];
+  const registryModel = models.find((model) => model.path_or_id === value || model.id === value);
+  if (registryModel) return registryModel;
+  if (!value) return null;
+  return {
+    id: value,
+    name: value,
+    provider: polishModelSelect.selectedOptions[0]?.dataset.provider || "ollama",
+    path_or_id: value,
+    capabilities: { text: true },
+    metadata: { status: "available" },
+  };
 }
 
 function selectedAudioMode() {
@@ -1222,6 +1251,61 @@ async function refreshJobs() {
   if (!response.ok) return;
   const jobs = await response.json();
   renderJobs(jobs);
+  refreshCleanupStatus();
+}
+
+async function refreshCleanupStatus() {
+  if (!jobsCleanupStatus || !jobsCleanupButton) return null;
+  try {
+    const response = await fetch("/api/jobs/cleanup/status");
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "工作文件检查失败");
+    renderCleanupStatus(payload);
+    return payload;
+  } catch (error) {
+    jobsCleanupStatus.textContent = `工作文件检查失败：${error.message}`;
+    jobsCleanupButton.disabled = true;
+    return null;
+  }
+}
+
+function renderCleanupStatus(status) {
+  const files = Number(status.files || 0);
+  const bytes = Number(status.bytes || 0);
+  const eligible = Number(status.eligible_jobs || 0);
+  const active = Number(status.active_jobs || 0);
+  jobsCleanupButton.disabled = files <= 0 || active > 0;
+  if (active > 0) {
+    jobsCleanupStatus.textContent = `有 ${active} 个任务正在处理，完成后可清理过往工作文件。`;
+    return;
+  }
+  jobsCleanupStatus.textContent = files
+    ? `可清理 ${eligible} 个过往任务的 ${files} 个工作文件，预计释放 ${formatBytes(bytes)}。`
+    : "没有可清理的过往任务工作文件。";
+}
+
+async function cleanupJobWorkFiles() {
+  const status = await refreshCleanupStatus();
+  if (!status || !Number(status.files || 0)) return;
+  const approved = window.confirm(
+    `清理 ${status.eligible_jobs} 个过往任务的 ${status.files} 个工作文件，预计释放 ${formatBytes(status.bytes)}？\n\n这会删除 data/jobs 下已结束任务的 source、chunk、导出文件等工作文件；运行中的任务不会被删除。`,
+  );
+  if (!approved) return;
+
+  jobsCleanupButton.disabled = true;
+  jobsCleanupStatus.textContent = "正在清理过往任务工作文件。";
+  try {
+    const response = await fetch("/api/jobs/cleanup", { method: "POST" });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "工作文件清理失败");
+    jobsCleanupStatus.textContent = `已清理 ${payload.cleaned_jobs} 个任务目录、${payload.cleaned_files} 个文件，释放 ${formatBytes(payload.cleaned_bytes)}。`;
+    await refreshJobs();
+  } catch (error) {
+    jobsCleanupStatus.textContent = `工作文件清理失败：${error.message}`;
+    showDiagnostic(diagnoseClientError(error.message));
+  } finally {
+    await refreshCleanupStatus();
+  }
 }
 
 function renderJobs(jobs) {
@@ -1398,7 +1482,19 @@ function renderJob(job) {
   const pill = document.createElement("span");
   pill.className = `pill state-badge state-${job.state}`;
   pill.textContent = stateLabel(job.state);
-  header.append(titleWrap, pill);
+  const isCollapsed = collapsedJobIds.has(job.id);
+  const headerActions = document.createElement("div");
+  headerActions.className = "job-head-actions";
+  const toggleButton = document.createElement("button");
+  toggleButton.className = `job-toggle${isCollapsed ? " is-collapsed" : ""}`;
+  toggleButton.type = "button";
+  toggleButton.setAttribute("aria-expanded", String(!isCollapsed));
+  toggleButton.setAttribute("aria-label", isCollapsed ? "展开任务" : "收起任务");
+  toggleButton.title = isCollapsed ? "展开任务" : "收起任务";
+  toggleButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+  toggleButton.addEventListener("click", () => toggleJobCollapsed(job.id));
+  headerActions.append(pill, toggleButton);
+  header.append(titleWrap, headerActions);
 
   const bar = document.createElement("div");
   bar.className = "job-progress";
@@ -1466,8 +1562,9 @@ function renderJob(job) {
     const compareButton = document.createElement("button");
     compareButton.className = "secondary";
     compareButton.type = "button";
-    compareButton.textContent = "对比";
-    compareButton.addEventListener("click", () => toggleCompare(item, job, compareButton));
+    compareButton.textContent = compareExpandedJobIds.has(job.id) ? "收起对比" : "对比";
+    compareButton.setAttribute("aria-expanded", String(compareExpandedJobIds.has(job.id)));
+    compareButton.addEventListener("click", () => toggleCompare(job.id));
     actions.append(compareButton);
   }
   if (job.raw_text && !isActiveState(job.state)) {
@@ -1499,7 +1596,17 @@ function renderJob(job) {
   const transcripts = renderTranscripts(job);
   const diagnostic = renderJobDiagnostic(job);
 
-  item.append(header, details, bar, message, diagnostic, warnings, stages, transcripts, events, actions, outputs);
+  const body = document.createElement("div");
+  body.className = "job-body";
+  body.hidden = isCollapsed;
+  body.append(details, diagnostic, warnings, stages, transcripts);
+  if (job.raw_text && job.polished_text && compareExpandedJobIds.has(job.id)) {
+    body.append(renderCompareView(job));
+  }
+  body.append(events, actions, outputs);
+
+  item.classList.toggle("is-collapsed", isCollapsed);
+  item.append(header, bar, message, body);
   return item;
 }
 
@@ -1599,15 +1706,47 @@ function renderJobDiagnostic(job) {
   return wrap;
 }
 
-function toggleCompare(item, job, button) {
-  const existing = item.querySelector(".compare-view");
-  if (existing) {
-    existing.remove();
-    button.textContent = "对比";
+function toggleJobCollapsed(jobId) {
+  if (collapsedJobIds.has(jobId)) {
+    collapsedJobIds.delete(jobId);
+  } else {
+    collapsedJobIds.add(jobId);
+  }
+  storeIdSet(JOB_DETAIL_COLLAPSED_KEY, collapsedJobIds);
+  rerenderKnownJobs();
+}
+
+function toggleCompare(jobId) {
+  if (compareExpandedJobIds.has(jobId)) {
+    compareExpandedJobIds.delete(jobId);
+  } else {
+    compareExpandedJobIds.add(jobId);
+    collapsedJobIds.delete(jobId);
+    storeIdSet(JOB_DETAIL_COLLAPSED_KEY, collapsedJobIds);
+  }
+  storeIdSet(JOB_COMPARE_EXPANDED_KEY, compareExpandedJobIds);
+  rerenderKnownJobs();
+}
+
+function rerenderKnownJobs() {
+  if (lastJobs.length) {
+    renderJobs(lastJobs);
     return;
   }
-  item.insertBefore(renderCompareView(job), item.querySelector(".job-events"));
-  button.textContent = "收起对比";
+  refreshJobs();
+}
+
+function loadStoredIdSet(key) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+    return new Set(Array.isArray(parsed) ? parsed.filter(Boolean) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function storeIdSet(key, values) {
+  localStorage.setItem(key, JSON.stringify([...values].slice(0, 80)));
 }
 
 function renderCompareView(job) {
@@ -1625,6 +1764,13 @@ function renderCompareView(job) {
   }
   const grid = document.createElement("div");
   grid.className = "compare-grid";
+  const rawLabel = document.createElement("strong");
+  rawLabel.className = "compare-column-label";
+  rawLabel.textContent = "原始文本";
+  const polishedLabel = document.createElement("strong");
+  polishedLabel.className = "compare-column-label";
+  polishedLabel.textContent = "整理后文本";
+  grid.append(rawLabel, polishedLabel);
   for (const row of rows) {
     const raw = document.createElement("pre");
     raw.textContent = row.raw;
@@ -2378,7 +2524,10 @@ async function ensureSelectedOllamaModelsReady() {
       showDiagnostic(diagnoseClientError("请选择检测到的 Text 模型后再启用文本整理。"));
       return false;
     }
-    required.push({ modelId: polishModelSelect.value, task: "polish" });
+    const polishModel = selectedPolishModel();
+    if (polishModel?.provider === "ollama") {
+      required.push({ modelId: polishModel.path_or_id, task: "polish" });
+    }
   }
   const uniqueChecks = [];
   const seen = new Set();
@@ -2753,6 +2902,8 @@ function ensurePolishOption(modelId, label) {
   const option = document.createElement("option");
   option.value = modelId;
   option.textContent = label;
+  option.dataset.provider = "ollama";
+  option.dataset.modelId = modelId;
   polishModelSelect.append(option);
 }
 

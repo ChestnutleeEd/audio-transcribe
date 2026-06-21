@@ -130,6 +130,18 @@ class PolishRequest(BaseModel):
     formats: list[OutputFormat] | None = None
 
 
+class JobWorkFileCleanupStatus(BaseModel):
+    jobs_dir: str
+    eligible_jobs: int = 0
+    active_jobs: int = 0
+    files: int = 0
+    bytes: int = 0
+    cleaned_jobs: int = 0
+    cleaned_files: int = 0
+    cleaned_bytes: int = 0
+    skipped: list[str] = Field(default_factory=list)
+
+
 class HealthCheckItem(BaseModel):
     id: str
     label: str

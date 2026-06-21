@@ -18,6 +18,7 @@ from app.schemas import (
     ErrorDiagnostic,
     ExportScope,
     HealthCheckStatus,
+    JobWorkFileCleanupStatus,
     JobState,
     JobStatus,
     LocalModelDetectionStatus,
@@ -87,7 +88,8 @@ from app.services.ollama_model_manager import (
     pull_status as ollama_pull_status,
     request_pull_cancel as request_ollama_pull_cancel,
 )
-from app.services.ollama_provider import polish_segments, transcribe_audio_direct
+from app.services.ollama_provider import transcribe_audio_direct
+from app.services.polish_router import polish_segments, resolve_polish_model, validate_polish_model
 from app.services.qwen_audio import qwen_audio_status
 from app.services.polish_profiles import combine_instruction, get_profile, profile_options
 from app.services.transcriber import transcribe_audio
@@ -153,6 +155,129 @@ def parse_export_scope(value: str | None) -> ExportScope:
 def unlink_file(path: Path) -> None:
     if path.exists() and path.is_file():
         path.unlink()
+
+
+def is_path_inside(path: Path, parent: Path) -> bool:
+    try:
+        path.resolve().relative_to(parent.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def known_active_work_dirs() -> set[Path]:
+    return {
+        job.work_dir.resolve()
+        for job in job_store.list()
+        if job.work_dir is not None and not terminal_state(job.state)
+    }
+
+
+def eligible_work_dirs() -> tuple[list[Path], int, list[str]]:
+    jobs_dir = settings.jobs_dir.resolve()
+    active_dirs = known_active_work_dirs()
+    skipped: list[str] = []
+    eligible: list[Path] = []
+    if not jobs_dir.exists():
+        return eligible, 0, skipped
+
+    for child in sorted(jobs_dir.iterdir(), key=lambda item: item.name):
+        if not child.is_dir() or child.is_symlink():
+            continue
+        resolved = child.resolve()
+        if not is_path_inside(resolved, jobs_dir):
+            skipped.append(f"跳过 jobs 目录外路径：{child}")
+            continue
+        if resolved in active_dirs:
+            continue
+        eligible.append(child)
+    return eligible, len(active_dirs), skipped
+
+
+def collect_work_files(work_dirs: list[Path]) -> tuple[list[Path], int, list[str]]:
+    jobs_dir = settings.jobs_dir.resolve()
+    files: list[Path] = []
+    total_bytes = 0
+    skipped: list[str] = []
+    for work_dir in work_dirs:
+        for path in work_dir.rglob("*"):
+            if not is_path_inside(path, jobs_dir):
+                skipped.append(f"跳过 jobs 目录外路径：{path}")
+                continue
+            if path.is_dir() and not path.is_symlink():
+                continue
+            if not path.exists():
+                continue
+            try:
+                total_bytes += path.stat().st_size
+            except OSError as exc:
+                skipped.append(f"无法读取文件大小：{path.name}，原因：{exc}")
+                continue
+            files.append(path)
+    return files, total_bytes, skipped
+
+
+def cleanup_status() -> JobWorkFileCleanupStatus:
+    work_dirs, active_jobs, skipped_dirs = eligible_work_dirs()
+    files, total_bytes, skipped_files = collect_work_files(work_dirs)
+    return JobWorkFileCleanupStatus(
+        jobs_dir=str(settings.jobs_dir),
+        eligible_jobs=len(work_dirs),
+        active_jobs=active_jobs,
+        files=len(files),
+        bytes=total_bytes,
+        skipped=[*skipped_dirs, *skipped_files],
+    )
+
+
+def cleanup_work_files() -> JobWorkFileCleanupStatus:
+    work_dirs, active_jobs, skipped_dirs = eligible_work_dirs()
+    files, _, skipped_files = collect_work_files(work_dirs)
+    cleaned_files = 0
+    cleaned_bytes = 0
+    skipped = [*skipped_dirs, *skipped_files]
+
+    for path in files:
+        if not path.exists():
+            continue
+        try:
+            size = path.stat().st_size
+            path.unlink()
+            cleaned_files += 1
+            cleaned_bytes += size
+        except OSError as exc:
+            skipped.append(f"删除失败：{path.name}，原因：{exc}")
+
+    cleaned_jobs = 0
+    for work_dir in work_dirs:
+        directories = [path for path in work_dir.rglob("*") if path.is_dir() and not path.is_symlink()]
+        for directory in sorted(directories, key=lambda item: len(item.parts), reverse=True):
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
+        try:
+            work_dir.rmdir()
+            cleaned_jobs += 1
+        except OSError:
+            pass
+
+    cleaned_work_dirs = {work_dir.resolve() for work_dir in work_dirs}
+    for job in job_store.list():
+        if job.work_dir is not None and job.work_dir.resolve() in cleaned_work_dirs:
+            job_store.update(job.id, outputs=[])
+
+    return JobWorkFileCleanupStatus(
+        jobs_dir=str(settings.jobs_dir),
+        eligible_jobs=len(work_dirs),
+        active_jobs=active_jobs,
+        files=len(files),
+        bytes=cleaned_bytes,
+        cleaned_jobs=cleaned_jobs,
+        cleaned_files=cleaned_files,
+        cleaned_bytes=cleaned_bytes,
+        skipped=skipped,
+    )
 
 
 def build_status(job: Job) -> JobStatus:
@@ -731,7 +856,10 @@ def run_job(
 
         polished_segments: list[TranscriptSegment] | None = None
         if enable_polish:
-            active_polish_model = polish_model_id or settings.default_ollama_polish_model_id
+            active_polish_model_ref = resolve_polish_model(polish_model_id or settings.default_ollama_polish_model_id)
+            if active_polish_model_ref is None:
+                raise RuntimeError("请选择文本整理模型")
+            active_polish_model = active_polish_model_ref.path_or_id
             profile = get_profile(polish_profile_id)
             profile_instruction = combine_instruction(profile, polish_custom_instruction)
             job_store.update(
@@ -747,7 +875,7 @@ def run_job(
             try:
                 polish_result = polish_segments(
                     raw_segments,
-                    active_polish_model,
+                    active_polish_model_ref,
                     profile_instruction,
                     on_event=lambda message, level="info": add_event(job_id, message, level),
                     on_warning=lambda warning: append_job_warning(job_id, warning),
@@ -1129,8 +1257,9 @@ async def create_job(
         active_transcription_model_id = (mlx_model_path_or_repo or settings.mlx_whisper_model_path_or_repo).strip()
     elif active_transcription_engine == TranscriptionEngine.qwen_audio:
         active_transcription_model_id = (qwen_model_path_or_repo or settings.qwen_audio_model_path_or_repo).strip()
-    active_polish_model_id = resolve_polish_model_id(polish_model_id) if enable_polish else None
-    if enable_polish and not active_polish_model_id:
+    active_polish_model_ref = resolve_polish_model(polish_model_id) if enable_polish else None
+    active_polish_model_id = active_polish_model_ref.path_or_id if active_polish_model_ref else None
+    if enable_polish and not active_polish_model_ref:
         raise HTTPException(status_code=400, detail="请选择文本整理模型")
     active_profile = get_profile(polish_profile_id)
 
@@ -1165,12 +1294,13 @@ async def create_job(
         if not status.available and status.reason:
             raise HTTPException(status_code=409, detail=status.reason)
 
-    if enable_polish and active_polish_model_id:
-        check = check_ollama_model(active_polish_model_id)
-        if not check.service_available:
-            raise HTTPException(status_code=503, detail="Ollama 服务不可用，请先启动 Ollama。")
-        if not check.available:
-            raise HTTPException(status_code=409, detail=f"未检测到 {check.model_id}，请选择已安装模型或在应用外手动安装。")
+    if enable_polish and active_polish_model_ref:
+        try:
+            validate_polish_model(active_polish_model_ref)
+        except RuntimeError as exc:
+            detail = str(exc)
+            status_code = 503 if "Ollama 服务不可用" in detail else 409
+            raise HTTPException(status_code=status_code, detail=detail) from exc
 
     job_id = uuid4().hex
     work_dir = settings.jobs_dir / job_id
@@ -1269,6 +1399,18 @@ def clear_job_history() -> list[JobStatus]:
     return [build_status(job) for job in job_store.clear_history()]
 
 
+@app.get("/api/jobs/cleanup/status", response_model=JobWorkFileCleanupStatus)
+def get_job_work_file_cleanup_status() -> JobWorkFileCleanupStatus:
+    return cleanup_status()
+
+
+@app.post("/api/jobs/cleanup", response_model=JobWorkFileCleanupStatus)
+def clean_job_work_files() -> JobWorkFileCleanupStatus:
+    if job_store.has_active_job():
+        raise HTTPException(status_code=409, detail="当前有任务正在处理。请等待完成或取消后再清理工作文件。")
+    return cleanup_work_files()
+
+
 @app.get("/api/jobs/{job_id}", response_model=JobStatus)
 def get_job(job_id: str) -> JobStatus:
     job = job_store.get(job_id)
@@ -1297,14 +1439,16 @@ def rerun_polish(job_id: str, request: PolishRequest) -> JobStatus:
     if not job.raw_segments:
         raise HTTPException(status_code=409, detail="当前任务没有原始转录结果，不能单独执行文本整理。")
 
-    model_id = resolve_polish_model_id(request.model_id or job.polish_model_id)
-    if not model_id:
+    model_ref = resolve_polish_model(request.model_id or job.polish_model_id)
+    if model_ref is None:
         raise HTTPException(status_code=400, detail="请选择文本整理模型")
-    check = check_ollama_model(model_id)
-    if not check.service_available:
-        raise HTTPException(status_code=503, detail="Ollama 服务不可用，请先启动 Ollama。")
-    if not check.available:
-        raise HTTPException(status_code=409, detail=f"未检测到 {check.model_id}，请选择已安装模型或在应用外手动安装。")
+    model_id = model_ref.path_or_id
+    try:
+        validate_polish_model(model_ref)
+    except RuntimeError as exc:
+        detail = str(exc)
+        status_code = 503 if "Ollama 服务不可用" in detail else 409
+        raise HTTPException(status_code=status_code, detail=detail) from exc
 
     profile = get_profile(request.profile_id or job.polish_profile_id)
     custom_instruction = (request.custom_instruction or "").strip()
@@ -1329,7 +1473,7 @@ def rerun_polish(job_id: str, request: PolishRequest) -> JobStatus:
     try:
         result = polish_segments(
             job.raw_segments,
-            model_id,
+            model_ref,
             profile_instruction,
             on_event=lambda message, level="info": add_event(job_id, message, level),
             on_warning=lambda warning: append_job_warning(job_id, warning),

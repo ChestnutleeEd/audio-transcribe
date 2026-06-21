@@ -81,13 +81,22 @@ def polish_segments(
                 if settings.mock_polish_fail:
                     raise ValueError("Mock 文本整理失败")
                 is_repair = "语义修复" in (profile_instruction or "") or "修正错误转录" in (profile_instruction or "")
+                is_speaker_diarization = "说话人识别" in (profile_instruction or "") or "说话人 1" in (
+                    profile_instruction or ""
+                )
                 polished_batch = [
                     TranscriptSegment(
                         start=segment.start,
                         end=segment.end,
-                        text=mock_repair_text(segment.text) if is_repair else f"{segment.text}（mock polished）",
+                        text=(
+                            f"说话人 {(index % 2) + 1}：{mock_repair_text(segment.text)}"
+                            if is_speaker_diarization
+                            else mock_repair_text(segment.text)
+                            if is_repair
+                            else f"{segment.text}（mock polished）"
+                        ),
                     )
-                    for segment in batch
+                    for index, segment in enumerate(batch)
                 ]
             else:
                 prompt = build_polish_prompt(batch, profile_instruction)
@@ -166,7 +175,7 @@ def build_polish_prompt(segments: list[TranscriptSegment], profile_instruction: 
         ]
     }
     return (
-        "你是一个音频转录文本校对器。\n"
+        "你是一个音频转录文本校对器。输入里的 start/end 表示每个 segment 的时间范围，可用于判断停顿、轮次和说话人切换。\n"
         f"{profile_instruction or '只修正明显的语音识别错误、标点、空格和断句。'}\n"
         "不要合并 segments。不要新增 segments。\n"
         "必须返回与输入完全相同数量的 segments。\n"

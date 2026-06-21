@@ -872,6 +872,18 @@ textarea:focus-visible,
   scrollbar-color: rgba(216, 177, 94, 0.42) rgba(255, 255, 255, 0.06);
 }
 
+.cleanup-status {
+  margin: 0 0 10px;
+  border: 1px solid rgba(229, 231, 235, 0.1);
+  border-radius: var(--radius-md);
+  background: rgba(5, 6, 8, 0.32);
+  color: var(--text-muted);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 720;
+  line-height: 1.45;
+}
+
 .empty {
   border: 1px dashed rgba(216, 177, 94, 0.28);
   border-radius: var(--radius-lg);
@@ -911,6 +923,47 @@ textarea:focus-visible,
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.job-head-actions {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.job-toggle {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(216, 177, 94, 0.26);
+  border-radius: var(--radius-md);
+  background: rgba(216, 177, 94, 0.08);
+  color: #f0dca8;
+  padding: 0;
+}
+
+.job-toggle svg {
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.job-toggle.is-collapsed svg {
+  transform: rotate(-90deg);
+}
+
+.job-body {
+  display: grid;
+  gap: 12px;
+}
+
+.job-body[hidden] {
+  display: none;
+}
+
+.job-item.is-collapsed {
+  gap: 10px;
 }
 
 .job-title-wrap {
@@ -1157,6 +1210,11 @@ textarea:focus-visible,
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.compare-column-label {
+  color: #f0dca8;
+  font-size: 12px;
 }
 
 .compare-grid pre {
