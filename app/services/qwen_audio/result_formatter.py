@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
+import re
 from pathlib import Path
 
 from app.services.exporters import TranscriptSegment, segment_text
-from app.services.qwen_audio.audio_preprocess import audio_duration_seconds
 from app.services.qwen_audio.qwen_infer import QWEN_AUDIO_BACKEND, QWEN_AUDIO_MODEL_LABEL
 
 
@@ -18,10 +18,62 @@ class QwenChunkResult:
     def to_segment(self) -> TranscriptSegment:
         return TranscriptSegment(start=self.start, end=self.end, text=self.text)
 
+    @property
+    def chunk_id(self) -> int:
+        return self.id
+
+
+def _compact_text(value: str) -> str:
+    return re.sub(r"\s+", " ", value or "").strip()
+
+
+def _common_boundary_length(left: str, right: str, max_chars: int = 120) -> int:
+    left_text = _compact_text(left)
+    right_text = _compact_text(right)
+    if not left_text or not right_text:
+        return 0
+    limit = min(len(left_text), len(right_text), max_chars)
+    for size in range(limit, 2, -1):
+        if left_text[-size:] == right_text[:size]:
+            return size
+    return 0
+
+
+def dedupe_overlap_prefix(previous_text: str, current_text: str, max_chars: int = 120) -> str:
+    duplicate_chars = _common_boundary_length(previous_text, current_text, max_chars=max_chars)
+    if duplicate_chars <= 0:
+        return _compact_text(current_text)
+    return _compact_text(current_text)[duplicate_chars:].lstrip(" ，,。.!！?？;；:：、")
+
+
+def _deduped_chunks(chunks: list[QwenChunkResult]) -> list[QwenChunkResult]:
+    deduped: list[QwenChunkResult] = []
+    accumulated_text = ""
+    previous_end = 0.0
+    for chunk in chunks:
+        text = dedupe_overlap_prefix(accumulated_text, chunk.text)
+        if not text:
+            previous_end = max(previous_end, chunk.end)
+            continue
+        start = max(chunk.start, previous_end)
+        deduped.append(QwenChunkResult(id=chunk.id, start=round(start, 3), end=chunk.end, text=text))
+        accumulated_text = _compact_text(f"{accumulated_text} {text}")
+        previous_end = max(previous_end, chunk.end)
+    return deduped
+
+
+def chunk_to_json_segment(chunk: QwenChunkResult) -> dict[str, object]:
+    return {
+        "start": round(float(chunk.start), 3),
+        "end": round(float(chunk.end), 3),
+        "text": chunk.text,
+        "chunk_id": chunk.chunk_id,
+    }
+
 
 def merge_chunks(chunks: list[QwenChunkResult]) -> list[TranscriptSegment]:
     merged: list[TranscriptSegment] = []
-    for chunk in chunks:
+    for chunk in _deduped_chunks(chunks):
         text = chunk.text.strip()
         if not text:
             continue
@@ -30,7 +82,7 @@ def merge_chunks(chunks: list[QwenChunkResult]) -> list[TranscriptSegment]:
 
 
 def partial_results(chunks: list[QwenChunkResult]) -> list[dict[str, object]]:
-    return [asdict(chunk) for chunk in chunks if chunk.text.strip()]
+    return [chunk_to_json_segment(chunk) for chunk in _deduped_chunks(chunks)]
 
 
 def build_final_json(
@@ -41,18 +93,9 @@ def build_final_json(
     model: str = QWEN_AUDIO_MODEL_LABEL,
     backend: str = QWEN_AUDIO_BACKEND,
 ) -> dict[str, object]:
-    audio_path = Path(audio_file)
-    if duration is None:
-        try:
-            duration = audio_duration_seconds(audio_path)
-        except Exception:
-            duration = max((chunk.end for chunk in chunks), default=0.0)
+    del audio_file, duration, model, backend
     segments = partial_results(chunks)
     return {
-        "audio_file": str(audio_path),
-        "duration": round(float(duration or 0), 3),
-        "model": model,
-        "backend": backend,
         "segments": segments,
-        "full_text": segment_text([QwenChunkResult(**segment).to_segment() for segment in segments], include_timestamps=False),
+        "full_text": segment_text(merge_chunks(chunks), include_timestamps=False),
     }

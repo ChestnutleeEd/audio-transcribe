@@ -612,17 +612,13 @@ def run_job(
                             "model": settings.qwen_audio_default_model_label,
                             "modelPathOrRepo": active_qwen_model,
                             "partial_results": [
-                                {"id": 1, "start": 0.0, "end": 15.0, "text": segments[0].text},
-                                {"id": 2, "start": 15.0, "end": 30.0, "text": segments[1].text},
+                                {"start": 0.0, "end": 15.0, "text": segments[0].text, "chunk_id": 1},
+                                {"start": 15.0, "end": 30.0, "text": segments[1].text, "chunk_id": 2},
                             ],
                             "finalJson": {
-                                "audio_file": str(wav_path),
-                                "duration": 30.0,
-                                "model": settings.qwen_audio_default_model_label,
-                                "backend": "mlx-audio",
                                 "segments": [
-                                    {"id": 1, "start": 0.0, "end": 15.0, "text": segments[0].text},
-                                    {"id": 2, "start": 15.0, "end": 30.0, "text": segments[1].text},
+                                    {"start": 0.0, "end": 15.0, "text": segments[0].text, "chunk_id": 1},
+                                    {"start": 15.0, "end": 30.0, "text": segments[1].text, "chunk_id": 2},
                                 ],
                                 "full_text": segment_text(segments, include_timestamps=False),
                             },
@@ -699,14 +695,13 @@ def run_job(
             final_json = dict(engine_metadata["finalJson"])
             final_json["segments"] = [
                 {
-                    "id": index,
                     "start": segment.start,
                     "end": segment.end,
                     "text": segment.text,
+                    "chunk_id": index,
                 }
                 for index, segment in enumerate(raw_segments, start=1)
             ]
-            final_json["duration"] = round(max((segment.end for segment in raw_segments), default=0.0), 3)
             final_json["full_text"] = segment_text(raw_segments, include_timestamps=False)
             engine_metadata["finalJson"] = final_json
         job_store.update(

@@ -9,7 +9,7 @@ from app.services.audio_engine import AudioEngineResult
 from app.services.exporters import TranscriptSegment, segment_text
 from app.services.media import OperationCanceled
 from app.services.qwen_audio.audio_preprocess import prepare_audio_chunks
-from app.services.qwen_audio.qwen_infer import QWEN_AUDIO_BACKEND, QWEN_AUDIO_MODEL_LABEL, infer_chunk
+from app.services.qwen_audio.qwen_infer import QWEN_AUDIO_BACKEND, QWEN_AUDIO_MODEL_LABEL, QwenAudioTranscriber
 from app.services.qwen_audio.result_formatter import QwenChunkResult, build_final_json, merge_chunks, partial_results
 
 
@@ -41,6 +41,7 @@ def _metadata(
         "audioFile": str(audio_file),
         "chunkSeconds": chunk_seconds,
         "overlapSeconds": overlap_seconds,
+        "overlapDedupeStrategy": "common-prefix-suffix-boundary",
         "prompt": prompt,
         "partial_results": partial,
         "finalJson": final_json,
@@ -68,6 +69,7 @@ def stream_qwen_audio(
         is_canceled=is_canceled,
     )
     completed: list[QwenChunkResult] = []
+    transcriber = QwenAudioTranscriber(model_path_or_repo=active_model, prompt=active_prompt)
     yield QwenStreamEvent(
         type="prepared",
         metadata=_metadata(
@@ -83,7 +85,7 @@ def stream_qwen_audio(
     for chunk in chunks:
         if is_canceled():
             raise OperationCanceled("任务已停止")
-        text = infer_chunk(Path(str(chunk["audio_path"])), active_model, active_prompt)
+        text = transcriber.transcribe_chunk(Path(str(chunk["audio_path"])), active_prompt)
         result = QwenChunkResult(
             id=int(chunk["chunk_id"]),
             start=float(chunk["start"]),

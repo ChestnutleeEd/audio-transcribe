@@ -87,7 +87,7 @@ def qwen_audio_status(model_path_or_repo: str | None = None) -> QwenAudioStatus:
     dependency_installed = module_available("mlx_audio")
     model_configured = bool(configured)
     ffmpeg_ok = ffmpeg_available()
-    offline_mode = looks_like_repo_id(configured) and not settings.qwen_audio_allow_download
+    offline_mode = not settings.qwen_audio_allow_download
     available = platform_supported and dependency_installed and model_configured and ffmpeg_ok
 
     reason = None
@@ -143,8 +143,9 @@ def qwen_audio_status(model_path_or_repo: str | None = None) -> QwenAudioStatus:
 
 @contextmanager
 def qwen_offline_env(model_path_or_repo: str) -> Iterator[None]:
+    del model_path_or_repo
     previous = os.environ.get("HF_HUB_OFFLINE")
-    if looks_like_repo_id(model_path_or_repo) and not settings.qwen_audio_allow_download:
+    if not settings.qwen_audio_allow_download:
         os.environ["HF_HUB_OFFLINE"] = "1"
     try:
         yield
@@ -163,32 +164,47 @@ def load_qwen_audio_model(model_path_or_repo: str):
         return load_model(model_path_or_repo)
 
 
+class QwenAudioTranscriber:
+    """本地 Qwen2-Audio MLX 推理封装；不负责下载模型。"""
+
+    def __init__(self, model_path_or_repo: str | None = None, prompt: str | None = None) -> None:
+        self.model_path_or_repo = configured_model(model_path_or_repo)
+        self.prompt = prompt or settings.qwen_audio_prompt
+        self._validate_available()
+        self.model = load_qwen_audio_model(self.model_path_or_repo)
+
+    def _validate_available(self) -> None:
+        status = qwen_audio_status(self.model_path_or_repo)
+        if not status.platform_supported:
+            raise RuntimeError("Qwen2-Audio MLX 后端主要适用于 macOS Apple Silicon，当前平台不适配。")
+        if not status.dependency_installed:
+            raise RuntimeError("未安装 mlx-audio。请自行安装依赖后重试，本项目不会自动安装。")
+        if not status.model_configured:
+            raise RuntimeError("未配置 Qwen2-Audio 模型路径或 repo id。")
+        if not status.ffmpeg_available:
+            raise RuntimeError("FFmpeg 不可用，无法执行 Qwen2-Audio 推理。")
+        if status.reason:
+            raise RuntimeError(status.reason)
+
+    def generate(self, audio_path: Path | str, prompt: str | None = None) -> str:
+        active_prompt = prompt or self.prompt
+        with qwen_offline_env(self.model_path_or_repo):
+            result = self.model.generate(str(audio_path), prompt=active_prompt)
+        text = getattr(result, "text", None)
+        if text is None:
+            text = result.get("text") if isinstance(result, dict) else str(result)
+        return str(text or "").strip()
+
+    def transcribe_chunk(self, audio_path: Path | str, prompt: str | None = None) -> str:
+        return self.generate(audio_path, prompt=prompt)
+
+
 def infer_chunk(
     audio_path: Path,
     model_path_or_repo: str | None = None,
     prompt: str | None = None,
 ) -> str:
-    configured = configured_model(model_path_or_repo)
-    status = qwen_audio_status(configured)
-    if not status.platform_supported:
-        raise RuntimeError("Qwen2-Audio MLX 后端主要适用于 macOS Apple Silicon，当前平台不适配。")
-    if not status.dependency_installed:
-        raise RuntimeError("未安装 mlx-audio。请自行安装依赖后重试，本项目不会自动安装。")
-    if not status.model_configured:
-        raise RuntimeError("未配置 Qwen2-Audio 模型路径或 repo id。")
-    if not status.ffmpeg_available:
-        raise RuntimeError("FFmpeg 不可用，无法执行 Qwen2-Audio 推理。")
-    if status.reason and not looks_like_repo_id(configured):
-        raise RuntimeError(status.reason)
-
-    model = load_qwen_audio_model(configured)
-    active_prompt = prompt or settings.qwen_audio_prompt
-    with qwen_offline_env(configured):
-        result = model.generate(str(audio_path), prompt=active_prompt)
-    text = getattr(result, "text", None)
-    if text is None:
-        text = result.get("text") if isinstance(result, dict) else str(result)
-    return str(text or "").strip()
+    return QwenAudioTranscriber(model_path_or_repo=model_path_or_repo, prompt=prompt).transcribe_chunk(audio_path)
 
 
 def main() -> int:

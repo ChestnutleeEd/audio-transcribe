@@ -309,7 +309,31 @@ AUDIO_TRANSCRIBE_QWEN_AUDIO_CHUNK_SECONDS=20
 AUDIO_TRANSCRIBE_QWEN_AUDIO_OVERLAP_SECONDS=1
 ```
 
-Qwen2-Audio pipeline 会先把音频转为 16kHz 单声道，再按 15 到 30 秒 chunk 切分，支持 0 到 2 秒 overlap。任务运行时会把 `partial_results` 写入 job metadata，前端轮询任务状态即可逐步更新文本。
+Qwen2-Audio 是长音频和视频输入的主 ASR pipeline。默认不会下载模型，也不会调用云 API；请先在应用外准备本地 MLX 模型目录，再通过页面输入框或 `AUDIO_TRANSCRIBE_QWEN_AUDIO_MODEL` 指向该目录。未显式设置 `AUDIO_TRANSCRIBE_QWEN_AUDIO_ALLOW_DOWNLOAD=1` 时，Qwen 推理作用域会强制 `HF_HUB_OFFLINE=1`。
+
+处理流程：
+
+```text
+Video / Audio -> FFmpeg normalize -> 16kHz mono WAV -> 15-30s chunks -> Qwen2-Audio MLX -> partial_results -> JSON
+```
+
+Qwen2-Audio pipeline 会先用 FFmpeg 抽取视频音轨或标准化音频为 16kHz 单声道 WAV，再按 15 到 30 秒 chunk 切分，支持 0 到 2 秒 overlap。每个 chunk 都保留全局时间轴；结果合并时使用 `common-prefix-suffix-boundary` 策略删除相邻 chunk 在 overlap 区间产生的重复前缀，并把展示时间轴推进到上一段结束后。任务运行时会把 `partial_results` 写入 job metadata，前端轮询任务状态即可逐步更新文本。
+
+Qwen JSON 导出结构：
+
+```json
+{
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 15.0,
+      "text": "...",
+      "chunk_id": 1
+    }
+  ],
+  "full_text": "..."
+}
+```
 
 ## 12. 开发和测试
 
