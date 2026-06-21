@@ -49,6 +49,7 @@ class Job:
     raw_text: str | None = None
     polished_text: str | None = None
     duration_seconds: float | None = None
+    engine_metadata: dict[str, object] = field(default_factory=dict)
 
 
 class JobStore:

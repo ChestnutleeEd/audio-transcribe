@@ -90,12 +90,25 @@
                 <small>通过本地多模态大模型直接处理音频，具体模型可在下方选择</small>
               </span>
             </label>
+            <label>
+              <input type="radio" name="transcription_engine" value="qwen-audio" />
+              <span>
+                <strong>Qwen2-Audio（MLX 多模态理解）</strong>
+                <small>Apple Silicon 本地运行，支持 chunk 级实时返回</small>
+              </span>
+            </label>
           </fieldset>
 
           <label class="field" id="mlx-model-field" hidden>
             <span>MLX Whisper 模型路径或 repo id</span>
             <input id="mlx-model-path-or-repo" name="mlx_model_path_or_repo" type="text" placeholder="/path/to/whisper-large-v3-mlx 或 mlx-community/..." autocomplete="off" />
             <small id="mlx-model-help">请先自行安装 mlx-whisper，并准备 MLX 格式 Whisper 模型。本项目不会自动下载模型。</small>
+          </label>
+
+          <label class="field" id="qwen-model-field" hidden>
+            <span>Qwen2-Audio 模型路径或 repo id</span>
+            <input id="qwen-model-path-or-repo" name="qwen_model_path_or_repo" type="text" placeholder="/path/to/Qwen2-Audio-7B-Instruct-4bit 或 mlx-community/Qwen2-Audio-7B-Instruct-4bit" autocomplete="off" />
+            <small id="qwen-model-help">请先自行安装 mlx-audio，并准备本地 Qwen2-Audio MLX 模型。本项目不会自动调用云服务。</small>
           </label>
 
           <section class="post-processing" aria-label="后处理选项">

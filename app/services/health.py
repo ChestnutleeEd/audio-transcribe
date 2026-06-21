@@ -12,6 +12,7 @@ from app.services.media import ffmpeg_executable
 from app.services.mlx_whisper_provider import mlx_whisper_status
 from app.services.model_manager import model_status
 from app.services.ollama_model_manager import ollama_status
+from app.services.qwen_audio import qwen_audio_status
 
 
 def module_available(name: str) -> bool:
@@ -48,6 +49,16 @@ def health_check() -> HealthCheckStatus:
             status="success" if mlx_status.available else "warning",
             message=mlx_status.reason or "MLX Whisper 可用。",
             suggestion=mlx_status.hint,
+        )
+    )
+    qwen_status = qwen_audio_status()
+    items.append(
+        HealthCheckItem(
+            id="qwen_audio",
+            label="Qwen2-Audio（MLX Audio）",
+            status="success" if qwen_status.available else "warning",
+            message=qwen_status.reason or "Qwen2-Audio 可用。",
+            suggestion=qwen_status.hint,
         )
     )
     items.append(

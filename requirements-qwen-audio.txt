@@ -1,0 +1,3 @@
+# Qwen2-Audio MLX 多模态音频理解可选依赖
+# 适用：macOS Apple Silicon，本项目不会自动下载模型或调用云服务。
+mlx-audio>=0.4.4

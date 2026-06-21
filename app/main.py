@@ -31,8 +31,11 @@ from app.schemas import (
     OutputFormat,
     PolishProfile,
     PolishRequest,
+    QwenAudioStatus,
     TranscriptionEngine,
 )
+from app.services.audio_engine import AudioEngineResult
+from app.services.audio_engines import QwenAudioEngine
 from app.services.exporters import TranscriptSegment, export_transcript, segment_text
 from app.services.health import health_check
 from app.services.local_model_detection import detect_local_models
@@ -65,6 +68,7 @@ from app.services.ollama_model_manager import (
     request_pull_cancel as request_ollama_pull_cancel,
 )
 from app.services.ollama_provider import polish_segments, transcribe_audio_direct
+from app.services.qwen_audio import qwen_audio_status
 from app.services.polish_profiles import combine_instruction, get_profile, profile_options
 from app.services.transcriber import transcribe_audio
 
@@ -132,6 +136,23 @@ def unlink_file(path: Path) -> None:
 
 
 def build_status(job: Job) -> JobStatus:
+    status_segments = [
+        {
+            "id": index,
+            "start": segment.start,
+            "end": segment.end,
+            "text": segment.text,
+        }
+        for index, segment in enumerate(job.raw_segments, start=1)
+    ]
+    metadata = {
+        "engine": job.transcription_engine.value,
+        "engineName": job.transcription_engine.value,
+        "modelLabel": job.model_label,
+        "transcriptionModel": job.whisper_model_id or job.transcription_model_id or job.model_id,
+        "durationSeconds": job.duration_seconds,
+        **job.engine_metadata,
+    }
     return JobStatus(
         id=job.id,
         state=job.state,
@@ -163,6 +184,10 @@ def build_status(job: Job) -> JobStatus:
         error=job.error,
         error_diagnostic=job.error_diagnostic,
         raw_text=job.raw_text,
+        rawText=job.raw_text,
+        segments=status_segments,
+        metadata=metadata,
+        engine_name=job.transcription_engine.value,
         polished_text=job.polished_text,
         has_segments=bool(job.raw_segments),
         duration_seconds=job.duration_seconds,
@@ -250,6 +275,14 @@ def diagnose_error(error: str, context: str | None = None) -> ErrorDiagnostic:
             action="确认当前是 Apple Silicon Mac、已自行安装 mlx-whisper，并配置本地 MLX 模型目录或已缓存 repo id。",
             technical_detail=text,
         )
+    if "qwen2-audio" in lower or "qwen-audio" in lower or "mlx-audio" in lower:
+        return ErrorDiagnostic(
+            code="QWEN_AUDIO_UNAVAILABLE",
+            title="Qwen2-Audio 不可用",
+            message="Qwen2-Audio 多模态音频理解前置条件未满足。",
+            action="确认当前是 Apple Silicon Mac、已自行安装 mlx-audio，并配置本地 Qwen2-Audio 模型目录或已缓存 repo id。",
+            technical_detail=text,
+        )
     if "未检测到模型" in text or "model.bin" in lower:
         return ErrorDiagnostic(
             code="WHISPER_MODEL_MISSING",
@@ -306,6 +339,7 @@ def ensure_not_cancelled(job_id: str) -> None:
 
 def export_metadata(job: Job) -> dict[str, object]:
     return {
+        "engine": job.transcription_engine.value,
         "language": job.language,
         "transcriptionModel": job.whisper_model_id or job.transcription_model_id or job.model_id,
         "modelLabel": job.model_label,
@@ -314,6 +348,7 @@ def export_metadata(job: Job) -> dict[str, object]:
         "polishProfile": job.polish_profile_label,
         "source": job.source_label,
         "durationSeconds": job.duration_seconds,
+        **job.engine_metadata,
     }
 
 
@@ -521,6 +556,106 @@ def run_job(
                     processing_finished_at=utc_now_iso(),
                 )
                 return
+        elif transcription_engine == TranscriptionEngine.qwen_audio:
+            active_qwen_model = (transcription_model_id or settings.qwen_audio_model_path_or_repo).strip()
+            job_store.update(
+                job_id,
+                state=JobState.transcribing,
+                progress=48,
+                message="正在使用 Qwen2-Audio 切分音频并准备流式理解",
+                model_label=f"{settings.qwen_audio_default_model_label}（MLX Audio）",
+                engine_metadata={
+                    "engine": "qwen-audio",
+                    "backend": "mlx-audio",
+                    "model": settings.qwen_audio_default_model_label,
+                    "modelPathOrRepo": active_qwen_model,
+                    "partial_results": [],
+                },
+            )
+            add_event(job_id, "Qwen2-Audio 多模态音频理解开始")
+
+            def update_qwen_partial(result: AudioEngineResult) -> None:
+                if is_job_canceled(job_id):
+                    return
+                partial_count = len(result.metadata.get("partial_results") or [])
+                progress = min(72, 50 + partial_count * 4)
+                job_store.update(
+                    job_id,
+                    state=JobState.transcribing,
+                    progress=progress,
+                    message=f"Qwen2-Audio 已完成 {partial_count} 个音频 chunk",
+                    raw_segments=result.segments,
+                    raw_text=result.raw_text,
+                    duration_seconds=max((segment.end for segment in result.segments), default=None),
+                    engine_metadata=result.metadata,
+                    model_label=result.model_label,
+                )
+
+            try:
+                if settings.mock_mode:
+                    segments = [
+                        TranscriptSegment(start=0.0, end=15.0, text="这是 mock Qwen2-Audio 音频理解的第一段。"),
+                        TranscriptSegment(start=15.0, end=30.0, text="这是 mock Qwen2-Audio 音频理解的第二段，用于验证 chunk 级 streaming。"),
+                    ]
+                    job_store.update(
+                        job_id,
+                        state=JobState.transcribing,
+                        progress=58,
+                        message="Mock Qwen2-Audio 音频理解完成",
+                        model_label=f"{settings.qwen_audio_default_model_label}（MLX mock）",
+                        raw_segments=segments,
+                        raw_text=segment_text(segments, include_timestamps=False),
+                        duration_seconds=max((segment.end for segment in segments), default=None),
+                        engine_metadata={
+                            "engine": "qwen-audio",
+                            "backend": "mlx-audio",
+                            "model": settings.qwen_audio_default_model_label,
+                            "modelPathOrRepo": active_qwen_model,
+                            "partial_results": [
+                                {"id": 1, "start": 0.0, "end": 15.0, "text": segments[0].text},
+                                {"id": 2, "start": 15.0, "end": 30.0, "text": segments[1].text},
+                            ],
+                            "finalJson": {
+                                "audio_file": str(wav_path),
+                                "duration": 30.0,
+                                "model": settings.qwen_audio_default_model_label,
+                                "backend": "mlx-audio",
+                                "segments": [
+                                    {"id": 1, "start": 0.0, "end": 15.0, "text": segments[0].text},
+                                    {"id": 2, "start": 15.0, "end": 30.0, "text": segments[1].text},
+                                ],
+                                "full_text": segment_text(segments, include_timestamps=False),
+                            },
+                        },
+                    )
+                else:
+                    qwen_engine = QwenAudioEngine(model_path_or_repo=active_qwen_model, work_dir=work_dir)
+                    qwen_result = qwen_engine.transcribe(
+                        wav_path,
+                        language,
+                        lambda: is_job_canceled(job_id),
+                        update_qwen_partial,
+                    )
+                    segments = qwen_result.segments
+                    job_store.update(
+                        job_id,
+                        model_label=qwen_result.model_label,
+                        engine_metadata=qwen_result.metadata,
+                    )
+                add_event(job_id, "Qwen2-Audio 多模态音频理解完成")
+            except Exception as exc:
+                unlink_file(wav_path)
+                add_event(job_id, f"Qwen2-Audio 多模态音频理解失败：{exc}", "error")
+                job_store.update(
+                    job_id,
+                    state=JobState.failed,
+                    progress=100,
+                    message=f"Qwen2-Audio 多模态音频理解失败：{exc}",
+                    error=str(exc),
+                    error_diagnostic=diagnose_error(str(exc)),
+                    processing_finished_at=utc_now_iso(),
+                )
+                return
         elif transcription_engine == TranscriptionEngine.ollama_audio:
             active_transcription_model = transcription_model_id or settings.default_ollama_transcription_model_id
             job_store.update(
@@ -559,11 +694,27 @@ def run_job(
         ensure_not_cancelled(job_id)
 
         raw_segments = offset_segments(segments, parse_time_offset(start_time))
+        engine_metadata = dict(job_store.get(job_id).engine_metadata if job_store.get(job_id) else {})
+        if transcription_engine == TranscriptionEngine.qwen_audio and isinstance(engine_metadata.get("finalJson"), dict):
+            final_json = dict(engine_metadata["finalJson"])
+            final_json["segments"] = [
+                {
+                    "id": index,
+                    "start": segment.start,
+                    "end": segment.end,
+                    "text": segment.text,
+                }
+                for index, segment in enumerate(raw_segments, start=1)
+            ]
+            final_json["duration"] = round(max((segment.end for segment in raw_segments), default=0.0), 3)
+            final_json["full_text"] = segment_text(raw_segments, include_timestamps=False)
+            engine_metadata["finalJson"] = final_json
         job_store.update(
             job_id,
             raw_segments=raw_segments,
             raw_text=segment_text(raw_segments, include_timestamps=False),
             duration_seconds=max((segment.end for segment in raw_segments), default=None),
+            engine_metadata=engine_metadata,
         )
 
         polished_segments: list[TranscriptSegment] | None = None
@@ -785,6 +936,11 @@ def get_mlx_whisper_status(model_path_or_repo: str | None = None) -> MLXWhisperS
     return mlx_whisper_status(model_path_or_repo)
 
 
+@app.get("/api/qwen-audio/status", response_model=QwenAudioStatus)
+def get_qwen_audio_status(model_path_or_repo: str | None = None) -> QwenAudioStatus:
+    return qwen_audio_status(model_path_or_repo)
+
+
 @app.get("/api/health", response_model=HealthCheckStatus)
 def get_health_check() -> HealthCheckStatus:
     return health_check()
@@ -803,6 +959,7 @@ async def create_job(
     whisper_model_id: str | None = Form(default=None),
     transcription_model_id: str | None = Form(default=None),
     mlx_model_path_or_repo: str | None = Form(default=None),
+    qwen_model_path_or_repo: str | None = Form(default=None),
     enable_polish: bool = Form(default=False),
     polish_model_id: str | None = Form(default=None),
     polish_profile_id: str | None = Form(default=None),
@@ -838,6 +995,8 @@ async def create_job(
         active_transcription_model_id = settings.ollama_transcription_model_definition(transcription_model_id).id
     elif active_transcription_engine == TranscriptionEngine.mlx_whisper:
         active_transcription_model_id = (mlx_model_path_or_repo or settings.mlx_whisper_model_path_or_repo).strip()
+    elif active_transcription_engine == TranscriptionEngine.qwen_audio:
+        active_transcription_model_id = (qwen_model_path_or_repo or settings.qwen_audio_model_path_or_repo).strip()
     active_polish_model_id = resolve_polish_model_id(polish_model_id) if enable_polish else None
     active_profile = get_profile(polish_profile_id)
 
@@ -855,6 +1014,18 @@ async def create_job(
             raise HTTPException(status_code=409, detail=status.reason or "未安装 mlx-whisper")
         if not status.model_configured:
             raise HTTPException(status_code=409, detail=status.reason or "未配置 MLX Whisper 模型")
+        if not status.ffmpeg_available:
+            raise HTTPException(status_code=409, detail=status.reason or "FFmpeg 不可用")
+        if not status.available and status.reason:
+            raise HTTPException(status_code=409, detail=status.reason)
+    elif active_transcription_engine == TranscriptionEngine.qwen_audio and not settings.mock_mode:
+        status = qwen_audio_status(active_transcription_model_id)
+        if not status.platform_supported:
+            raise HTTPException(status_code=409, detail=status.reason or "Qwen2-Audio 当前平台不适配")
+        if not status.dependency_installed:
+            raise HTTPException(status_code=409, detail=status.reason or "未安装 mlx-audio")
+        if not status.model_configured:
+            raise HTTPException(status_code=409, detail=status.reason or "未配置 Qwen2-Audio 模型")
         if not status.ffmpeg_available:
             raise HTTPException(status_code=409, detail=status.reason or "FFmpeg 不可用")
         if not status.available and status.reason:
@@ -896,6 +1067,8 @@ async def create_job(
         planned_label = f"{active_transcription_model_id}（本地大模型音频转录，实验性）"
     elif active_transcription_engine == TranscriptionEngine.mlx_whisper:
         planned_label = f"{active_transcription_model_id or settings.mlx_whisper_default_model_label}（MLX Whisper）"
+    elif active_transcription_engine == TranscriptionEngine.qwen_audio:
+        planned_label = f"{settings.qwen_audio_default_model_label}（MLX Audio）"
     elif enable_polish and active_polish_model_id:
         planned_label = f"{planned_model_label(model_id)} + {active_polish_model_id} polish"
     else:
@@ -929,7 +1102,7 @@ async def create_job(
     add_event(job_id, "任务已创建")
     add_event(job_id, "模型检查开始")
     checked_models = [model_id]
-    if active_transcription_engine in {TranscriptionEngine.ollama_audio, TranscriptionEngine.mlx_whisper}:
+    if active_transcription_engine in {TranscriptionEngine.ollama_audio, TranscriptionEngine.mlx_whisper, TranscriptionEngine.qwen_audio}:
         checked_models = [active_transcription_model_id]
     if enable_polish and active_polish_model_id:
         checked_models.append(active_polish_model_id)

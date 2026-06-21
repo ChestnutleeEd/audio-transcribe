@@ -105,9 +105,15 @@ def export_json(
     include_timestamps: bool,
     scope: ExportScope,
 ) -> None:
+    qwen_final_json = metadata.get("finalJson")
+    if metadata.get("engine") == "qwen-audio" and isinstance(qwen_final_json, dict):
+        with path.open("w", encoding="utf-8") as handle:
+            json.dump(qwen_final_json, handle, ensure_ascii=False, indent=2)
+        return
+
     payload = {
         "metadata": metadata,
-        "segments": [asdict(segment) for segment in raw_segments] if include_timestamps else [],
+        "segments": [asdict(segment) for segment in raw_segments],
         "rawText": segment_text(raw_segments, include_timestamps=False),
         "polishedText": segment_text(polished_segments or [], include_timestamps=False) if polished_segments else None,
         "parameters": {

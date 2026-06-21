@@ -67,6 +67,9 @@ const historyClearButton = document.querySelector("#history-clear-button");
 const mlxModelField = document.querySelector("#mlx-model-field");
 const mlxModelPathOrRepo = document.querySelector("#mlx-model-path-or-repo");
 const mlxModelHelp = document.querySelector("#mlx-model-help");
+const qwenModelField = document.querySelector("#qwen-model-field");
+const qwenModelPathOrRepo = document.querySelector("#qwen-model-path-or-repo");
+const qwenModelHelp = document.querySelector("#qwen-model-help");
 const environmentSummary = document.querySelector("#environment-summary");
 const environmentStatusGrid = document.querySelector("#environment-status-grid");
 const environmentAdvice = document.querySelector("#environment-advice");
@@ -82,6 +85,7 @@ let ollamaPollTimer = null;
 let lastModelStatus = null;
 let lastOllamaStatus = null;
 let lastMlxStatus = null;
+let lastQwenStatus = null;
 let lastLocalModelDetection = null;
 let lastJobs = [];
 let jobElements = new Map();
@@ -96,6 +100,7 @@ loadSavedCustomInstruction();
 renderHistory(loadHistory());
 refreshModelStatus();
 refreshMlxStatus();
+refreshQwenStatus();
 refreshOllamaStatus();
 refreshHealth();
 refreshJobs();
@@ -152,6 +157,10 @@ form.querySelectorAll('input[name="transcription_engine"]').forEach((input) => {
 mlxModelPathOrRepo.addEventListener("input", () => {
   window.clearTimeout(mlxModelPathOrRepo._refreshTimer);
   mlxModelPathOrRepo._refreshTimer = window.setTimeout(() => refreshMlxStatus(), 350);
+});
+qwenModelPathOrRepo.addEventListener("input", () => {
+  window.clearTimeout(qwenModelPathOrRepo._refreshTimer);
+  qwenModelPathOrRepo._refreshTimer = window.setTimeout(() => refreshQwenStatus(), 350);
 });
 ollamaManagedModelSelect.addEventListener("change", refreshSelectedOllamaModel);
 modelInfoButton.addEventListener("click", () => {
@@ -303,6 +312,8 @@ form.addEventListener("submit", async (event) => {
   if (!ready) return;
   const mlxReady = await ensureSelectedMlxReady();
   if (!mlxReady) return;
+  const qwenReady = await ensureSelectedQwenReady();
+  if (!qwenReady) return;
 
   const data = new FormData(form);
   const selectedFormats = [...form.querySelectorAll('input[name="formats"]:checked')].map((input) => input.value);
@@ -316,6 +327,7 @@ form.addEventListener("submit", async (event) => {
   data.set("whisper_model_id", modelSelect.value || "");
   data.set("transcription_model_id", ollamaTranscriptionModelSelect.value || "gemma4:12b-it-qat");
   data.set("mlx_model_path_or_repo", mlxModelPathOrRepo.value.trim());
+  data.set("qwen_model_path_or_repo", qwenModelPathOrRepo.value.trim());
   data.set("enable_polish", enablePolishInput.checked ? "true" : "false");
   data.set("export_scope", form.querySelector('input[name="export_scope"]:checked')?.value || "raw");
   data.set("polish_custom_instruction", polishCustomInstruction.value.trim());
@@ -725,9 +737,9 @@ function stageRows(job) {
   const now = Date.now();
   const started = Date.parse(job.processing_started_at || job.created_at || "");
   const definitions = [
-    { id: "validating", label: "文件校验", start: createdAt, end: eventTimeAny(events, ["Mock 模式：跳过音频标准化", "mock mode skipped audio normalization", "Whisper 转录开始", "whisper transcription started", "MLX Whisper 转录开始", "mlx whisper transcription started"]) },
-    { id: "preparing_model", label: "模型准备", start: eventTimeAny(events, ["Whisper 转录开始", "whisper transcription started", "MLX Whisper 转录开始", "mlx whisper transcription started"]) || started, end: eventTimeAny(events, ["Whisper 转录完成", "whisper transcription completed", "MLX Whisper 转录完成", "mlx whisper transcription completed"]) },
-    { id: "transcribing", label: "转录", start: eventTimeAny(events, ["Whisper 转录开始", "whisper transcription started", "MLX Whisper 转录开始", "mlx whisper transcription started", "本地大模型音频转录开始", "ollama direct audio started"]), end: eventTimeAny(events, ["Whisper 转录完成", "whisper transcription completed", "MLX Whisper 转录完成", "mlx whisper transcription completed", "本地大模型音频转录完成", "ollama direct audio completed"]) },
+    { id: "validating", label: "文件校验", start: createdAt, end: eventTimeAny(events, ["Mock 模式：跳过音频标准化", "mock mode skipped audio normalization", "Whisper 转录开始", "whisper transcription started", "MLX Whisper 转录开始", "mlx whisper transcription started", "Qwen2-Audio 多模态音频理解开始"]) },
+    { id: "preparing_model", label: "模型准备", start: eventTimeAny(events, ["Whisper 转录开始", "whisper transcription started", "MLX Whisper 转录开始", "mlx whisper transcription started", "Qwen2-Audio 多模态音频理解开始"]) || started, end: eventTimeAny(events, ["Whisper 转录完成", "whisper transcription completed", "MLX Whisper 转录完成", "mlx whisper transcription completed", "Qwen2-Audio 多模态音频理解完成"]) },
+    { id: "transcribing", label: "转录", start: eventTimeAny(events, ["Whisper 转录开始", "whisper transcription started", "MLX Whisper 转录开始", "mlx whisper transcription started", "Qwen2-Audio 多模态音频理解开始", "本地大模型音频转录开始", "ollama direct audio started"]), end: eventTimeAny(events, ["Whisper 转录完成", "whisper transcription completed", "MLX Whisper 转录完成", "mlx whisper transcription completed", "Qwen2-Audio 多模态音频理解完成", "本地大模型音频转录完成", "ollama direct audio completed"]) },
     { id: "polishing", label: "文本整理", start: eventTimeAny(events, ["文本整理开始", "polish started", "重新执行文本整理", "polish rerun started"]), end: eventTimeAny(events, ["文本整理完成", "polish completed"]) },
     { id: "exporting", label: "导出准备", start: eventTimeAny(events, ["导出文件已生成", "export generated"]) ? null : eventTimeAny(events, ["文本整理完成", "polish completed"]), end: eventTimeAny(events, ["导出文件已生成", "export generated"]) },
   ];
@@ -1091,6 +1103,15 @@ function diagnoseClientError(message, codeHint) {
       technical_detail: text,
     };
   }
+  if (lower.includes("qwen2-audio") || lower.includes("qwen-audio") || lower.includes("mlx-audio")) {
+    return {
+      code: "QWEN_AUDIO_UNAVAILABLE",
+      title: "Qwen2-Audio 不可用",
+      message: text,
+      action: "确认当前是 Apple Silicon Mac、已自行安装 mlx-audio，并填写本地 Qwen2-Audio 模型目录或已缓存 repo id。",
+      technical_detail: text,
+    };
+  }
   if (text.includes("任务已停止")) {
     return {
       code: "TASK_CANCELLED",
@@ -1185,6 +1206,7 @@ function transcriptionEngineLabel(engine) {
     whisper: "Whisper",
     "mlx-whisper": "MLX Whisper",
     ollama_audio: "本地大模型音频转录",
+    "qwen-audio": "Qwen2-Audio",
   }[engine] || engine || "Whisper";
 }
 
@@ -1225,14 +1247,19 @@ function updateEngineControls() {
   const engine = selectedTranscriptionEngine();
   const usingOllamaAudio = engine === "ollama_audio";
   const usingMlxWhisper = engine === "mlx-whisper";
+  const usingQwenAudio = engine === "qwen-audio";
   const whisperDownloading = lastModelStatus?.download_state === "downloading";
   mlxModelField.hidden = !usingMlxWhisper;
-  modelSelect.disabled = usingOllamaAudio || usingMlxWhisper || whisperDownloading;
+  qwenModelField.hidden = !usingQwenAudio;
+  modelSelect.disabled = usingOllamaAudio || usingMlxWhisper || usingQwenAudio || whisperDownloading;
   if (engine === "whisper") {
     refreshModelStatus();
   }
   if (usingMlxWhisper) {
     refreshMlxStatus();
+  }
+  if (usingQwenAudio) {
+    refreshQwenStatus();
   }
   ollamaTranscriptionModelSelect.disabled = !usingOllamaAudio;
   renderEnvironmentStatus();
@@ -1367,10 +1394,13 @@ function renderEnvironmentStatus() {
   const platform = platformSummary();
   const whisperReady = Boolean(lastModelStatus?.available);
   const mlxReady = Boolean(lastMlxStatus?.available);
+  const qwenReady = Boolean(lastQwenStatus?.available);
   const ollamaReady = Boolean(lastOllamaStatus?.available);
   const selectedModel =
     engine === "mlx-whisper"
       ? mlxModelPathOrRepo.value.trim() || lastMlxStatus?.default_model_label || "未配置"
+      : engine === "qwen-audio"
+        ? qwenModelPathOrRepo.value.trim() || lastQwenStatus?.default_model_label || "未配置"
       : engine === "ollama_audio"
         ? ollamaTranscriptionModelSelect.value || "未选择"
         : modelSelect.value || lastModelStatus?.selected_model || "未选择";
@@ -1381,6 +1411,7 @@ function renderEnvironmentStatus() {
     statusRow("平台适配", platform.label, platform.status, platform.detail),
     statusRow("Whisper / faster-whisper", whisperReady ? "已就绪" : "未配置", whisperReady ? "success" : "warning", lastModelStatus?.message || "等待检测"),
     statusRow("MLX Whisper", mlxReady ? "可用" : mlxStatusLabel(lastMlxStatus), mlxReady ? "success" : mlxStatusKind(lastMlxStatus), mlxStatusDetail(lastMlxStatus)),
+    statusRow("Qwen2-Audio", qwenReady ? "可用" : qwenStatusLabel(lastQwenStatus), qwenReady ? "success" : qwenStatusKind(lastQwenStatus), qwenStatusDetail(lastQwenStatus)),
     statusRow("本地大模型音频转录", ollamaReady ? "服务可用" : "服务不可用", ollamaReady ? "success" : "warning", lastOllamaStatus?.message || "等待检测"),
     statusRow("FFmpeg / Python", dependencyLabel("ffmpeg"), dependencyKind("ffmpeg"), dependencyDetail("python")),
   );
@@ -1415,6 +1446,7 @@ function platformSummary() {
 
 function currentEngineStatus(engine) {
   if (engine === "mlx-whisper") return lastMlxStatus?.available ? "success" : "warning";
+  if (engine === "qwen-audio") return lastQwenStatus?.available ? "success" : "warning";
   if (engine === "ollama_audio") return lastOllamaStatus?.available ? "success" : "warning";
   return lastModelStatus?.available ? "success" : "warning";
 }
@@ -1436,6 +1468,25 @@ function mlxStatusKind(status) {
 function mlxStatusDetail(status) {
   if (!status) return "等待检测 mlx-whisper";
   return status.reason || status.hint || "MLX Whisper 可用";
+}
+
+function qwenStatusLabel(status) {
+  if (!status) return "等待检测";
+  if (!status.platform_supported) return "平台不适配";
+  if (!status.dependency_installed) return "依赖缺失";
+  if (!status.model_configured) return "未配置";
+  if (!status.ffmpeg_available) return "FFmpeg 缺失";
+  return "模型未找到";
+}
+
+function qwenStatusKind(status) {
+  if (!status) return "neutral";
+  return status.platform_supported ? "warning" : "muted";
+}
+
+function qwenStatusDetail(status) {
+  if (!status) return "等待检测 Qwen2-Audio";
+  return status.reason || status.hint || "Qwen2-Audio 可用";
 }
 
 function dependencyLabel(id) {
@@ -1473,7 +1524,10 @@ function environmentAdviceItems(platform, engine) {
   if (engine === "mlx-whisper" && !lastMlxStatus?.available) {
     add(lastMlxStatus?.hint || "请先安装 mlx-whisper 并配置模型。");
   }
-  add("本项目不会自动下载 MLX Whisper 模型。");
+  if (engine === "qwen-audio" && !lastQwenStatus?.available) {
+    add(lastQwenStatus?.hint || "请先安装 mlx-audio 并配置 Qwen2-Audio 模型。");
+  }
+  add("本项目不会自动下载 MLX Whisper 或 Qwen2-Audio 模型。");
   return items.slice(0, 3);
 }
 
@@ -1543,6 +1597,21 @@ async function ensureSelectedMlxReady() {
   return false;
 }
 
+async function ensureSelectedQwenReady() {
+  if (selectedTranscriptionEngine() !== "qwen-audio") return true;
+  if (!mockBanner.hidden) return true;
+  const status = await refreshQwenStatus();
+  if (status?.available) return true;
+  showDiagnostic({
+    code: "QWEN_AUDIO_UNAVAILABLE",
+    title: "Qwen2-Audio 不可用",
+    message: status?.reason || "Qwen2-Audio 前置条件未满足。",
+    action: status?.hint || "请自行安装 mlx-audio，并准备本地 Qwen2-Audio MLX 模型。本项目不会自动调用云服务。",
+    technical_detail: JSON.stringify(status || {}, null, 2),
+  });
+  return false;
+}
+
 async function refreshMlxStatus() {
   try {
     const params = new URLSearchParams();
@@ -1570,6 +1639,36 @@ function renderMlxStatus(status) {
     ? `${status.reason} ${status.hint || ""}`
     : status.hint || "MLX Whisper 可用。转录时不会自动下载模型。";
   mlxModelHelp.classList.toggle("warning-text", !status.available);
+  renderEnvironmentStatus();
+}
+
+async function refreshQwenStatus() {
+  try {
+    const params = new URLSearchParams();
+    const configured = qwenModelPathOrRepo.value.trim();
+    if (configured) params.set("model_path_or_repo", configured);
+    const response = await fetch(`/api/qwen-audio/status${params.toString() ? `?${params.toString()}` : ""}`);
+    const status = await response.json();
+    if (!response.ok) throw new Error(status.detail || "Qwen2-Audio 状态检测失败");
+    renderQwenStatus(status);
+    return status;
+  } catch (error) {
+    qwenModelHelp.textContent = `Qwen2-Audio 状态检测失败：${error.message}`;
+    lastQwenStatus = null;
+    renderEnvironmentStatus();
+    return null;
+  }
+}
+
+function renderQwenStatus(status) {
+  lastQwenStatus = status;
+  if (!qwenModelPathOrRepo.value && status.model_path_or_repo) {
+    qwenModelPathOrRepo.value = status.model_path_or_repo;
+  }
+  qwenModelHelp.textContent = status.reason
+    ? `${status.reason} ${status.hint || ""}`
+    : status.hint || "Qwen2-Audio 可用。chunk 级结果会随任务状态逐步更新。";
+  qwenModelHelp.classList.toggle("warning-text", !status.available);
   renderEnvironmentStatus();
 }
 
@@ -1977,7 +2076,7 @@ function renderModelStatus(status) {
 
   const downloading = status.download_state === "downloading";
   const engine = selectedTranscriptionEngine();
-  modelSelect.disabled = downloading || engine === "ollama_audio" || engine === "mlx-whisper";
+  modelSelect.disabled = downloading || engine === "ollama_audio" || engine === "mlx-whisper" || engine === "qwen-audio";
   modelDownloadButton.disabled = status.available || downloading;
   modelCancelButton.disabled = !downloading;
   modelRefreshButton.disabled = downloading;

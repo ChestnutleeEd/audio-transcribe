@@ -167,6 +167,15 @@ class Settings:
     mlx_whisper_model_path_or_repo: str = os.getenv("AUDIO_TRANSCRIBE_MLX_WHISPER_MODEL", "")
     mlx_whisper_default_model_label: str = os.getenv("AUDIO_TRANSCRIBE_MLX_WHISPER_LABEL", "whisper-large-v3-mlx")
     mlx_whisper_language: str = os.getenv("AUDIO_TRANSCRIBE_MLX_WHISPER_LANGUAGE", "auto")
+    qwen_audio_model_path_or_repo: str = os.getenv("AUDIO_TRANSCRIBE_QWEN_AUDIO_MODEL", "mlx-community/Qwen2-Audio-7B-Instruct-4bit")
+    qwen_audio_default_model_label: str = os.getenv("AUDIO_TRANSCRIBE_QWEN_AUDIO_LABEL", "Qwen2-Audio-7B-Instruct-4bit")
+    qwen_audio_prompt: str = os.getenv(
+        "AUDIO_TRANSCRIBE_QWEN_AUDIO_PROMPT",
+        "Transcribe the audio in the original language. Return only the transcript.",
+    )
+    qwen_audio_chunk_seconds: int = int(os.getenv("AUDIO_TRANSCRIBE_QWEN_AUDIO_CHUNK_SECONDS", "20"))
+    qwen_audio_overlap_seconds: int = int(os.getenv("AUDIO_TRANSCRIBE_QWEN_AUDIO_OVERLAP_SECONDS", "1"))
+    qwen_audio_allow_download: bool = os.getenv("AUDIO_TRANSCRIBE_QWEN_AUDIO_ALLOW_DOWNLOAD", "0") in {"1", "true", "True", "yes", "YES"}
     mock_mode: bool = os.getenv("AUDIO_TRANSCRIBE_MOCK", "0") in {"1", "true", "True", "yes", "YES"}
     mock_polish_fail: bool = os.getenv("AUDIO_TRANSCRIBE_MOCK_POLISH_FAIL", "0") in {"1", "true", "True", "yes", "YES"}
     ollama_polish_batch_size: int | None = optional_positive_int_env("OLLAMA_POLISH_BATCH_SIZE")

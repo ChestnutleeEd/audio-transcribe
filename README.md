@@ -1,6 +1,6 @@
 # Audio-Transcribe
 
-Audio-Transcribe 是一个本地优先的音视频转写桌面工作台。它在本机启动一个本地网页应用，用于上传音频、视频或粘贴视频链接，然后使用本地 Whisper / MLX Whisper / Ollama 工作流完成转写、整理、导出和复查。
+Audio-Transcribe 是一个本地优先的音视频转写桌面工作台。它在本机启动一个本地网页应用，用于上传音频、视频或粘贴视频链接，然后使用本地 Whisper / MLX Whisper / Qwen2-Audio / Ollama 工作流完成转写、音频理解、整理、导出和复查。
 
 ![Audio-Transcribe 首页](docs/assets/audio-transcribe-home.png)
 
@@ -17,7 +17,7 @@ Audio-Transcribe 适合处理面试录音、会议音频、课程视频、YouTub
 - 支持 TXT、Markdown、JSON、SRT、Word 导出。
 - 支持原始文本、整理后文本、原始加整理后三种导出范围。
 - 支持模型检测、模型下载进度、下载取消、CUDA 失败后的 CPU 降级提示。
-- 支持稳定 Whisper、Apple Silicon 推荐的 MLX Whisper、实验性 Ollama 本地大模型音频转录。
+- 支持稳定 Whisper、Apple Silicon 推荐的 MLX Whisper、Qwen2-Audio MLX 多模态音频理解、实验性 Ollama 本地大模型音频转录。
 - 支持 Ollama 文本整理，内置标点修复、保守清理、日语自然断句、中文会议纪要、双语翻译。
 - 支持原始文本和整理后文本同屏展示、复制、重新整理、段落级对比。
 - 支持任务耗时、错误诊断、事件时间线和最近任务历史。
@@ -76,7 +76,7 @@ chmod +x scripts/setup-macos.sh start-audio-transcribe.command stop-audio-transc
 - ZIP 便携版是“半开箱即用”。它包含项目文件、启动脚本和中文引导，但仍依赖本机 Python 和 FFmpeg，首次启动可能需要安装 Python 依赖。
 - Windows 安装器版本的目标是“尽量全自动”。当构建机提供 Python runtime 和 FFmpeg 时，安装包可以随包携带运行环境。
 - macOS 安装器版本的目标是“拖拽安装”。如果无法合法或稳定地随包携带某些系统依赖，首次运行会显示中文引导。
-- Whisper、MLX Whisper、Ollama 模型体积较大，仓库和发行包默认不内置模型。首次使用时请在页面中下载或手动放置模型。
+- Whisper、MLX Whisper、Qwen2-Audio、Ollama 模型体积较大，仓库和发行包默认不内置模型。首次使用时请在页面中下载或手动放置模型。
 
 ## 4. 环境依赖
 
@@ -90,6 +90,7 @@ chmod +x scripts/setup-macos.sh start-audio-transcribe.command stop-audio-transc
 
 - Ollama：用于本地大模型音频转录和文本整理。
 - MLX Whisper：Apple Silicon Mac 可选，适合本地加速转写。
+- Qwen2-Audio：Apple Silicon Mac 可选，适合本地多模态音频理解。需要自行安装 `mlx-audio` 并准备 `mlx-community/Qwen2-Audio-7B-Instruct-4bit` 或本地模型目录。
 - CUDA：Windows 或 Linux 上可选，配置正确时 faster-whisper 可以使用显卡。
 
 Windows FFmpeg 处理方式：
@@ -162,6 +163,24 @@ Audio-Transcribe 默认使用 `127.0.0.1:8000`。如果提示端口占用，请�
 
 进入页面右侧模型区选择 faster-whisper 模型并确认下载。也可以手动把模型放到 `models/<模型名>-local/`，或用 `AUDIO_TRANSCRIBE_MODEL_PATH` 指向已有模型目录。
 
+### Qwen2-Audio 不可用
+
+Qwen2-Audio 只走本地 MLX Audio，不使用 OpenAI API，也不会自动调用云端服务。Apple Silicon Mac 用户可按下面步骤准备：
+
+```bash
+source .venv/bin/activate
+pip install -r requirements-qwen-audio.txt
+huggingface-cli download --local-dir models/Qwen2-Audio-7B-Instruct-4bit mlx-community/Qwen2-Audio-7B-Instruct-4bit
+```
+
+然后在页面中选择 `Qwen2-Audio（MLX 多模态理解）`，模型路径填写：
+
+```text
+models/Qwen2-Audio-7B-Instruct-4bit
+```
+
+如果填写 `mlx-community/Qwen2-Audio-7B-Instruct-4bit` repo id，默认按离线缓存使用，避免运行时静默下载。确需首次下载时，请在应用外显式下载模型。
+
 ### Mac 上 large-v3 很慢
 
 `large-v3` 体积大，在 MacBook Air 等设备上可能很慢。日常建议先用 `small` 或 `medium`。Apple Silicon Mac 可以考虑配置 MLX Whisper。
@@ -197,7 +216,7 @@ ZIP 与安装器差异：
 | 类型 | 文件 | 适合用户 | 是否安装 | 依赖处理 |
 | --- | --- | --- | --- | --- |
 | Windows 安装器 | `AudioTranscribeSetup.exe` | 普通 Windows 用户 | 是 | 目标是随包携带 Python runtime，并创建快捷方式和卸载入口 |
-| macOS 安装器 | `AudioTranscribe.dmg` | 普通 macOS 用户 | 拖拽安装 | 目标是提供 `.app` 应用包，Apple Silicon 优先支持 MLX Whisper |
+| macOS 安装器 | `AudioTranscribe.dmg` 或 `AudioTranscribeAppBundle.zip` | 普通 macOS 用户 | 拖拽安装 | 优先用 `create-dmg` 生成 dmg；没有 `create-dmg` 时 fallback 为真实 `.app` bundle ZIP |
 | Windows ZIP | `AudioTranscribe-v版本号-windows-x64.zip` | 测试和便携用户 | 否 | 需要本机 Python / FFmpeg，启动器会中文引导 |
 | macOS ZIP | `AudioTranscribe-v版本号-macos.zip` | 测试和便携用户 | 否 | 需要本机 Python / FFmpeg，启动器会中文引导 |
 
@@ -237,7 +256,7 @@ dist/
     macos/
 ```
 
-构建脚本不会批量删除旧产物。如果目标目录已经存在，会停止并要求手动处理。
+构建脚本不会批量删除旧产物。如果目标目录已经存在，会停止并要求手动处理。Installer 构建不会生成假文件：Windows 未检测到 Inno Setup 时会中文提示并跳过 `AudioTranscribeSetup.exe`；macOS 未检测到 `create-dmg` 时会 fallback 为 `.app` bundle ZIP。
 
 ## 11. 本地模型
 
@@ -262,6 +281,17 @@ AUDIO_TRANSCRIBE_DEVICE=auto
 AUDIO_TRANSCRIBE_COMPUTE_TYPE=auto
 OLLAMA_BASE_URL=http://localhost:11434
 ```
+
+Qwen2-Audio 可用环境变量：
+
+```bash
+AUDIO_TRANSCRIBE_QWEN_AUDIO_MODEL=/path/to/Qwen2-Audio-7B-Instruct-4bit
+AUDIO_TRANSCRIBE_QWEN_AUDIO_PROMPT="Transcribe the audio in the original language. Return only the transcript."
+AUDIO_TRANSCRIBE_QWEN_AUDIO_CHUNK_SECONDS=20
+AUDIO_TRANSCRIBE_QWEN_AUDIO_OVERLAP_SECONDS=1
+```
+
+Qwen2-Audio pipeline 会先把音频转为 16kHz 单声道，再按 15 到 30 秒 chunk 切分，支持 0 到 2 秒 overlap。任务运行时会把 `partial_results` 写入 job metadata，前端轮询任务状态即可逐步更新文本。
 
 ## 12. 开发和测试
 

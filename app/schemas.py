@@ -34,6 +34,7 @@ class TranscriptionEngine(str, Enum):
     whisper = "whisper"
     mlx_whisper = "mlx-whisper"
     ollama_audio = "ollama_audio"
+    qwen_audio = "qwen-audio"
 
 
 class OutputFile(BaseModel):
@@ -88,6 +89,10 @@ class JobStatus(BaseModel):
     error: str | None = None
     error_diagnostic: ErrorDiagnostic | None = None
     raw_text: str | None = None
+    rawText: str | None = None
+    segments: list[dict[str, object]] = Field(default_factory=list)
+    metadata: dict[str, object] = Field(default_factory=dict)
+    engine_name: str = "whisper"
     polished_text: str | None = None
     has_segments: bool = False
     duration_seconds: float | None = None
@@ -147,6 +152,24 @@ class MLXWhisperStatus(BaseModel):
     model_path_or_repo: str = ""
     default_model_label: str = "whisper-large-v3-mlx"
     language: str = "auto"
+    reason: str | None = None
+    hint: str | None = None
+
+
+class QwenAudioStatus(BaseModel):
+    engine: str = "qwen-audio"
+    available: bool
+    platform_supported: bool
+    dependency_installed: bool
+    model_configured: bool
+    ffmpeg_available: bool
+    offline_mode: bool
+    is_macos: bool
+    is_apple_silicon: bool
+    os: str
+    arch: str
+    model_path_or_repo: str = ""
+    default_model_label: str = "Qwen2-Audio-7B-Instruct-4bit"
     reason: str | None = None
     hint: str | None = None
 
