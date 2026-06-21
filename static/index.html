@@ -11,9 +11,9 @@
     <main class="shell">
       <section class="hero" aria-labelledby="page-title">
         <div>
-          <p class="eyebrow">Local Whisper Workstation</p>
+          <p class="eyebrow">Local Model Workstation</p>
           <h1 id="page-title">Audio Transcribe</h1>
-          <p class="lede">本地 large-v3 模型驱动的面试录音转写台。上传文件或粘贴视频链接，选择语言、格式和时间轴，一次生成可下载文档。</p>
+          <p class="lede">基于本地模型池的音频转写台。上传文件或粘贴视频链接，选择支持 Audio Input 的模型、语言、格式和时间轴，一次生成可下载文档。</p>
           <p class="mock-banner" id="mock-banner" hidden>Mock 模式：不会调用真实模型</p>
         </div>
         <div class="status-strip" aria-label="运行信息">
@@ -67,7 +67,28 @@
             </label>
           </div>
 
-          <fieldset class="choice-group">
+          <section class="model-pool-picker" aria-label="音频模型">
+            <label class="field">
+              <span>音频模型</span>
+              <select id="audio-model-select" aria-label="选择支持 Audio Input 的模型">
+                <option value="">请选择支持 Audio Input 的模型</option>
+              </select>
+              <small id="audio-model-help">请选择支持 Audio Input 的模型（系统已自动筛选）。</small>
+            </label>
+            <div id="audio-model-meta" class="model-meta-row"></div>
+            <div class="model-actions model-actions-two">
+              <button class="secondary" type="button" id="registry-refresh-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
+                <span id="registry-refresh-label">检测模型</span>
+              </button>
+              <button class="secondary" type="button" id="audio-test-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>
+                <span id="audio-test-label">快速测试模型</span>
+              </button>
+            </div>
+          </section>
+
+          <fieldset class="choice-group legacy-engine-options" hidden>
             <legend>转录引擎</legend>
             <label>
               <input type="radio" name="transcription_engine" value="whisper" />
@@ -79,7 +100,7 @@
             <label>
               <input type="radio" name="transcription_engine" value="mlx-whisper" />
               <span>
-                <strong>MLX Whisper（Apple Silicon 推荐）</strong>
+                <strong>MLX Whisper</strong>
                 <small>需自行安装 mlx-whisper，并准备 MLX 格式模型</small>
               </span>
             </label>
@@ -91,9 +112,9 @@
               </span>
             </label>
             <label>
-              <input type="radio" name="transcription_engine" value="qwen-audio" checked />
+              <input type="radio" name="transcription_engine" value="qwen-audio" />
               <span>
-                <strong>Qwen2-Audio（MLX 多模态理解）</strong>
+                <strong>MLX Audio</strong>
                 <small>Apple Silicon 本地运行，支持 chunk 级实时返回</small>
               </span>
             </label>
@@ -106,9 +127,9 @@
           </label>
 
           <label class="field" id="qwen-model-field" hidden>
-            <span>Qwen2-Audio 模型路径或 repo id</span>
-            <input id="qwen-model-path-or-repo" name="qwen_model_path_or_repo" type="text" placeholder="/path/to/Qwen2-Audio-7B-Instruct-4bit 或 mlx-community/Qwen2-Audio-7B-Instruct-4bit" autocomplete="off" />
-            <small id="qwen-model-help">请先自行安装 mlx-audio，并准备本地 Qwen2-Audio MLX 模型。本项目不会自动调用云服务。</small>
+            <span>MLX Audio 模型路径或 repo id</span>
+            <input id="qwen-model-path-or-repo" name="qwen_model_path_or_repo" type="text" placeholder="/path/to/mlx-audio-model 或 provider/model-id" autocomplete="off" />
+            <small id="qwen-model-help">请先自行安装 mlx-audio，并准备本地 MLX Audio 模型。本项目不会自动调用云服务。</small>
           </label>
 
           <section class="post-processing" aria-label="后处理选项">
@@ -120,8 +141,7 @@
             <label class="field polish-field" id="polish-field">
               <span>文本整理模型</span>
               <select name="polish_model_id" id="polish-model-select">
-                <option value="gemma4:12b-it-qat">Gemma 4 12B IT QAT — gemma4:12b-it-qat（高质量整理，默认）</option>
-                <option value="gemma3:1b">Gemma 3 1B — gemma3:1b（轻量整理）</option>
+                <option value="">请选择检测到的 Text 模型</option>
               </select>
             </label>
             <div class="local-model-tools polish-field" id="local-model-tools">
@@ -148,6 +168,7 @@
                 <option value="punctuation">标点修复</option>
               </select>
               <small id="polish-profile-description">只补标点和自然断句，尽量不改原文。</small>
+              <button class="secondary inline-action" type="button" id="edit-prompt-button">编辑 prompt</button>
             </label>
             <label class="field polish-field" id="polish-custom-field">
               <span>追加整理指令</span>
@@ -203,12 +224,19 @@
               <h2>任务列表</h2>
               <p id="job-summary">等待创建任务</p>
             </div>
-            <button class="icon-button" type="button" id="jobs-refresh-button" aria-label="刷新任务列表" title="刷新任务列表">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
-            </button>
+            <div class="head-actions">
+              <button class="icon-button" type="button" id="jobs-collapse-button" aria-label="收起任务列表" title="收起任务列表">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>
+              </button>
+              <button class="icon-button" type="button" id="jobs-refresh-button" aria-label="刷新任务列表" title="刷新任务列表">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
+              </button>
+            </div>
           </div>
 
-          <div id="jobs-list" class="jobs-list"></div>
+          <div id="jobs-region">
+            <div id="jobs-list" class="jobs-list"></div>
+          </div>
 
           <div class="model-card history-card">
             <div>
@@ -221,16 +249,47 @@
             </div>
           </div>
 
-          <div class="model-card environment-card" aria-live="polite">
+          <details class="model-card environment-card" id="environment-panel" open aria-live="polite">
+            <summary>
+              <span>模型与环境状态</span>
+              <small id="environment-summary">正在检测模型和运行环境。</small>
+            </summary>
+            <div class="environment-sections">
+              <section>
+                <h3>环境检查</h3>
+                <p id="health-message">检查 FFmpeg、Python runtime、MLX runtime、Whisper backend 和 API server status。</p>
+                <div id="environment-status-grid" class="status-grid"></div>
+                <div class="model-actions model-actions-two">
+                  <button class="secondary" type="button" id="health-refresh-button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
+                    <span id="health-refresh-label">重新检查</span>
+                  </button>
+                  <button class="secondary" type="button" id="fix-all-button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v6m0 8v6M4.93 4.93l4.24 4.24m5.66 5.66 4.24 4.24M2 12h6m8 0h6M4.93 19.07l4.24-4.24m5.66-5.66 4.24-4.24"/></svg>
+                    Fix All
+                  </button>
+                </div>
+                <div id="health-list" class="health-list"></div>
+              </section>
+              <section>
+                <h3>模型检测</h3>
+                <div id="model-detection-list" class="model-detection-list"></div>
+              </section>
+              <section>
+                <h3>系统建议</h3>
+                <div id="environment-advice" class="status-advice"></div>
+              </section>
+            </div>
+          </details>
+
+          <div class="legacy-status-panels" hidden>
             <div>
               <h3>模型与环境状态</h3>
-              <p id="environment-summary">正在检测模型和运行环境。</p>
-              <div id="environment-status-grid" class="status-grid"></div>
-              <div id="environment-advice" class="status-advice"></div>
+              <p>正在检测模型和运行环境。</p>
             </div>
           </div>
 
-          <details class="model-details" open>
+          <details class="model-details" hidden>
             <summary>Whisper 模型详情</summary>
           <div class="model-card" aria-live="polite">
             <div>
@@ -246,7 +305,7 @@
               </label>
               <div class="model-info-popover" id="model-info-popover" hidden></div>
               <div class="model-description" id="model-description"></div>
-              <p id="model-message">正在检测 large-v3 模型</p>
+              <p id="model-message">正在检测本地音频模型</p>
               <div class="model-progress" id="model-progress" aria-hidden="true">
                 <div class="model-progress-track"><span id="model-progress-fill"></span></div>
                 <small id="model-progress-label"></small>
@@ -271,7 +330,7 @@
           </div>
           </details>
 
-          <details class="model-details">
+          <details class="model-details" hidden>
             <summary>本地大模型详情</summary>
           <div class="model-card ollama-card" aria-live="polite">
             <div>
@@ -280,14 +339,11 @@
               <label class="model-selector">
                 <span>音频直转模型</span>
                 <select id="ollama-transcription-model-select" aria-label="选择 Ollama 直转模型">
-                  <option value="gemma4:12b-it-qat">Gemma 4 12B IT QAT — gemma4:12b-it-qat（实验性，音频直转，默认）</option>
                 </select>
               </label>
               <label class="model-selector">
                 <span>模型下载状态</span>
                 <select id="ollama-managed-model-select" aria-label="选择要检查或下载的 Ollama 模型">
-                  <option value="gemma4:12b-it-qat">Gemma 4 12B IT QAT — gemma4:12b-it-qat</option>
-                  <option value="gemma3:1b">Gemma 3 1B — gemma3:1b</option>
                 </select>
               </label>
               <div class="model-progress" id="ollama-progress" aria-hidden="true">
@@ -314,25 +370,55 @@
           </div>
           </details>
 
-          <details class="model-details">
-            <summary>依赖检查详情</summary>
-          <div class="model-card health-card" aria-live="polite">
-            <div>
-              <h3>环境检查</h3>
-              <p id="health-message">检查 faster-whisper、FFmpeg、Ollama 和本地模型。</p>
-              <div id="health-list" class="health-list"></div>
-            </div>
-            <div class="model-actions">
-              <button class="secondary" type="button" id="health-refresh-button">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
-                <span id="health-refresh-label">重新检查</span>
-              </button>
-            </div>
-          </div>
-          </details>
         </aside>
       </section>
     </main>
+
+    <dialog id="prompt-modal" class="modal">
+      <form method="dialog" class="modal-panel">
+        <div class="panel-head">
+          <div>
+            <h2>编辑 prompt</h2>
+            <p id="prompt-modal-title">当前文本整理配置</p>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="关闭" title="关闭" type="submit">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <label class="field">
+          <span>当前 prompt</span>
+          <textarea id="prompt-editor" rows="10"></textarea>
+        </label>
+        <div class="model-actions model-actions-two">
+          <button class="secondary" type="button" id="restore-prompt-button">restore default</button>
+          <button class="primary modal-primary" type="button" id="save-prompt-button">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="fix-modal" class="modal">
+      <form method="dialog" class="modal-panel">
+        <div class="panel-head">
+          <div>
+            <h2>确认修复环境</h2>
+            <p>将显示需要执行的安装或配置步骤，不会静默安装。</p>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="关闭" title="关闭" type="submit">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <label class="switch post-switch">
+          <input type="checkbox" id="mirror-source-toggle" />
+          <span></span>
+          <b>使用国内镜像源</b>
+        </label>
+        <div id="fix-plan" class="fix-plan"></div>
+        <div class="model-actions model-actions-two">
+          <button class="secondary" value="cancel" type="submit">取消</button>
+          <button class="primary modal-primary" value="default" type="submit">确认查看步骤</button>
+        </div>
+      </form>
+    </dialog>
 
     <script src="/app.js" type="module"></script>
   </body>

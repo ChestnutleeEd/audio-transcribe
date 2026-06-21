@@ -62,6 +62,16 @@ POLISH_PROFILES: tuple[PolishProfileDefinition, ...] = (
             "每段输出应同时包含原文整理版和译文，避免总结和扩写。"
         ),
     ),
+    PolishProfileDefinition(
+        id="repair_mode",
+        label="语义修复 / Repair Mode",
+        description="删除无意义内容，修正识别错误，并改善语义连贯性。",
+        instruction=(
+            "执行语义修复：删除无意义内容、明显口误和识别噪声，修正错别字、听错词和明显 ASR 错误。"
+            "优化句子连贯性，但不得编造事实、人物、日期、数字或原文没有的信息。"
+            "不总结，不扩写，不改变说话者意图。"
+        ),
+    ),
 )
 
 
@@ -71,6 +81,7 @@ def profile_options() -> list[PolishProfile]:
             id=item.id,
             label=item.label,
             description=item.description,
+            default_prompt=item.instruction,
             prompt_preview=item.instruction,
         )
         for item in POLISH_PROFILES
@@ -95,4 +106,7 @@ def combine_instruction(profile: PolishProfileDefinition, custom_instruction: st
     custom = (custom_instruction or "").strip()
     if not custom:
         return profile.instruction
+    override_marker = "__OVERRIDE_PROMPT__"
+    if custom.startswith(override_marker):
+        return custom.removeprefix(override_marker).strip() or profile.instruction
     return f"{profile.instruction}\n追加用户指令：{custom}"

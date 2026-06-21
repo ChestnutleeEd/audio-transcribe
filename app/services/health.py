@@ -6,11 +6,10 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from app.config import OLLAMA_POLISH_MODELS, SUPPORTED_MODELS
 from app.schemas import HealthCheckItem, HealthCheckStatus
 from app.services.media import ffmpeg_executable
 from app.services.mlx_whisper_provider import mlx_whisper_status
-from app.services.model_manager import model_status
+from app.services.model_registry import model_registry
 from app.services.ollama_model_manager import ollama_status
 from app.services.qwen_audio import qwen_audio_status
 
@@ -21,7 +20,6 @@ def module_available(name: str) -> bool:
 
 def health_check() -> HealthCheckStatus:
     items: list[HealthCheckItem] = []
-    model = model_status()
     ollama = ollama_status()
 
     items.append(
@@ -55,22 +53,22 @@ def health_check() -> HealthCheckStatus:
     items.append(
         HealthCheckItem(
             id="qwen_audio",
-            label="Qwen2-Audio（MLX Audio）",
+            label="MLX Audio",
             status="success" if qwen_status.available else "warning",
-            message=qwen_status.reason or "Qwen2-Audio 可用。",
+            message=qwen_status.reason or "MLX Audio 可用。",
             suggestion=qwen_status.hint,
         )
     )
+    registry = model_registry()
+    audio_count = sum(1 for item in registry.models if item.capabilities.audio and item.metadata.status == "available")
+    text_count = sum(1 for item in registry.models if item.capabilities.text and item.metadata.status == "available")
     items.append(
         HealthCheckItem(
-            id="whisper_models",
-            label="Whisper 模型列表",
-            status="success" if any(item.available for item in model.models) else "warning",
-            message=", ".join(f"{item.id}{' 已就绪' if item.available else ' 未下载'}" for item in model.models)
-            or "未读取到模型列表。",
-            suggestion=None
-            if any(item.available for item in model.models)
-            else "在页面选择模型并确认下载，或手动把模型文件放入 models/ 对应目录。",
+            id="model_registry",
+            label="统一模型池",
+            status="success" if registry.models else "warning",
+            message=f"检测到 {len(registry.models)} 个模型；Audio {audio_count} 个，Text {text_count} 个。",
+            suggestion=None if registry.models else "可启动本地 provider，或在页面注册自定义模型路径。",
         )
     )
     ffmpeg_path = ffmpeg_executable()
@@ -95,33 +93,10 @@ def health_check() -> HealthCheckStatus:
     )
     items.append(
         HealthCheckItem(
-            id="ollama_models",
-            label="Ollama 已安装模型",
-            status="success" if ollama.local_models else "warning",
-            message=", ".join(ollama.local_models) if ollama.local_models else "未读取到 Ollama 本地模型。",
-            suggestion=None if ollama.local_models else "执行 ollama list 检查本地模型。",
-        )
-    )
-    local = set(ollama.local_models)
-    for definition in OLLAMA_POLISH_MODELS:
-        exists = any(name == definition.id or name.startswith(f"{definition.id}:") for name in local)
-        items.append(
-            HealthCheckItem(
-                id=f"ollama_model_{definition.id}",
-                label=f"{definition.id} 模型",
-                status="success" if exists else "warning",
-                message=f"已检测到 {definition.id}" if exists else f"未检测到 {definition.id}",
-                suggestion=None if exists else f"需要时在应用外手动安装 {definition.id}，或切换到已安装模型。",
-            )
-        )
-
-    supported = ", ".join(item.id for item in SUPPORTED_MODELS)
-    items.append(
-        HealthCheckItem(
-            id="supported_whisper_models",
-            label="可选 faster-whisper 模型",
+            id="api_server",
+            label="API server status",
             status="success",
-            message=supported,
+            message="FastAPI API server 可响应。",
         )
     )
     return HealthCheckStatus(checked_at=datetime.now(timezone.utc).isoformat(), items=items)

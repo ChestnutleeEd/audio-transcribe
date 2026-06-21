@@ -20,6 +20,10 @@ from app.schemas import (
     JobStatus,
     LocalModelDetectionStatus,
     MLXWhisperStatus,
+    AudioModelTestRequest,
+    AudioModelTestResult,
+    CustomModelRegistration,
+    ModelRegistryStatus,
     ModelSelection,
     OllamaModelCheck,
     OllamaPreflightStatus,
@@ -32,6 +36,7 @@ from app.schemas import (
     PolishProfile,
     PolishRequest,
     QwenAudioStatus,
+    UnifiedModel,
     TranscriptionEngine,
 )
 from app.services.audio_engine import AudioEngineResult
@@ -39,6 +44,7 @@ from app.services.audio_engines import QwenAudioEngine
 from app.services.exporters import TranscriptSegment, export_transcript, segment_text
 from app.services.health import health_check
 from app.services.local_model_detection import detect_local_models
+from app.services.model_registry import model_registry, register_custom_model, test_audio_model
 from app.services.mlx_whisper_provider import mlx_whisper_status, transcribe_with_mlx_whisper
 from app.services.jobs import Job, job_store
 from app.services.media import (
@@ -229,10 +235,7 @@ def add_event(job_id: str, message: str, level: str = "info") -> None:
 def resolve_polish_model_id(model_id: str | None) -> str:
     candidate = (model_id or "").strip()
     if not candidate:
-        return settings.ollama_polish_model_definition(None).id
-    known = settings.ollama_polish_model_definition(candidate)
-    if known.id == candidate:
-        return known.id
+        return ""
     return candidate
 
 
@@ -851,6 +854,23 @@ def get_model_status():
     return model_status()
 
 
+@app.get("/api/models/registry", response_model=ModelRegistryStatus)
+def get_model_registry() -> ModelRegistryStatus:
+    return model_registry()
+
+
+@app.post("/api/models/register", response_model=UnifiedModel)
+def register_model(request: CustomModelRegistration) -> UnifiedModel:
+    if not request.path_or_id.strip():
+        raise HTTPException(status_code=400, detail="请填写模型路径或模型 ID")
+    return register_custom_model(request)
+
+
+@app.post("/api/models/audio-test", response_model=AudioModelTestResult)
+def quick_test_audio_model(request: AudioModelTestRequest) -> AudioModelTestResult:
+    return test_audio_model(request)
+
+
 @app.post("/api/model/select")
 def select_active_model(selection: ModelSelection):
     select_model(selection.model_id)
@@ -987,12 +1007,16 @@ async def create_job(
     active_whisper_model_id = settings.model_definition(whisper_model_id or current_model_id()).id
     active_transcription_model_id: str | None = None
     if active_transcription_engine == TranscriptionEngine.ollama_audio:
-        active_transcription_model_id = settings.ollama_transcription_model_definition(transcription_model_id).id
+        active_transcription_model_id = (transcription_model_id or "").strip()
+        if not active_transcription_model_id:
+            raise HTTPException(status_code=400, detail="请选择支持 Audio Input 的本地大模型")
     elif active_transcription_engine == TranscriptionEngine.mlx_whisper:
         active_transcription_model_id = (mlx_model_path_or_repo or settings.mlx_whisper_model_path_or_repo).strip()
     elif active_transcription_engine == TranscriptionEngine.qwen_audio:
         active_transcription_model_id = (qwen_model_path_or_repo or settings.qwen_audio_model_path_or_repo).strip()
     active_polish_model_id = resolve_polish_model_id(polish_model_id) if enable_polish else None
+    if enable_polish and not active_polish_model_id:
+        raise HTTPException(status_code=400, detail="请选择文本整理模型")
     active_profile = get_profile(polish_profile_id)
 
     if active_transcription_engine == TranscriptionEngine.ollama_audio:
@@ -1031,12 +1055,7 @@ async def create_job(
         if not check.service_available:
             raise HTTPException(status_code=503, detail="Ollama 服务不可用，请先启动 Ollama。")
         if not check.available:
-            fallback_id = "gemma3:1b"
-            fallback_check = check_ollama_model(fallback_id) if active_polish_model_id != fallback_id else check
-            if active_polish_model_id != fallback_id and fallback_check.available:
-                active_polish_model_id = fallback_id
-            else:
-                raise HTTPException(status_code=409, detail=f"未检测到 {check.model_id}，请选择已安装模型或在应用外手动安装。")
+            raise HTTPException(status_code=409, detail=f"未检测到 {check.model_id}，请选择已安装模型或在应用外手动安装。")
 
     job_id = uuid4().hex
     work_dir = settings.jobs_dir / job_id
@@ -1164,16 +1183,13 @@ def rerun_polish(job_id: str, request: PolishRequest) -> JobStatus:
         raise HTTPException(status_code=409, detail="当前任务没有原始转录结果，不能单独执行文本整理。")
 
     model_id = resolve_polish_model_id(request.model_id or job.polish_model_id)
+    if not model_id:
+        raise HTTPException(status_code=400, detail="请选择文本整理模型")
     check = check_ollama_model(model_id)
     if not check.service_available:
         raise HTTPException(status_code=503, detail="Ollama 服务不可用，请先启动 Ollama。")
     if not check.available:
-        fallback = "gemma3:1b" if model_id != "gemma3:1b" else None
-        if fallback and check_ollama_model(fallback).available:
-            model_id = fallback
-            append_job_warning(job_id, f"未检测到 {check.model_id}，已回退到 {fallback}。")
-        else:
-            raise HTTPException(status_code=409, detail=f"未检测到 {check.model_id}，请选择已安装模型或在应用外手动安装。")
+        raise HTTPException(status_code=409, detail=f"未检测到 {check.model_id}，请选择已安装模型或在应用外手动安装。")
 
     profile = get_profile(request.profile_id or job.polish_profile_id)
     custom_instruction = (request.custom_instruction or "").strip()

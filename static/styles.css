@@ -633,6 +633,56 @@ textarea:focus-visible,
   padding: 10px;
 }
 
+.model-pool-picker {
+  display: grid;
+  gap: 10px;
+  margin: 2px 0 16px;
+  border: 1px solid rgba(216, 177, 94, 0.18);
+  border-radius: var(--radius-lg);
+  background: rgba(5, 6, 8, 0.32);
+  padding: 12px;
+}
+
+.model-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.meta-pill {
+  display: inline-flex;
+  max-width: 100%;
+  min-height: 30px;
+  align-items: center;
+  border: 1px solid rgba(229, 231, 235, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #dcd8cf;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 780;
+  overflow-wrap: anywhere;
+}
+
+.meta-provider {
+  border-color: rgba(216, 177, 94, 0.3);
+  color: var(--gold-soft);
+}
+
+.meta-capability {
+  border-color: rgba(93, 224, 162, 0.34);
+  color: #a8f3cd;
+}
+
+.model-actions-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.inline-action {
+  width: fit-content;
+  min-height: 36px;
+}
+
 .local-model-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -798,6 +848,15 @@ textarea:focus-visible,
 .monitor {
   position: sticky;
   top: 18px;
+}
+
+.head-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-button.is-collapsed svg {
+  transform: rotate(180deg);
 }
 
 .jobs-list {
@@ -1340,6 +1399,144 @@ textarea:focus-visible,
 
 .environment-card {
   gap: 10px;
+}
+
+.environment-card > summary {
+  display: grid;
+  gap: 4px;
+  color: var(--gold-soft);
+  font-weight: 820;
+}
+
+.environment-card > summary small {
+  color: var(--text-muted);
+  font-weight: 680;
+}
+
+.environment-sections {
+  display: grid;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.environment-sections section {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid rgba(229, 231, 235, 0.1);
+  padding-top: 12px;
+}
+
+.environment-sections h3 {
+  margin: 0;
+  color: #fff2d7;
+  font-size: 15px;
+}
+
+.environment-sections p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.model-detection-list,
+.detection-group {
+  display: grid;
+  gap: 8px;
+}
+
+.detection-group {
+  border: 1px solid rgba(229, 231, 235, 0.1);
+  border-radius: var(--radius-md);
+  background: rgba(5, 6, 8, 0.34);
+  padding: 10px;
+}
+
+.detection-group h4 {
+  margin: 0;
+  color: #eadfc8;
+  font-size: 13px;
+}
+
+.detection-group p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.detected-model-row {
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(229, 231, 235, 0.08);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 8px;
+}
+
+.detected-model-row strong {
+  color: #fff2d7;
+  overflow-wrap: anywhere;
+}
+
+.detected-model-row span,
+.detected-model-row small {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.modal {
+  width: min(680px, calc(100% - 28px));
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+}
+
+.modal::backdrop {
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.modal-panel {
+  border: 1px solid rgba(216, 177, 94, 0.26);
+  border-radius: var(--radius-lg);
+  background: rgba(9, 10, 13, 0.98);
+  box-shadow: var(--shadow-soft), var(--shadow-gold);
+  padding: 18px;
+}
+
+.modal-primary {
+  min-height: 42px;
+}
+
+.fix-plan {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.fix-row {
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(229, 231, 235, 0.1);
+  border-radius: var(--radius-md);
+  background: rgba(5, 6, 8, 0.44);
+  padding: 10px;
+}
+
+.fix-row strong {
+  color: #fff2d7;
+}
+
+.fix-row span {
+  color: var(--text-muted);
+}
+
+.fix-row code {
+  display: block;
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f0dca8;
+  padding: 8px;
+  white-space: nowrap;
 }
 
 .status-grid {

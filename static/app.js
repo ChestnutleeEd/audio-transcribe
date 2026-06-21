@@ -70,12 +70,34 @@ const mlxModelHelp = document.querySelector("#mlx-model-help");
 const qwenModelField = document.querySelector("#qwen-model-field");
 const qwenModelPathOrRepo = document.querySelector("#qwen-model-path-or-repo");
 const qwenModelHelp = document.querySelector("#qwen-model-help");
+const audioModelSelect = document.querySelector("#audio-model-select");
+const audioModelHelp = document.querySelector("#audio-model-help");
+const audioModelMeta = document.querySelector("#audio-model-meta");
+const registryRefreshButton = document.querySelector("#registry-refresh-button");
+const registryRefreshLabel = document.querySelector("#registry-refresh-label");
+const audioTestButton = document.querySelector("#audio-test-button");
+const audioTestLabel = document.querySelector("#audio-test-label");
 const environmentSummary = document.querySelector("#environment-summary");
 const environmentStatusGrid = document.querySelector("#environment-status-grid");
 const environmentAdvice = document.querySelector("#environment-advice");
+const modelDetectionList = document.querySelector("#model-detection-list");
+const jobsCollapseButton = document.querySelector("#jobs-collapse-button");
+const jobsRegion = document.querySelector("#jobs-region");
+const editPromptButton = document.querySelector("#edit-prompt-button");
+const promptModal = document.querySelector("#prompt-modal");
+const promptModalTitle = document.querySelector("#prompt-modal-title");
+const promptEditor = document.querySelector("#prompt-editor");
+const savePromptButton = document.querySelector("#save-prompt-button");
+const restorePromptButton = document.querySelector("#restore-prompt-button");
+const fixAllButton = document.querySelector("#fix-all-button");
+const fixModal = document.querySelector("#fix-modal");
+const mirrorSourceToggle = document.querySelector("#mirror-source-toggle");
+const fixPlan = document.querySelector("#fix-plan");
 
 const HISTORY_KEY = "audio-transcribe:recent-jobs:v1";
 const CUSTOM_INSTRUCTION_KEY = "audio-transcribe:polish-custom-instruction:v1";
+const PROMPT_OVERRIDES_KEY = "audio-transcribe:polish-prompts:v1";
+const JOBS_COLLAPSED_KEY = "audio-transcribe:jobs-collapsed:v1";
 const HISTORY_LIMIT = 5;
 const HISTORY_TEXT_LIMIT = 12000;
 
@@ -87,6 +109,7 @@ let lastOllamaStatus = null;
 let lastMlxStatus = null;
 let lastQwenStatus = null;
 let lastLocalModelDetection = null;
+let lastModelRegistry = null;
 let lastJobs = [];
 let jobElements = new Map();
 let selectedHistoryJobId = null;
@@ -97,7 +120,9 @@ let clipRangeTouched = false;
 
 refreshPolishProfiles();
 loadSavedCustomInstruction();
+restoreJobsCollapsedState();
 renderHistory(loadHistory());
+refreshModelRegistry();
 refreshModelStatus();
 refreshMlxStatus();
 refreshQwenStatus();
@@ -110,6 +135,14 @@ updatePolishControls();
 updateFormatControls();
 
 jobsRefreshButton.addEventListener("click", refreshJobs);
+jobsCollapseButton.addEventListener("click", toggleJobsCollapsed);
+registryRefreshButton.addEventListener("click", refreshModelRegistry);
+audioModelSelect.addEventListener("change", () => {
+  applySelectedAudioModelToForm();
+  renderSelectedAudioModel();
+  updateEngineControls();
+});
+audioTestButton.addEventListener("click", quickTestSelectedAudioModel);
 enablePolishInput.addEventListener("change", updatePolishControls);
 polishProfileSelect.addEventListener("change", () => {
   updatePolishProfileDescription();
@@ -124,6 +157,11 @@ clearPolishCustomButton.addEventListener("click", () => {
   localStorage.removeItem(CUSTOM_INSTRUCTION_KEY);
   updatePromptPreview();
 });
+editPromptButton.addEventListener("click", openPromptEditor);
+savePromptButton.addEventListener("click", savePromptOverride);
+restorePromptButton.addEventListener("click", restorePromptDefault);
+fixAllButton.addEventListener("click", openFixModal);
+mirrorSourceToggle.addEventListener("change", renderFixPlan);
 includeTimestampsInput.addEventListener("change", updateFormatControls);
 historyClearButton.addEventListener("click", async () => {
   if (!window.confirm("清空最近 5 条历史记录？运行中的任务不会被清除。")) return;
@@ -308,6 +346,19 @@ form.addEventListener("submit", async (event) => {
     showDiagnostic(diagnoseClientError("已有任务正在处理。请先等待完成或取消当前任务。", "TASK_ACTIVE"));
     return;
   }
+  const selectedAudio = selectedAudioModel();
+  if (!selectedAudio) {
+    showDiagnostic({
+      code: "AUDIO_MODEL_REQUIRED",
+      title: "未选择音频模型",
+      message: "请选择支持 Audio Input 的模型（系统已自动筛选）。",
+      action: "点击“检测模型”刷新模型池，或在模型与环境状态面板确认 provider 状态。",
+      technical_detail: "audio_model_id is empty",
+    });
+    return;
+  }
+  const modelApplied = applySelectedAudioModelToForm();
+  if (!modelApplied) return;
   const ready = await ensureSelectedOllamaModelsReady();
   if (!ready) return;
   const mlxReady = await ensureSelectedMlxReady();
@@ -325,12 +376,12 @@ form.addEventListener("submit", async (event) => {
   data.set("include_timestamps", includeTimestampsInput.checked ? "true" : "false");
   data.set("transcription_engine", selectedTranscriptionEngine());
   data.set("whisper_model_id", modelSelect.value || "");
-  data.set("transcription_model_id", ollamaTranscriptionModelSelect.value || "gemma4:12b-it-qat");
+  data.set("transcription_model_id", ollamaTranscriptionModelSelect.value || "");
   data.set("mlx_model_path_or_repo", mlxModelPathOrRepo.value.trim());
   data.set("qwen_model_path_or_repo", qwenModelPathOrRepo.value.trim());
   data.set("enable_polish", enablePolishInput.checked ? "true" : "false");
   data.set("export_scope", form.querySelector('input[name="export_scope"]:checked')?.value || "raw");
-  data.set("polish_custom_instruction", polishCustomInstruction.value.trim());
+  data.set("polish_custom_instruction", effectivePolishInstructionValue());
   if (!enablePolishInput.checked) {
     data.delete("polish_model_id");
     data.delete("polish_profile_id");
@@ -375,6 +426,371 @@ form.addEventListener("submit", async (event) => {
     submitButton.disabled = false;
   }
 });
+
+async function refreshModelRegistry() {
+  registryRefreshButton.disabled = true;
+  registryRefreshLabel.textContent = "检测中";
+  try {
+    const response = await fetch("/api/models/registry");
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "模型检测失败");
+    renderModelRegistry(payload);
+    return payload;
+  } catch (error) {
+    audioModelHelp.textContent = `模型检测失败：${error.message}`;
+    modelDetectionList.replaceChildren();
+    return null;
+  } finally {
+    registryRefreshButton.disabled = false;
+    registryRefreshLabel.textContent = "检测模型";
+  }
+}
+
+function renderModelRegistry(payload) {
+  lastModelRegistry = payload;
+  const models = payload.models || [];
+  const audioModels = models.filter((model) => model.capabilities?.audio && model.metadata?.status === "available");
+  const textModels = models.filter((model) => model.capabilities?.text && model.metadata?.status === "available");
+  renderAudioModelOptions(audioModels);
+  renderPolishModelOptions(textModels);
+  renderModelDetection(models, payload.errors || []);
+  renderSelectedAudioModel();
+  renderEnvironmentStatus();
+}
+
+function renderAudioModelOptions(models) {
+  const current = audioModelSelect.value;
+  const options = [
+    new Option(models.length ? "请选择支持 Audio Input 的模型" : "未检测到支持 Audio Input 的模型", ""),
+    ...models.map((model) => new Option(modelOptionLabel(model), model.id)),
+  ];
+  audioModelSelect.replaceChildren(...options);
+  audioModelSelect.value = models.some((model) => model.id === current) ? current : "";
+  audioModelHelp.textContent = models.length
+    ? "请选择支持 Audio Input 的模型（系统已自动筛选）。"
+    : "未检测到本地大模型";
+  audioModelHelp.title = models.length ? "" : "可用 provider：Ollama、MLX、HuggingFace local、llama.cpp";
+}
+
+function renderPolishModelOptions(models) {
+  const current = polishModelSelect.value;
+  const options = [
+    new Option(models.length ? "请选择检测到的 Text 模型" : "未检测到 Text 模型", ""),
+    ...models.map((model) => new Option(modelOptionLabel(model), model.path_or_id)),
+  ];
+  polishModelSelect.replaceChildren(...options);
+  polishModelSelect.value = models.some((model) => model.path_or_id === current) ? current : "";
+}
+
+function modelOptionLabel(model) {
+  return `${model.name} · ${providerLabel(model.provider)} · ${capabilityLabel(model.capabilities)}`;
+}
+
+function selectedAudioModel() {
+  const models = lastModelRegistry?.models || [];
+  return models.find((model) => model.id === audioModelSelect.value) || null;
+}
+
+function renderSelectedAudioModel() {
+  const model = selectedAudioModel();
+  audioTestButton.disabled = !model;
+  audioModelMeta.replaceChildren();
+  if (!model) {
+    audioModelMeta.append(metaPill("provider", "未选择"), metaPill("capability", "Audio Input"));
+    return;
+  }
+  audioModelMeta.append(
+    metaPill("provider", providerLabel(model.provider)),
+    metaPill("path", model.path_or_id),
+    metaPill("capability", capabilityLabel(model.capabilities)),
+  );
+}
+
+function metaPill(kind, text) {
+  const span = document.createElement("span");
+  span.className = `meta-pill meta-${kind}`;
+  span.textContent = text || "-";
+  span.title = text || "";
+  return span;
+}
+
+function renderModelDetection(models, errors) {
+  modelDetectionList.replaceChildren();
+  if (!models.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty compact-empty";
+    empty.textContent = "未检测到本地大模型";
+    empty.title = "可用 provider：Ollama、MLX、HuggingFace local、llama.cpp";
+    modelDetectionList.append(empty);
+  }
+  const groups = [
+    ["Whisper / faster-whisper", models.filter((model) => model.capabilities?.audio && /whisper/i.test(`${model.name} ${model.path_or_id}`))],
+    ["MLX Whisper", models.filter((model) => model.provider === "mlx" && /whisper/i.test(`${model.name} ${model.path_or_id}`))],
+    ["Local LLM models", models.filter((model) => model.capabilities?.text || model.provider === "ollama" || model.provider === "llama.cpp")],
+  ];
+  for (const [label, group] of groups) {
+    modelDetectionList.append(renderModelDetectionGroup(label, group));
+  }
+  for (const error of errors.slice(0, 4)) {
+    const row = document.createElement("small");
+    row.className = "provider-error";
+    row.textContent = error;
+    modelDetectionList.append(row);
+  }
+}
+
+function renderModelDetectionGroup(label, models) {
+  const section = document.createElement("section");
+  section.className = "detection-group";
+  const title = document.createElement("h4");
+  title.textContent = `${label} · ${models.length ? "存在" : "未检测到"}`;
+  section.append(title);
+  if (!models.length) {
+    const empty = document.createElement("p");
+    empty.textContent = "未检测到";
+    if (label === "Local LLM models") {
+      empty.title = "可用 provider：Ollama、MLX、HuggingFace local、llama.cpp";
+    }
+    section.append(empty);
+    return section;
+  }
+  for (const model of models.slice(0, 8)) {
+    const row = document.createElement("div");
+    row.className = "detected-model-row";
+    const name = document.createElement("strong");
+    name.textContent = model.name;
+    const meta = document.createElement("span");
+    meta.textContent = `${providerLabel(model.provider)} · ${capabilityLabel(model.capabilities)}`;
+    const path = document.createElement("small");
+    path.textContent = model.path_or_id;
+    row.append(name, meta, path);
+    section.append(row);
+  }
+  return section;
+}
+
+function applySelectedAudioModelToForm() {
+  const model = selectedAudioModel();
+  if (!model) return false;
+  form.querySelectorAll('input[name="transcription_engine"]').forEach((input) => {
+    input.checked = false;
+  });
+  const text = `${model.name} ${model.path_or_id}`.toLowerCase();
+  if (model.provider === "ollama") {
+    checkEngineRadio("ollama_audio");
+    ensureSelectOption(ollamaTranscriptionModelSelect, model.path_or_id, model.name);
+    ollamaTranscriptionModelSelect.value = model.path_or_id;
+    return true;
+  }
+  if (model.provider === "mlx") {
+    if (text.includes("whisper")) {
+      checkEngineRadio("mlx-whisper");
+      mlxModelPathOrRepo.value = model.path_or_id;
+      return true;
+    }
+    checkEngineRadio("qwen-audio");
+    qwenModelPathOrRepo.value = model.path_or_id;
+    return true;
+  }
+  if (model.provider === "huggingface" || model.provider === "custom") {
+    const whisperId = whisperIdFromDetectedModel(model);
+    if (whisperId) {
+      checkEngineRadio("whisper");
+      ensureSelectOption(modelSelect, whisperId, model.name);
+      modelSelect.value = whisperId;
+      return true;
+    }
+    if (model.capabilities?.audio) {
+      checkEngineRadio("qwen-audio");
+      qwenModelPathOrRepo.value = model.path_or_id;
+      return true;
+    }
+  }
+  showDiagnostic({
+    code: "AUDIO_PROVIDER_NOT_CONNECTED",
+    title: "模型尚未接入转录流程",
+    message: `${providerLabel(model.provider)} / ${model.name} 已检测到，但当前转录适配器无法直接调用该音频模型。`,
+    action: "请选择 MLX Whisper、MLX Audio、Ollama Audio 或项目已管理的 faster-whisper 模型。",
+    technical_detail: JSON.stringify(model, null, 2),
+  });
+  return false;
+}
+
+function checkEngineRadio(value) {
+  const input = form.querySelector(`input[name="transcription_engine"][value="${value}"]`);
+  if (input) input.checked = true;
+}
+
+function ensureSelectOption(select, value, label) {
+  if ([...select.options].some((option) => option.value === value)) return;
+  select.append(new Option(label || value, value));
+}
+
+function whisperIdFromDetectedModel(model) {
+  const text = `${model.name} ${model.path_or_id}`.toLowerCase();
+  const candidates = [
+    ["large-v3", /large-v3/],
+    ["medium", /medium/],
+    ["small", /small/],
+    ["base", /base/],
+    ["tiny", /tiny/],
+  ];
+  const found = candidates.find(([, pattern]) => pattern.test(text));
+  return found?.[0] || "";
+}
+
+async function quickTestSelectedAudioModel() {
+  const model = selectedAudioModel();
+  if (!model) return;
+  audioTestButton.disabled = true;
+  audioTestLabel.textContent = "测试中";
+  try {
+    const response = await fetch("/api/models/audio-test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model_id: model.id,
+        provider: model.provider,
+        path_or_id: model.path_or_id,
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "快速测试失败");
+    showDiagnostic({
+      code: payload.success ? "AUDIO_MODEL_TEST_OK" : "AUDIO_MODEL_TEST_FAILED",
+      title: payload.success ? "快速测试通过" : "快速测试失败",
+      message: payload.message,
+      action: `latency: ${payload.latency_ms} ms`,
+      technical_detail: payload.error || JSON.stringify(model, null, 2),
+    });
+  } catch (error) {
+    showDiagnostic(diagnoseClientError(error.message));
+  } finally {
+    audioTestButton.disabled = false;
+    audioTestLabel.textContent = "快速测试模型";
+  }
+}
+
+function providerLabel(provider) {
+  return {
+    ollama: "Ollama",
+    mlx: "MLX",
+    huggingface: "HuggingFace local",
+    "llama.cpp": "llama.cpp",
+    custom: "custom",
+  }[provider] || provider || "unknown";
+}
+
+function capabilityLabel(capabilities) {
+  const labels = [];
+  if (capabilities?.audio) labels.push("Audio");
+  if (capabilities?.text) labels.push("Text");
+  if (capabilities?.vision) labels.push("Vision");
+  return labels.length ? labels.join(" / ") : "No capability";
+}
+
+function restoreJobsCollapsedState() {
+  const collapsed = localStorage.getItem(JOBS_COLLAPSED_KEY) === "1";
+  setJobsCollapsed(collapsed);
+}
+
+function toggleJobsCollapsed() {
+  setJobsCollapsed(!jobsRegion.hidden);
+}
+
+function setJobsCollapsed(collapsed) {
+  jobsRegion.hidden = collapsed;
+  localStorage.setItem(JOBS_COLLAPSED_KEY, collapsed ? "1" : "0");
+  jobsCollapseButton.title = collapsed ? "展开任务列表" : "收起任务列表";
+  jobsCollapseButton.setAttribute("aria-label", jobsCollapseButton.title);
+  jobsCollapseButton.classList.toggle("is-collapsed", collapsed);
+}
+
+function promptOverrides() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PROMPT_OVERRIDES_KEY) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function currentProfilePrompt(profile) {
+  const overrides = promptOverrides();
+  return overrides[profile.id] || profile.default_prompt || profile.prompt_preview || profile.description || "";
+}
+
+function openPromptEditor() {
+  const profile = polishProfiles.find((item) => item.id === polishProfileSelect.value);
+  if (!profile) return;
+  promptModalTitle.textContent = `${profile.label} · 当前 prompt`;
+  promptEditor.value = currentProfilePrompt(profile);
+  promptModal.showModal();
+}
+
+function savePromptOverride() {
+  const profile = polishProfiles.find((item) => item.id === polishProfileSelect.value);
+  if (!profile) return;
+  const overrides = promptOverrides();
+  overrides[profile.id] = promptEditor.value.trim() || profile.default_prompt || "";
+  localStorage.setItem(PROMPT_OVERRIDES_KEY, JSON.stringify(overrides));
+  promptModal.close();
+  updatePromptPreview();
+}
+
+function restorePromptDefault() {
+  const profile = polishProfiles.find((item) => item.id === polishProfileSelect.value);
+  if (!profile) return;
+  const overrides = promptOverrides();
+  delete overrides[profile.id];
+  localStorage.setItem(PROMPT_OVERRIDES_KEY, JSON.stringify(overrides));
+  promptEditor.value = profile.default_prompt || profile.prompt_preview || "";
+  updatePromptPreview();
+}
+
+function openFixModal() {
+  renderFixPlan();
+  fixModal.showModal();
+}
+
+function renderFixPlan() {
+  const mirror = mirrorSourceToggle.checked;
+  const items = [...healthList.querySelectorAll(".health-item")]
+    .map((node) => node._item)
+    .filter((item) => item && item.status !== "success");
+  fixPlan.replaceChildren();
+  if (!items.length) {
+    const done = document.createElement("p");
+    done.textContent = "当前没有需要修复的环境项。";
+    fixPlan.append(done);
+    return;
+  }
+  for (const item of items) {
+    const row = document.createElement("div");
+    row.className = "fix-row";
+    const title = document.createElement("strong");
+    title.textContent = item.label;
+    const command = document.createElement("code");
+    command.textContent = fixCommandForItem(item, mirror);
+    const note = document.createElement("span");
+    note.textContent = item.suggestion || item.message || "";
+    row.append(title, note, command);
+    fixPlan.append(row);
+  }
+}
+
+function fixCommandForItem(item, mirror) {
+  if (item.id === "ffmpeg") return "brew install ffmpeg";
+  if (item.id === "faster_whisper") {
+    return mirror
+      ? "pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple"
+      : "pip install -r requirements.txt";
+  }
+  if (item.id === "mlx_whisper") {
+    return mirror ? "pip install mlx-whisper -i https://pypi.tuna.tsinghua.edu.cn/simple" : "pip install mlx-whisper";
+  }
+  return "请按提示手动处理；本应用不会静默安装。";
+}
 
 function setClipRange(startValue, endValue) {
   startTimeInput.value = startValue;
@@ -972,9 +1388,9 @@ async function rerunPolish(jobId, button) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model_id: polishModelSelect.value || "gemma4:12b-it-qat",
+        model_id: polishModelSelect.value || "",
         profile_id: polishProfileSelect.value || "punctuation",
-        custom_instruction: polishCustomInstruction.value.trim(),
+        custom_instruction: effectivePolishInstructionValue(),
         export_scope: form.querySelector('input[name="export_scope"]:checked')?.value || "raw",
         formats: [...form.querySelectorAll('input[name="formats"]:checked')].map((input) => input.value),
       }),
@@ -1106,9 +1522,9 @@ function diagnoseClientError(message, codeHint) {
   if (lower.includes("qwen2-audio") || lower.includes("qwen-audio") || lower.includes("mlx-audio")) {
     return {
       code: "QWEN_AUDIO_UNAVAILABLE",
-      title: "Qwen2-Audio 不可用",
+      title: "MLX Audio 不可用",
       message: text,
-      action: "确认当前是 Apple Silicon Mac、已自行安装 mlx-audio，并填写本地 Qwen2-Audio 模型目录或已缓存 repo id。",
+      action: "确认当前是 Apple Silicon Mac、已自行安装 mlx-audio，并填写本地 MLX Audio 模型目录或已缓存 repo id。",
       technical_detail: text,
     };
   }
@@ -1151,7 +1567,7 @@ function jobDetails(job) {
     { label: "引擎", value: transcriptionEngineLabel(job.transcription_engine) },
     { label: "语言", value: languageLabel(job.language) },
     { label: "截取", value: timeRangeLabel(job.start_time, job.end_time) },
-    { label: "模型", value: job.model_label || "large-v3" },
+    { label: "模型", value: job.model_label || "未记录" },
     { label: "文本整理", value: job.enable_polish ? job.polish_model_id || "已启用" : "未启用" },
     { label: "格式", value: job.formats?.length ? job.formats.map(formatLabel).join(" / ") : "未选择" },
     { label: "时间轴", value: job.include_timestamps ? "带时间轴" : "纯文本" },
@@ -1182,7 +1598,7 @@ function jobMeta(job) {
   const details = [
     `语言：${languageLabel(job.language)}`,
     `截取：${timeRangeLabel(job.start_time, job.end_time)}`,
-    `模型：${job.model_label || "large-v3"}`,
+    `模型：${job.model_label || "未记录"}`,
   ];
   if (job.formats?.length) {
     details.push(`格式：${job.formats.map(formatLabel).join("、")}`);
@@ -1206,7 +1622,7 @@ function transcriptionEngineLabel(engine) {
     whisper: "Whisper",
     "mlx-whisper": "MLX Whisper",
     ollama_audio: "本地大模型音频转录",
-    "qwen-audio": "Qwen2-Audio",
+    "qwen-audio": "MLX Audio",
   }[engine] || engine || "Whisper";
 }
 
@@ -1240,7 +1656,20 @@ function formatBytes(bytes) {
 }
 
 function selectedTranscriptionEngine() {
-  return form.querySelector('input[name="transcription_engine"]:checked')?.value || "whisper";
+  const selected = selectedAudioModel();
+  if (selected) {
+    const text = `${selected.name} ${selected.path_or_id}`.toLowerCase();
+    if (selected.provider === "ollama") return "ollama_audio";
+    if (selected.provider === "mlx" && text.includes("whisper")) return "mlx-whisper";
+    if (selected.provider === "mlx") return "qwen-audio";
+    if ((selected.provider === "huggingface" || selected.provider === "custom") && whisperIdFromDetectedModel(selected)) {
+      return "whisper";
+    }
+    if ((selected.provider === "huggingface" || selected.provider === "custom") && selected.capabilities?.audio) {
+      return "qwen-audio";
+    }
+  }
+  return form.querySelector('input[name="transcription_engine"]:checked')?.value || "";
 }
 
 function updateEngineControls() {
@@ -1267,14 +1696,14 @@ function updateEngineControls() {
 
 function updatePolishControls() {
   polishField.hidden = !enablePolishInput.checked;
-  localModelTools.hidden = !enablePolishInput.checked;
+  localModelTools.hidden = true;
   polishProfileField.hidden = !enablePolishInput.checked;
   document.querySelector("#polish-custom-field").hidden = !enablePolishInput.checked;
   document.querySelector("#prompt-preview").hidden = !enablePolishInput.checked;
   polishModelSelect.disabled = !enablePolishInput.checked;
-  localProviderSelect.disabled = !enablePolishInput.checked;
-  localModelSelect.disabled = !enablePolishInput.checked;
-  localModelDetectButton.disabled = !enablePolishInput.checked;
+  localProviderSelect.disabled = true;
+  localModelSelect.disabled = true;
+  localModelDetectButton.disabled = true;
   polishProfileSelect.disabled = !enablePolishInput.checked;
   polishCustomInstruction.disabled = !enablePolishInput.checked;
   updatePromptPreview();
@@ -1335,9 +1764,21 @@ function updatePolishProfileDescription() {
 
 function updatePromptPreview() {
   const selected = polishProfiles.find((profile) => profile.id === polishProfileSelect.value);
-  const base = selected?.prompt_preview || selected?.description || "读取 profile 后显示基础指令。";
+  const base = selected ? currentProfilePrompt(selected) : "读取 profile 后显示基础指令。";
   const custom = polishCustomInstruction.value.trim();
   promptPreviewText.textContent = custom ? `${base}\n追加用户指令：${custom}` : base;
+}
+
+function effectivePolishInstructionValue() {
+  const selected = polishProfiles.find((profile) => profile.id === polishProfileSelect.value);
+  const custom = polishCustomInstruction.value.trim();
+  if (!selected) return custom;
+  const base = currentProfilePrompt(selected);
+  const defaultPrompt = selected.default_prompt || selected.prompt_preview || "";
+  if (base && base !== defaultPrompt) {
+    return `__OVERRIDE_PROMPT__${custom ? `${base}\n追加用户指令：${custom}` : base}`;
+  }
+  return custom;
 }
 
 function loadSavedCustomInstruction() {
@@ -1392,28 +1833,28 @@ function renderEnvironmentStatus() {
   if (!environmentStatusGrid) return;
   const engine = selectedTranscriptionEngine();
   const platform = platformSummary();
-  const whisperReady = Boolean(lastModelStatus?.available);
+  const selected = selectedAudioModel();
+  const registryModels = lastModelRegistry?.models || [];
+  const audioCount = registryModels.filter((model) => model.capabilities?.audio && model.metadata?.status === "available").length;
+  const textCount = registryModels.filter((model) => model.capabilities?.text && model.metadata?.status === "available").length;
+  const whisperReady = Boolean(lastModelStatus?.available || registryModels.some((model) => model.capabilities?.audio && /whisper/i.test(`${model.name} ${model.path_or_id}`)));
   const mlxReady = Boolean(lastMlxStatus?.available);
-  const qwenReady = Boolean(lastQwenStatus?.available);
   const ollamaReady = Boolean(lastOllamaStatus?.available);
-  const selectedModel =
-    engine === "mlx-whisper"
-      ? mlxModelPathOrRepo.value.trim() || lastMlxStatus?.default_model_label || "未配置"
-      : engine === "qwen-audio"
-        ? qwenModelPathOrRepo.value.trim() || lastQwenStatus?.default_model_label || "未配置"
-      : engine === "ollama_audio"
-        ? ollamaTranscriptionModelSelect.value || "未选择"
-        : modelSelect.value || lastModelStatus?.selected_model || "未选择";
+  const selectedModel = selected ? `${selected.name} · ${providerLabel(selected.provider)}` : "未选择模型";
 
-  environmentSummary.textContent = `${transcriptionEngineLabel(engine)} · ${selectedModel}`;
+  environmentSummary.textContent = `${engine ? transcriptionEngineLabel(engine) : "未选择引擎"} · ${selectedModel}`;
   environmentStatusGrid.replaceChildren(
-    statusRow("当前引擎", transcriptionEngineLabel(engine), currentEngineStatus(engine), selectedModel),
+    statusRow("API server status", "可响应", "success", "FastAPI API server"),
+    statusRow("Python runtime", dependencyLabel("python"), dependencyKind("python"), dependencyMessage("python")),
+    statusRow("FFmpeg", dependencyLabel("ffmpeg"), dependencyKind("ffmpeg"), dependencyMessage("ffmpeg")),
+    statusRow("MLX runtime", dependencyLabel("mlx_whisper"), dependencyKind("mlx_whisper"), dependencyMessage("mlx_whisper")),
+    statusRow("Whisper backend", dependencyLabel("faster_whisper"), dependencyKind("faster_whisper"), dependencyMessage("faster_whisper")),
+    statusRow("统一模型池", `${audioCount} Audio / ${textCount} Text`, audioCount || textCount ? "success" : "warning", lastModelRegistry?.checked_at || "等待检测"),
+    statusRow("当前引擎", engine ? transcriptionEngineLabel(engine) : "未选择", currentEngineStatus(engine), selectedModel),
     statusRow("平台适配", platform.label, platform.status, platform.detail),
-    statusRow("Whisper / faster-whisper", whisperReady ? "已就绪" : "未配置", whisperReady ? "success" : "warning", lastModelStatus?.message || "等待检测"),
+    statusRow("Whisper / faster-whisper", whisperReady ? "已检测" : "未配置", whisperReady ? "success" : "warning", lastModelStatus?.message || "等待检测"),
     statusRow("MLX Whisper", mlxReady ? "可用" : mlxStatusLabel(lastMlxStatus), mlxReady ? "success" : mlxStatusKind(lastMlxStatus), mlxStatusDetail(lastMlxStatus)),
-    statusRow("Qwen2-Audio", qwenReady ? "可用" : qwenStatusLabel(lastQwenStatus), qwenReady ? "success" : qwenStatusKind(lastQwenStatus), qwenStatusDetail(lastQwenStatus)),
-    statusRow("本地大模型音频转录", ollamaReady ? "服务可用" : "服务不可用", ollamaReady ? "success" : "warning", lastOllamaStatus?.message || "等待检测"),
-    statusRow("FFmpeg / Python", dependencyLabel("ffmpeg"), dependencyKind("ffmpeg"), dependencyDetail("python")),
+    statusRow("Local LLM models", ollamaReady ? "服务可用" : "未检测到本地大模型", ollamaReady ? "success" : "warning", lastOllamaStatus?.message || "可用 provider：Ollama、MLX、HuggingFace local、llama.cpp"),
   );
   environmentAdvice.replaceChildren(...environmentAdviceItems(platform, engine));
 }
@@ -1436,15 +1877,16 @@ function platformSummary() {
   const os = lastMlxStatus?.os || navigator.platform || "unknown";
   const arch = lastMlxStatus?.arch || "";
   if (lastMlxStatus?.is_apple_silicon) {
-    return { label: `${os} / Apple Silicon`, status: "success", detail: "推荐 MLX Whisper，也可使用 faster-whisper" };
+    return { label: `${os} / Apple Silicon`, status: "success", detail: "可使用 MLX Whisper 或 faster-whisper" };
   }
   if (/win/i.test(os) || /win/i.test(navigator.platform || "")) {
-    return { label: "Windows", status: "success", detail: "推荐 faster-whisper / Whisper；CUDA 可用时优先 CUDA" };
+    return { label: "Windows", status: "success", detail: "可使用 faster-whisper / Whisper；CUDA 可用时优先 CUDA" };
   }
   return { label: [os, arch].filter(Boolean).join(" / "), status: "warning", detail: "优先使用 faster-whisper；MLX 可能不适配" };
 }
 
 function currentEngineStatus(engine) {
+  if (!engine) return "neutral";
   if (engine === "mlx-whisper") return lastMlxStatus?.available ? "success" : "warning";
   if (engine === "qwen-audio") return lastQwenStatus?.available ? "success" : "warning";
   if (engine === "ollama_audio") return lastOllamaStatus?.available ? "success" : "warning";
@@ -1485,8 +1927,8 @@ function qwenStatusKind(status) {
 }
 
 function qwenStatusDetail(status) {
-  if (!status) return "等待检测 Qwen2-Audio";
-  return status.reason || status.hint || "Qwen2-Audio 可用";
+  if (!status) return "等待检测 MLX Audio";
+  return status.reason || status.hint || "MLX Audio 可用";
 }
 
 function dependencyLabel(id) {
@@ -1503,6 +1945,10 @@ function dependencyDetail(extra) {
   const ffmpeg = healthItem("ffmpeg");
   const python = healthItem(extra);
   return [ffmpeg?.message, python?.message].filter(Boolean).join(" · ");
+}
+
+function dependencyMessage(id) {
+  return healthItem(id)?.message || "等待检测";
 }
 
 function healthItem(id) {
@@ -1525,19 +1971,27 @@ function environmentAdviceItems(platform, engine) {
     add(lastMlxStatus?.hint || "请先安装 mlx-whisper 并配置模型。");
   }
   if (engine === "qwen-audio" && !lastQwenStatus?.available) {
-    add(lastQwenStatus?.hint || "请先安装 mlx-audio 并配置 Qwen2-Audio 模型。");
+    add(lastQwenStatus?.hint || "请先安装 mlx-audio 并配置 MLX Audio 模型。");
   }
-  add("本项目不会自动下载 MLX Whisper 或 Qwen2-Audio 模型。");
+  add("本项目不会自动下载 MLX Whisper 或 MLX Audio 模型。");
   return items.slice(0, 3);
 }
 
 async function ensureSelectedOllamaModelsReady() {
   const required = [];
   if (selectedTranscriptionEngine() === "ollama_audio") {
-    required.push({ modelId: ollamaTranscriptionModelSelect.value || "gemma4:12b-it-qat", task: "direct_audio" });
+    if (!ollamaTranscriptionModelSelect.value) {
+      showDiagnostic(diagnoseClientError("请选择支持 Audio Input 的 Ollama 模型。"));
+      return false;
+    }
+    required.push({ modelId: ollamaTranscriptionModelSelect.value, task: "direct_audio" });
   }
   if (enablePolishInput.checked) {
-    required.push({ modelId: polishModelSelect.value || "gemma4:12b-it-qat", task: "polish" });
+    if (!polishModelSelect.value) {
+      showDiagnostic(diagnoseClientError("请选择检测到的 Text 模型后再启用文本整理。"));
+      return false;
+    }
+    required.push({ modelId: polishModelSelect.value, task: "polish" });
   }
   const uniqueChecks = [];
   const seen = new Set();
@@ -1604,9 +2058,9 @@ async function ensureSelectedQwenReady() {
   if (status?.available) return true;
   showDiagnostic({
     code: "QWEN_AUDIO_UNAVAILABLE",
-    title: "Qwen2-Audio 不可用",
-    message: status?.reason || "Qwen2-Audio 前置条件未满足。",
-    action: status?.hint || "请自行安装 mlx-audio，并准备本地 Qwen2-Audio MLX 模型。本项目不会自动调用云服务。",
+    title: "MLX Audio 不可用",
+    message: status?.reason || "MLX Audio 前置条件未满足。",
+    action: status?.hint || "请自行安装 mlx-audio，并准备本地 MLX Audio 模型。本项目不会自动调用云服务。",
     technical_detail: JSON.stringify(status || {}, null, 2),
   });
   return false;
@@ -1649,11 +2103,11 @@ async function refreshQwenStatus() {
     if (configured) params.set("model_path_or_repo", configured);
     const response = await fetch(`/api/qwen-audio/status${params.toString() ? `?${params.toString()}` : ""}`);
     const status = await response.json();
-    if (!response.ok) throw new Error(status.detail || "Qwen2-Audio 状态检测失败");
+    if (!response.ok) throw new Error(status.detail || "MLX Audio 状态检测失败");
     renderQwenStatus(status);
     return status;
   } catch (error) {
-    qwenModelHelp.textContent = `Qwen2-Audio 状态检测失败：${error.message}`;
+    qwenModelHelp.textContent = `MLX Audio 状态检测失败：${error.message}`;
     lastQwenStatus = null;
     renderEnvironmentStatus();
     return null;
@@ -1667,7 +2121,7 @@ function renderQwenStatus(status) {
   }
   qwenModelHelp.textContent = status.reason
     ? `${status.reason} ${status.hint || ""}`
-    : status.hint || "Qwen2-Audio 可用。chunk 级结果会随任务状态逐步更新。";
+    : status.hint || "MLX Audio 可用。chunk 级结果会随任务状态逐步更新。";
   qwenModelHelp.classList.toggle("warning-text", !status.available);
   renderEnvironmentStatus();
 }
@@ -1772,31 +2226,11 @@ function renderOllamaOptions(status) {
         option.textContent = formatOllamaModelOption(model, [
           model.experimental ? "实验性" : "",
           model.role,
-          model.default ? "默认" : "",
           model.available ? "已存在" : "",
         ]);
         return option;
       }),
     );
-  }
-
-  if (polishModels.length) {
-    const currentPolishModel = polishModelSelect.value || "gemma4:12b-it-qat";
-    polishModelSelect.replaceChildren(
-      ...polishModels.map((model) => {
-        const option = document.createElement("option");
-        option.value = model.id;
-        option.textContent = formatOllamaModelOption(model, [
-          model.role,
-          model.default ? "默认" : "",
-          model.available ? "已存在" : "",
-        ]);
-        return option;
-      }),
-    );
-    polishModelSelect.value = [...polishModelSelect.options].some((option) => option.value === currentPolishModel)
-      ? currentPolishModel
-      : polishModels[0]?.id || "gemma4:12b-it-qat";
   }
 
   const combined = [...transcriptionModels, ...polishModels, ...localUnmanagedModels];
@@ -2115,8 +2549,7 @@ function renderModelOptions(status) {
       ...models.map((model) => {
         const option = document.createElement("option");
         option.value = model.id;
-        const defaultLabel = model.meta?.default_recommended ? "，推荐默认" : "";
-        option.textContent = model.available ? `${model.label}（已存在${defaultLabel}）` : `${model.label}${defaultLabel ? "（推荐默认）" : ""}`;
+        option.textContent = model.available ? `${model.label}（已存在）` : model.label;
         option.title = model.meta ? `${model.meta.positioning}；${model.meta.description}` : model.label;
         return option;
       }),
@@ -2125,8 +2558,7 @@ function renderModelOptions(status) {
     for (const option of modelSelect.options) {
       const model = models.find((item) => item.id === option.value);
       if (model) {
-        const defaultLabel = model.meta?.default_recommended ? "，推荐默认" : "";
-        option.textContent = model.available ? `${model.label}（已存在${defaultLabel}）` : `${model.label}${defaultLabel ? "（推荐默认）" : ""}`;
+        option.textContent = model.available ? `${model.label}（已存在）` : model.label;
         option.title = model.meta ? `${model.meta.positioning}；${model.meta.description}` : model.label;
       }
     }
@@ -2175,9 +2607,8 @@ function renderWhisperDetail(model, meta) {
     ["速度", meta.speed],
     ["准确率", meta.accuracy],
     ["资源占用", meta.resource],
-    ["推荐场景", (meta.recommended_for || []).join(" / ")],
+    ["适用场景", (meta.recommended_for || []).join(" / ")],
     ["M 系列 MacBook Air 16GB", meta.mac_m4_air_advice],
-    ["默认推荐", meta.default_recommended ? "推荐作为默认模型" : "不推荐作为默认模型"],
   ];
   const grid = document.createElement("dl");
   for (const [label, value] of rows) {

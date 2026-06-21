@@ -114,7 +114,12 @@ class PolishProfile(BaseModel):
     id: str
     label: str
     description: str
+    default_prompt: str
     prompt_preview: str | None = None
+
+
+class PolishPromptUpdate(BaseModel):
+    prompt: str
 
 
 class PolishRequest(BaseModel):
@@ -136,6 +141,63 @@ class HealthCheckItem(BaseModel):
 class HealthCheckStatus(BaseModel):
     checked_at: str
     items: list[HealthCheckItem]
+
+
+ModelProvider = Literal["ollama", "mlx", "huggingface", "llama.cpp", "custom"]
+ModelSource = Literal["auto_detected", "user_added"]
+ModelAvailability = Literal["available", "missing", "error"]
+
+
+class ModelCapabilities(BaseModel):
+    audio: bool = False
+    text: bool = False
+    vision: bool | None = None
+
+
+class ModelMetadata(BaseModel):
+    source: ModelSource = "auto_detected"
+    status: ModelAvailability = "available"
+    last_checked: str
+    detail: str | None = None
+    size: int | None = None
+    size_label: str | None = None
+    modified_at: str | None = None
+    error: str | None = None
+
+
+class UnifiedModel(BaseModel):
+    id: str
+    name: str
+    provider: ModelProvider
+    path_or_id: str
+    capabilities: ModelCapabilities
+    metadata: ModelMetadata
+
+
+class ModelRegistryStatus(BaseModel):
+    checked_at: str
+    models: list[UnifiedModel] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+
+
+class CustomModelRegistration(BaseModel):
+    name: str | None = None
+    provider: ModelProvider = "custom"
+    path_or_id: str
+    capabilities: ModelCapabilities = Field(default_factory=ModelCapabilities)
+
+
+class AudioModelTestRequest(BaseModel):
+    model_id: str
+    provider: ModelProvider
+    path_or_id: str
+
+
+class AudioModelTestResult(BaseModel):
+    success: bool
+    latency_ms: int
+    message: str
+    error: str | None = None
 
 
 class MLXWhisperStatus(BaseModel):
