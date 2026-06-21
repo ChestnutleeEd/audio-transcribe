@@ -65,6 +65,18 @@ def is_local_model_path(value: str) -> bool:
     return bool(value and Path(value).expanduser().exists())
 
 
+def repo_cached_locally(value: str) -> bool:
+    if not looks_like_repo_id(value):
+        return False
+    try:
+        from huggingface_hub import snapshot_download
+
+        snapshot_download(value, local_files_only=True)
+        return True
+    except Exception:
+        return False
+
+
 def configured_model(value: str | None = None) -> str:
     return (value if value is not None else settings.qwen_audio_model_path_or_repo).strip()
 
@@ -93,10 +105,18 @@ def qwen_audio_status(model_path_or_repo: str | None = None) -> QwenAudioStatus:
         reason = "FFmpeg 不可用。"
         hint = "安装 FFmpeg，或设置 AUDIO_TRANSCRIBE_FFMPEG 指向可执行文件。"
     elif looks_like_repo_id(configured):
-        hint = (
-            "检测到 Hugging Face repo id；默认启用离线模式，避免自动下载。"
-            "如需首次下载，请先在应用外执行 huggingface-cli download，或显式设置 AUDIO_TRANSCRIBE_QWEN_AUDIO_ALLOW_DOWNLOAD=1。"
-        )
+        if not settings.qwen_audio_allow_download and not repo_cached_locally(configured):
+            reason = "Qwen2-Audio repo id 未在本地缓存中找到。"
+            hint = (
+                "请先在应用外执行 huggingface-cli download 下载模型，或填写已下载的本地模型目录。"
+                "本项目默认不会自动下载模型。"
+            )
+            available = False
+        else:
+            hint = (
+                "检测到 Hugging Face repo id；默认启用离线模式，避免自动下载。"
+                "如需首次下载，请先在应用外执行 huggingface-cli download，或显式设置 AUDIO_TRANSCRIBE_QWEN_AUDIO_ALLOW_DOWNLOAD=1。"
+            )
     elif not is_local_model_path(configured):
         reason = "配置的 Qwen2-Audio 本地模型路径不存在。"
         hint = "请填写已下载的本地模型目录，或填写已预先缓存的 repo id。"

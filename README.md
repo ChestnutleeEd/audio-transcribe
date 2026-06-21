@@ -181,6 +181,24 @@ models/Qwen2-Audio-7B-Instruct-4bit
 
 如果填写 `mlx-community/Qwen2-Audio-7B-Instruct-4bit` repo id，默认按离线缓存使用，避免运行时静默下载。确需首次下载时，请在应用外显式下载模型。
 
+国内网络较慢时，可临时使用镜像源：
+
+```bash
+# Python 依赖
+pip install -r requirements-qwen-audio.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# Qwen2-Audio 模型
+HF_ENDPOINT=https://hf-mirror.com huggingface-cli download \
+  --local-dir models/Qwen2-Audio-7B-Instruct-4bit \
+  mlx-community/Qwen2-Audio-7B-Instruct-4bit
+
+# 如果需要先安装 PowerShell 验证 release 脚本
+HOMEBREW_NO_AUTO_UPDATE=1 \
+HOMEBREW_API_DOMAIN=https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles/api \
+HOMEBREW_BOTTLE_DOMAIN=https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles \
+brew install powershell
+```
+
 ### Mac 上 large-v3 很慢
 
 `large-v3` 体积大，在 MacBook Air 等设备上可能很慢。日常建议先用 `small` 或 `medium`。Apple Silicon Mac 可以考虑配置 MLX Whisper。
