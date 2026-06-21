@@ -9,7 +9,7 @@ from typing import Iterable
 
 import httpx
 
-from app.config import ROOT_DIR, settings
+from app.config import settings
 from app.schemas import (
     AudioModelTestRequest,
     AudioModelTestResult,
@@ -118,7 +118,7 @@ def candidate_mlx_roots() -> list[Path]:
     return unique_paths(
         [
             *scan_roots_from_env("AUDIO_TRANSCRIBE_MLX_MODEL_DIRS"),
-            Path.home() / "models",
+            settings.model_root,
             Path.home() / ".cache" / "huggingface" / "hub",
         ]
     )
@@ -214,30 +214,6 @@ def discover_huggingface_cache(checked_at: str) -> tuple[list[UnifiedModel], lis
                 checked_at=checked_at,
             )
         )
-    project_models = ROOT_DIR / "models"
-    if project_models.exists():
-        try:
-            local_dirs = [item for item in project_models.iterdir() if item.is_dir()]
-        except OSError as exc:
-            errors.append(f"Project models: {exc}")
-            local_dirs = []
-        for model_dir in local_dirs:
-            if not looks_like_model_dir(model_dir):
-                continue
-            name = model_dir.name
-            caps = capabilities_for_name(name, "huggingface")
-            if not caps.audio:
-                continue
-            models.append(
-                unified_model(
-                    name=name,
-                    provider="huggingface",
-                    path_or_id=str(model_dir),
-                    capabilities=ModelCapabilities(audio=True, text=False),
-                    modified_at=datetime.fromtimestamp(model_dir.stat().st_mtime, timezone.utc).isoformat(),
-                    checked_at=checked_at,
-                )
-            )
     return models, errors
 
 
@@ -372,6 +348,19 @@ def register_custom_model(request: CustomModelRegistration) -> UnifiedModel:
         detail="用户注册模型",
         checked_at=checked,
     )
+
+
+def delete_custom_model(provider: str, path_or_id: str) -> bool:
+    target_provider = provider.strip()
+    target_path = path_or_id.strip()
+    models = read_custom_models()
+    remaining = [
+        item for item in models if not (item.provider == target_provider and item.path_or_id == target_path)
+    ]
+    if len(remaining) == len(models):
+        return False
+    write_custom_models(remaining)
+    return True
 
 
 def model_registry() -> ModelRegistryStatus:

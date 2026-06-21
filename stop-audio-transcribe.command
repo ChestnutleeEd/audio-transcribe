@@ -16,6 +16,27 @@ APP_PORT="8000"
 PID_FILE="$ROOT/data/tmp/audio-transcribe-server.pid"
 STOPPED=0
 
+stop_pid() {
+  local PID="$1"
+  if [ -z "$PID" ] || ! kill -0 "$PID" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "正在停止 PID $PID..."
+  kill "$PID" >/dev/null 2>&1 || true
+  for _ in {1..20}; do
+    if ! kill -0 "$PID" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.25
+  done
+
+  if kill -0 "$PID" >/dev/null 2>&1; then
+    echo "PID $PID 未响应普通停止信号，正在强制停止..."
+    kill -9 "$PID" >/dev/null 2>&1 || true
+  fi
+}
+
 echo "=================================================="
 echo "Audio-Transcribe macOS 停止器"
 echo "=================================================="
@@ -26,8 +47,8 @@ echo
 if [ -f "$PID_FILE" ]; then
   PID="$(tr -d '[:space:]' < "$PID_FILE")"
   if [ -n "$PID" ] && kill -0 "$PID" >/dev/null 2>&1; then
-    echo "正在停止 PID 文件记录的服务进程：$PID..."
-    kill "$PID" >/dev/null 2>&1 || true
+    echo "发现 PID 文件记录的服务进程：$PID"
+    stop_pid "$PID"
     STOPPED=1
   else
     echo "PID 文件记录的进程未运行：${PID:-空}"
@@ -42,8 +63,7 @@ if [ -n "$PORT_PIDS" ]; then
   echo "监听端口 $APP_PORT 的进程："
   printf "  %s\n" $PORT_PIDS
   for PID in $PORT_PIDS; do
-    echo "正在停止 PID $PID..."
-    kill "$PID" >/dev/null 2>&1 || true
+    stop_pid "$PID"
     STOPPED=1
   done
 else
@@ -52,7 +72,13 @@ fi
 
 echo
 if [ "$STOPPED" -eq 1 ]; then
-  echo "停止命令已完成。"
+  REMAINING_PIDS="$(lsof -tiTCP:"$APP_PORT" -sTCP:LISTEN 2>/dev/null || true)"
+  if [ -n "$REMAINING_PIDS" ]; then
+    echo "停止命令已执行，但端口 $APP_PORT 仍被以下进程占用："
+    printf "  %s\n" $REMAINING_PIDS
+  else
+    echo "停止命令已完成，端口 $APP_PORT 已释放。"
+  fi
 else
   echo "未找到正在运行的 Audio-Transcribe 服务。"
 fi

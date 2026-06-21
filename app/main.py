@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import shutil
+import platform
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,6 +28,7 @@ from app.schemas import (
     ModelCapabilities,
     ModelRegistryStatus,
     ModelSelection,
+    WhisperModelPathBinding,
     OllamaModelCheck,
     OllamaPreflightStatus,
     OllamaPullRequest,
@@ -48,6 +51,7 @@ from app.services.local_model_detection import detect_local_models
 from app.services.model_registry import (
     custom_path_or_id_exists,
     custom_path_or_id_is_path_like,
+    delete_custom_model,
     model_registry,
     probe_custom_model,
     register_custom_model,
@@ -65,12 +69,14 @@ from app.services.media import (
     safe_stem,
 )
 from app.services.model_manager import (
+    bind_model_path,
     current_model_id,
     download_model,
     model_status,
     request_model_download_cancel,
     select_model,
     set_runtime_device,
+    unbind_model_path,
 )
 from app.services.ollama_client import OllamaError
 from app.services.ollama_model_manager import (
@@ -895,13 +901,47 @@ def register_model(
     path_or_id = request.path_or_id.strip()
     if not path_or_id:
         raise HTTPException(status_code=400, detail="请填写模型路径或模型 ID")
+    if request.provider in {"custom", "mlx", "huggingface"} and not custom_path_or_id_is_path_like(path_or_id):
+        raise HTTPException(status_code=400, detail="请填写完整本地模型目录路径")
     if custom_path_or_id_is_path_like(path_or_id) and not custom_path_or_id_exists(path_or_id):
         raise HTTPException(status_code=400, detail=f"模型路径不存在：{path_or_id}")
     return register_custom_model(request)
 
 
+@app.delete("/api/models/register")
+def unregister_model(
+    provider: str = Query(default="custom"),
+    path_or_id: str = Query(default=""),
+) -> dict[str, bool]:
+    if not path_or_id.strip():
+        raise HTTPException(status_code=400, detail="请提供要删除的模型路径")
+    deleted = delete_custom_model(provider, path_or_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="未找到该绑定模型")
+    return {"deleted": True}
+
+
 @app.api_route("/api/models/pick-directory", methods=["GET", "POST"])
 def pick_model_directory():
+    if platform.system().lower() == "darwin":
+        script = 'POSIX path of (choose folder with prompt "选择模型文件夹")'
+        try:
+            result = subprocess.run(
+                ["osascript", "-e", script],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"打开 macOS 文件夹选择器失败：{exc}") from exc
+        if result.returncode == 0 and result.stdout.strip():
+            return {"path": result.stdout.strip().rstrip("/")}
+        message = (result.stderr or "").strip()
+        if "User canceled" in message or result.returncode == 1:
+            raise HTTPException(status_code=400, detail="未选择文件夹")
+        raise HTTPException(status_code=500, detail=f"打开 macOS 文件夹选择器失败：{message or result.returncode}")
+
     try:
         import tkinter as tk
         from tkinter import filedialog
@@ -933,6 +973,22 @@ def quick_test_audio_model(request: AudioModelTestRequest) -> AudioModelTestResu
 @app.post("/api/model/select")
 def select_active_model(selection: ModelSelection):
     select_model(selection.model_id)
+    return model_status()
+
+
+@app.post("/api/model/path")
+def bind_active_model_path(binding: WhisperModelPathBinding):
+    try:
+        bind_model_path(binding.model_id, binding.path)
+        select_model(binding.model_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return model_status()
+
+
+@app.delete("/api/model/path/{model_id}")
+def unbind_active_model_path(model_id: str):
+    unbind_model_path(model_id)
     return model_status()
 
 

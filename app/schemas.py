@@ -260,6 +260,8 @@ class ModelOption(BaseModel):
     label: str
     repo_id: str
     managed_path: str
+    configured_path: str | None = None
+    active_path: str | None = None
     available: bool
     meta: WhisperModelMeta | None = None
 
@@ -268,12 +270,18 @@ class ModelSelection(BaseModel):
     model_id: str
 
 
+class WhisperModelPathBinding(BaseModel):
+    model_id: str
+    path: str
+
+
 class ModelStatus(BaseModel):
     available: bool
     selected_model: str
     models: list[ModelOption]
     active_path: str | None = None
     managed_path: str
+    configured_path: str | None = None
     repo_id: str
     required_files: list[str]
     configured_device: str

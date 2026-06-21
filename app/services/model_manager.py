@@ -14,16 +14,17 @@ from huggingface_hub import snapshot_download
 
 from app.config import SUPPORTED_MODELS, settings
 from app.schemas import ModelDownloadState, ModelOption, ModelStatus
+from app.services.model_bindings import bind_whisper_model_path, unbind_whisper_model_path, whisper_model_path
 
 
 REQUIRED_MODEL_FILES = [
     "config.json",
-    "model.bin",
     "tokenizer.json",
 ]
 
+WEIGHT_FILES = ["model.bin", "model.safetensors"]
 VOCABULARY_FILES = ["vocabulary.json", "vocabulary.txt"]
-MODEL_DOWNLOAD_ALLOW_PATTERNS = [*REQUIRED_MODEL_FILES, *VOCABULARY_FILES]
+MODEL_DOWNLOAD_ALLOW_PATTERNS = [*REQUIRED_MODEL_FILES, *WEIGHT_FILES, *VOCABULARY_FILES]
 
 
 @dataclass
@@ -81,43 +82,125 @@ def clear_runtime_device() -> None:
 
 
 def required_model_files() -> list[str]:
-    return [*REQUIRED_MODEL_FILES, "vocabulary.json 或 vocabulary.txt"]
+    return [*REQUIRED_MODEL_FILES, "model.bin 或 model.safetensors", "vocabulary.json 或 vocabulary.txt"]
 
 
 def is_valid_model_dir(path: Path) -> bool:
     has_required = path.exists() and all((path / file_name).exists() for file_name in REQUIRED_MODEL_FILES)
+    has_weight = any((path / file_name).exists() for file_name in WEIGHT_FILES)
     has_vocabulary = any((path / file_name).exists() for file_name in VOCABULARY_FILES)
-    return has_required and has_vocabulary
+    return has_required and has_weight and has_vocabulary
 
 
-def resolve_model_path(model_id: str | None = None) -> Path | None:
-    for candidate in settings.candidate_model_paths(model_id or current_model_id()):
+def latest_snapshot_dir(path: Path) -> Path | None:
+    snapshots = path / "snapshots"
+    if not snapshots.exists() or not snapshots.is_dir():
+        return None
+    try:
+        candidates = [item for item in snapshots.iterdir() if item.is_dir()]
+    except OSError:
+        return None
+    if not candidates:
+        return None
+    return max(candidates, key=lambda item: item.stat().st_mtime)
+
+
+def candidate_model_dirs(path: Path, model_id: str | None = None) -> list[Path]:
+    paths = [path]
+    snapshot = latest_snapshot_dir(path)
+    if snapshot is not None:
+        paths.append(snapshot)
+
+    if path.exists() and path.is_dir():
+        try:
+            children = [item for item in path.iterdir() if item.is_dir()]
+        except OSError:
+            children = []
+        model = settings.model_definition(model_id)
+        preferred_names = [model.local_dir, model.id, model.repo_id.split("/")[-1], model.repo_id.replace("/", "--")]
+        preferred = [item for item in children if item.name in preferred_names]
+        paths.extend(preferred)
+        paths.extend(children[:20])
+        for child in children[:20]:
+            snapshot = latest_snapshot_dir(child)
+            if snapshot is not None:
+                paths.append(snapshot)
+    return unique_paths(paths)
+
+
+def normalize_model_dir(path: Path, model_id: str | None = None) -> Path | None:
+    for candidate in candidate_model_dirs(path, model_id):
         if is_valid_model_dir(candidate):
             return candidate
     return None
 
 
+def resolve_model_path(model_id: str | None = None) -> Path | None:
+    model_id = model_id or current_model_id()
+    candidates = [*settings.candidate_model_paths(model_id)]
+    bound_path = whisper_model_path(model_id)
+    if bound_path is not None:
+        candidates.append(bound_path)
+    for candidate in unique_paths(candidates):
+        model_dir = normalize_model_dir(candidate, model_id)
+        if model_dir is not None:
+            return model_dir
+    return None
+
+
+def unique_paths(paths: list[Path]) -> list[Path]:
+    unique: list[Path] = []
+    for path in paths:
+        if path not in unique:
+            unique.append(path)
+    return unique
+
+
+def bind_model_path(model_id: str, path_value: str) -> None:
+    model = settings.model_definition(model_id)
+    path = Path(path_value.strip()).expanduser()
+    if not path_value.strip():
+        raise ValueError("请填写 Whisper 模型目录")
+    if not path.exists() or not path.is_dir():
+        raise ValueError(f"模型目录不存在：{path}")
+    model_dir = normalize_model_dir(path, model.id)
+    if model_dir is None:
+        raise ValueError(f"不是有效的 faster-whisper 模型目录，缺少必要文件：{path}")
+    bind_whisper_model_path(model.id, model_dir)
+
+
+def unbind_model_path(model_id: str) -> None:
+    model = settings.model_definition(model_id)
+    unbind_whisper_model_path(model.id)
+
+
 def model_options() -> list[ModelOption]:
-    return [
-        ModelOption(
-            id=model.id,
-            label=model.label,
-            repo_id=settings.model_definition(model.id).repo_id,
-            managed_path=str(settings.managed_model_path_for(model.id)),
-            available=resolve_model_path(model.id) is not None,
-            meta={
-                "speed": model.meta.speed,
-                "accuracy": model.meta.accuracy,
-                "resource": model.meta.resource,
-                "recommended_for": list(model.meta.recommended_for),
-                "mac_m4_air_advice": model.meta.mac_m4_air_advice,
-                "default_recommended": model.meta.default_recommended,
-                "positioning": model.meta.positioning,
-                "description": model.meta.description,
-            },
+    options: list[ModelOption] = []
+    for model in SUPPORTED_MODELS:
+        configured_path = whisper_model_path(model.id)
+        active_path = resolve_model_path(model.id)
+        options.append(
+            ModelOption(
+                id=model.id,
+                label=model.label,
+                repo_id=settings.model_definition(model.id).repo_id,
+                managed_path=str(settings.managed_model_path_for(model.id)),
+                configured_path=str(configured_path) if configured_path else None,
+                active_path=str(active_path) if active_path else None,
+                available=active_path is not None,
+                meta={
+                    "speed": model.meta.speed,
+                    "accuracy": model.meta.accuracy,
+                    "resource": model.meta.resource,
+                    "recommended_for": list(model.meta.recommended_for),
+                    "mac_m4_air_advice": model.meta.mac_m4_air_advice,
+                    "default_recommended": model.meta.default_recommended,
+                    "positioning": model.meta.positioning,
+                    "description": model.meta.description,
+                },
+            )
         )
-        for model in SUPPORTED_MODELS
-    ]
+    return options
 
 
 def model_status() -> ModelStatus:
@@ -153,6 +236,7 @@ def model_status() -> ModelStatus:
         models=model_options(),
         active_path=str(active_path) if active_path else None,
         managed_path=str(settings.managed_model_path_for(model.id)),
+        configured_path=str(whisper_model_path(model.id)) if whisper_model_path(model.id) else None,
         repo_id=model.repo_id,
         required_files=required_model_files(),
         configured_device=settings.device,
@@ -474,6 +558,8 @@ def download_model(model_id: str | None = None) -> None:
 
         if not is_valid_model_dir(managed_path):
             missing = [name for name in REQUIRED_MODEL_FILES if not (managed_path / name).exists()]
+            if not any((managed_path / name).exists() for name in WEIGHT_FILES):
+                missing.append("model.bin 或 model.safetensors")
             if not any((managed_path / name).exists() for name in VOCABULARY_FILES):
                 missing.append("vocabulary.json 或 vocabulary.txt")
             raise RuntimeError(f"模型下载后仍缺少文件: {', '.join(missing)}")

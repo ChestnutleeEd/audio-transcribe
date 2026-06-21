@@ -35,6 +35,7 @@ if exist "%PID_FILE%" (
       )
     )
   )
+  del "%PID_FILE%" >nul 2>nul
 )
 
 echo.
@@ -49,7 +50,12 @@ for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":%APP_PORT% .*LISTENIN
 
 echo.
 if "%STOPPED%"=="1" (
-  echo 停止命令已完成。
+  netstat -ano | findstr /R /C:":%APP_PORT% .*LISTENING" >nul
+  if errorlevel 1 (
+    echo 停止命令已完成，端口 %APP_PORT% 已释放。
+  ) else (
+    echo 停止命令已执行，但端口 %APP_PORT% 仍被占用。请重新运行本停止器。
+  )
 ) else (
   echo 未在端口 %APP_PORT% 上找到正在运行的 Audio-Transcribe 服务。
 )

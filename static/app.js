@@ -12,6 +12,11 @@ const modelSelect = document.querySelector("#model-select");
 const modelMessage = document.querySelector("#model-message");
 const modelDevice = document.querySelector("#model-device");
 const modelPath = document.querySelector("#model-path");
+const whisperModelPath = document.querySelector("#whisper-model-path");
+const pickWhisperModelFolderButton = document.querySelector("#pick-whisper-model-folder-button");
+const bindWhisperModelPathButton = document.querySelector("#bind-whisper-model-path-button");
+const unbindWhisperModelPathButton = document.querySelector("#unbind-whisper-model-path-button");
+const whisperModelPathMessage = document.querySelector("#whisper-model-path-message");
 const modelDownloadButton = document.querySelector("#model-download-button");
 const modelDownloadLabel = document.querySelector("#model-download-label");
 const modelCancelButton = document.querySelector("#model-cancel-button");
@@ -267,6 +272,10 @@ modelRefreshButton.addEventListener("click", async () => {
   modelRefreshButton.disabled = false;
   modelRefreshLabel.textContent = "重新检测";
 });
+
+pickWhisperModelFolderButton.addEventListener("click", pickWhisperModelFolder);
+bindWhisperModelPathButton.addEventListener("click", bindSelectedWhisperModelPath);
+unbindWhisperModelPathButton.addEventListener("click", unbindSelectedWhisperModelPath);
 
 modelDownloadButton.addEventListener("click", async () => {
   const selectedLabel = modelSelect.selectedOptions[0]?.textContent || modelSelect.value || "当前模型";
@@ -641,6 +650,7 @@ function localAudioLlmDetectionRows(models) {
     path: model.path_or_id,
     capability: capabilityLabel(model.capabilities),
     reason: model.metadata?.status || "missing",
+    canDelete: model.metadata?.source === "user_added",
   }));
   if (rows.length) return rows;
   return [
@@ -674,6 +684,14 @@ function renderModelDetectionGroup(label, models) {
     const reason = document.createElement("small");
     reason.textContent = `reason=${model.reason || "available"}`;
     row.append(name, meta, path, reason);
+    if (model.canDelete) {
+      const removeButton = document.createElement("button");
+      removeButton.className = "secondary model-cancel detected-model-delete";
+      removeButton.type = "button";
+      removeButton.textContent = "删除绑定";
+      removeButton.addEventListener("click", () => deleteCustomModelBinding(model.provider, model.path));
+      row.append(removeButton);
+    }
     section.append(row);
   }
   return section;
@@ -800,6 +818,21 @@ async function registerCustomModel() {
   }
 }
 
+async function deleteCustomModelBinding(provider, pathOrId) {
+  const approved = window.confirm(`删除该模型绑定？\n${pathOrId}\n\n不会删除磁盘文件。`);
+  if (!approved) return;
+  try {
+    const params = new URLSearchParams({ provider, path_or_id: pathOrId });
+    const response = await fetch(`/api/models/register?${params.toString()}`, { method: "DELETE" });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.detail || "删除绑定失败");
+    customModelMessage.textContent = "已删除模型绑定。";
+    await refreshModelRegistry();
+  } catch (error) {
+    customModelMessage.textContent = `删除绑定失败：${error.message}`;
+  }
+}
+
 async function postCustomModelRegistration(pathOrId) {
   const modelPayload = customModelPayload(pathOrId);
   const response = await fetch("/api/models/register", {
@@ -829,7 +862,7 @@ function scheduleCustomModelProbe() {
   clearTimeout(customModelProbeTimer);
   const pathOrId = customModelPath.value.trim();
   if (!pathOrId) {
-    customModelMessage.textContent = "手动导入只注册本地路径或模型 ID，不自动下载。";
+    customModelMessage.textContent = "请填写本地模型目录；系统只记录绑定，不自动下载。";
     return;
   }
   customModelMessage.textContent = "正在检测输入的 model path / id";
@@ -892,6 +925,73 @@ async function pickCustomModelFolder() {
     customModelMessage.textContent = `选择文件夹失败：${error.message}`;
   } finally {
     pickCustomModelFolderButton.disabled = false;
+  }
+}
+
+async function pickWhisperModelFolder() {
+  pickWhisperModelFolderButton.disabled = true;
+  whisperModelPathMessage.textContent = "正在打开文件夹选择器";
+  try {
+    const path = await pickDirectoryPath();
+    if (!path) throw new Error("未选择文件夹");
+    whisperModelPath.value = path;
+    whisperModelPathMessage.textContent = "已选择 Whisper 模型目录。";
+  } catch (error) {
+    whisperModelPathMessage.textContent = `选择文件夹失败：${error.message}`;
+  } finally {
+    pickWhisperModelFolderButton.disabled = false;
+  }
+}
+
+async function bindSelectedWhisperModelPath() {
+  const modelId = modelSelect.value;
+  const path = whisperModelPath.value.trim();
+  if (!modelId) {
+    whisperModelPathMessage.textContent = "请先选择 Whisper 模型。";
+    return;
+  }
+  if (!path) {
+    whisperModelPathMessage.textContent = "请填写完整模型目录。";
+    return;
+  }
+  bindWhisperModelPathButton.disabled = true;
+  whisperModelPathMessage.textContent = "正在写入 Whisper 模型路径配置";
+  try {
+    const response = await fetch("/api/model/path", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model_id: modelId, path }),
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.detail || "绑定失败");
+    renderModelStatus(payload);
+    whisperModelPathMessage.textContent = "已绑定 Whisper 模型目录。";
+  } catch (error) {
+    whisperModelPathMessage.textContent = `绑定失败：${error.message}`;
+  } finally {
+    bindWhisperModelPathButton.disabled = false;
+  }
+}
+
+async function unbindSelectedWhisperModelPath() {
+  const modelId = modelSelect.value;
+  if (!modelId) {
+    whisperModelPathMessage.textContent = "请先选择 Whisper 模型。";
+    return;
+  }
+  unbindWhisperModelPathButton.disabled = true;
+  whisperModelPathMessage.textContent = "正在取消 Whisper 模型目录绑定";
+  try {
+    const response = await fetch(`/api/model/path/${encodeURIComponent(modelId)}`, { method: "DELETE" });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.detail || "取消绑定失败");
+    renderModelStatus(payload);
+    whisperModelPath.value = "";
+    whisperModelPathMessage.textContent = "已取消绑定，继续优先检查项目 models 文件夹。";
+  } catch (error) {
+    whisperModelPathMessage.textContent = `取消绑定失败：${error.message}`;
+  } finally {
+    unbindWhisperModelPathButton.disabled = false;
   }
 }
 
@@ -2795,7 +2895,15 @@ function renderModelStatus(status) {
   modelDevice.dataset.device = (status.active_device || status.configured_device || "unknown").toLowerCase();
   modelPath.textContent = status.available
     ? `当前模型：${status.active_path}`
-    : `将下载到：${status.managed_path}`;
+    : `默认检查：${status.managed_path}`;
+  const selectedWhisper = (status.models || []).find((model) => model.id === status.selected_model);
+  const configuredPath = selectedWhisper?.configured_path || status.configured_path || "";
+  if (document.activeElement !== whisperModelPath) {
+    whisperModelPath.value = configuredPath;
+  }
+  whisperModelPathMessage.textContent = configuredPath
+    ? `已绑定：${configuredPath}`
+    : "默认先检查项目 models 文件夹；此处填写完整目录后会写入配置。";
 
   const downloading = status.download_state === "downloading";
   const engine = selectedTranscriptionEngine();
@@ -2803,6 +2911,8 @@ function renderModelStatus(status) {
   modelDownloadButton.disabled = !modelSelect.value || status.available || downloading;
   modelCancelButton.disabled = !downloading;
   modelRefreshButton.disabled = downloading;
+  bindWhisperModelPathButton.disabled = downloading || !modelSelect.value;
+  unbindWhisperModelPathButton.disabled = downloading || !modelSelect.value || !configuredPath;
   modelDownloadLabel.textContent = downloading ? "下载中" : status.available ? "模型已就绪" : "下载模型";
   modelCancelLabel.textContent = downloading ? "取消下载" : "取消下载";
   renderModelDownloadProgress(status, downloading);
@@ -2858,6 +2968,8 @@ function renderModelOptions(status) {
 
   if (modelSelect.value && models.some((model) => model.id === modelSelect.value)) {
     modelSelect.value = modelSelect.value;
+  } else if (status.selected_model && models.some((model) => model.id === status.selected_model)) {
+    modelSelect.value = status.selected_model;
   } else {
     modelSelect.value = "";
   }

@@ -23,11 +23,24 @@ RUNTIME_DIR="$ROOT/data/tmp"
 PID_FILE="$RUNTIME_DIR/audio-transcribe-server.pid"
 SERVER_PID=""
 
+export NO_PROXY="127.0.0.1,localhost,::1${NO_PROXY:+,$NO_PROXY}"
+export no_proxy="127.0.0.1,localhost,::1${no_proxy:+,$no_proxy}"
+
 cleanup() {
   if [ -n "${SERVER_PID:-}" ] && kill -0 "$SERVER_PID" >/dev/null 2>&1; then
     echo
     echo "正在停止 Audio-Transcribe 服务（PID $SERVER_PID）..."
     kill "$SERVER_PID" >/dev/null 2>&1 || true
+    for _ in {1..20}; do
+      if ! kill -0 "$SERVER_PID" >/dev/null 2>&1; then
+        break
+      fi
+      sleep 0.25
+    done
+    if kill -0 "$SERVER_PID" >/dev/null 2>&1; then
+      echo "服务未响应普通停止信号，正在强制停止..."
+      kill -9 "$SERVER_PID" >/dev/null 2>&1 || true
+    fi
     wait "$SERVER_PID" >/dev/null 2>&1 || true
   fi
   if [ -f "$PID_FILE" ]; then
@@ -59,7 +72,7 @@ if [ ! -x "$PYTHON_EXE" ]; then
 fi
 
 echo "[2/5] 正在检查 Audio-Transcribe 是否已经运行..."
-if curl --silent --fail --max-time 2 "$APP_URL" >/dev/null; then
+if curl --noproxy "*" --silent --fail --max-time 2 "$APP_URL" >/dev/null; then
   echo "Audio-Transcribe 似乎已经在运行。"
   echo "正在打开现有网页："
   echo "  $APP_URL"
@@ -90,7 +103,24 @@ SERVER_PID="$!"
 printf "%s\n" "$SERVER_PID" > "$PID_FILE"
 
 echo "[5/5] 正在打开网页..."
-sleep 3
+for _ in {1..30}; do
+  if curl --noproxy "*" --silent --fail --max-time 1 "$APP_URL" >/dev/null; then
+    break
+  fi
+  if ! kill -0 "$SERVER_PID" >/dev/null 2>&1; then
+    echo
+    echo "后端服务启动失败。请查看上方错误信息后重试。"
+    read -r -p "按回车键关闭窗口。"
+    exit 1
+  fi
+  sleep 1
+done
+
+if ! curl --noproxy "*" --silent --fail --max-time 2 "$APP_URL" >/dev/null; then
+  echo
+  echo "后端服务已启动，但网页暂时无法访问：$APP_URL"
+  echo "请稍后手动刷新网页，或回到此窗口查看日志。"
+fi
 open "$APP_URL"
 
 echo "=================================================="

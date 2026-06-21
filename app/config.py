@@ -6,6 +6,7 @@ from pathlib import Path
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
+DEFAULT_MODEL_ROOT = Path(os.getenv("AUDIO_TRANSCRIBE_MODEL_ROOT", ROOT_DIR / "models")).expanduser()
 
 
 @dataclass(frozen=True)
@@ -152,16 +153,14 @@ def qwen_audio_default_model_path_or_repo() -> str:
     configured = os.getenv("AUDIO_TRANSCRIBE_QWEN_AUDIO_MODEL")
     if configured:
         return configured
-    local_default = Path.home() / "models" / "mlx-community" / "Qwen2-Audio-7B-Instruct-4bit"
-    if local_default.exists():
-        return str(local_default)
-    return "mlx-community/Qwen2-Audio-7B-Instruct-4bit"
+    return ""
 
 
 @dataclass(frozen=True)
 class Settings:
     app_name: str = "Audio Transcribe"
-    managed_model_path: Path = ROOT_DIR / "models" / "large-v3-local"
+    model_root: Path = DEFAULT_MODEL_ROOT
+    managed_model_path: Path = DEFAULT_MODEL_ROOT / "large-v3-local"
     legacy_model_path: Path = ROOT_DIR / "origin-code" / "large-v3-local"
     model_repo_id: str = os.getenv("AUDIO_TRANSCRIBE_MODEL_REPO_ID", "Systran/faster-whisper-large-v3")
     default_model_id: str = os.getenv("AUDIO_TRANSCRIBE_MODEL_ID", "large-v3")
@@ -208,7 +207,7 @@ class Settings:
         return SUPPORTED_MODELS[-1]
 
     def managed_model_path_for(self, model_id: str | None = None) -> Path:
-        return ROOT_DIR / "models" / self.model_definition(model_id).local_dir
+        return self.model_root / self.model_definition(model_id).local_dir
 
     def candidate_model_paths(self, model_id: str | None = None) -> list[Path]:
         model = self.model_definition(model_id)
