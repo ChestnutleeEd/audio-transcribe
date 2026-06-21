@@ -80,8 +80,13 @@ def polish_segments(
             if settings.mock_mode:
                 if settings.mock_polish_fail:
                     raise ValueError("Mock 文本整理失败")
+                is_repair = "语义修复" in (profile_instruction or "") or "修正错误转录" in (profile_instruction or "")
                 polished_batch = [
-                    TranscriptSegment(start=segment.start, end=segment.end, text=f"{segment.text}（mock polished）")
+                    TranscriptSegment(
+                        start=segment.start,
+                        end=segment.end,
+                        text=mock_repair_text(segment.text) if is_repair else f"{segment.text}（mock polished）",
+                    )
                     for segment in batch
                 ]
             else:
@@ -129,6 +134,15 @@ def resolve_polish_batch_size(model_id: str) -> int:
     if model_id in {"gemma4:12b", "gemma4:12b-it-qat"}:
         return 10
     return 8
+
+
+def mock_repair_text(text: str) -> str:
+    repaired = " ".join(text.split())
+    for noise in ("呃", "嗯", "啊", "那个", "就是就是", "[noise]", "(noise)"):
+        repaired = repaired.replace(noise, "")
+    while "  " in repaired:
+        repaired = repaired.replace("  ", " ")
+    return repaired.strip(" ，,。") or text
 
 
 def build_polish_prompt(segments: list[TranscriptSegment], profile_instruction: str | None = None) -> str:

@@ -44,7 +44,14 @@ from app.services.audio_engines import QwenAudioEngine
 from app.services.exporters import TranscriptSegment, export_transcript, segment_text
 from app.services.health import health_check
 from app.services.local_model_detection import detect_local_models
-from app.services.model_registry import model_registry, register_custom_model, test_audio_model
+from app.services.model_registry import (
+    custom_path_or_id_exists,
+    custom_path_or_id_is_path_like,
+    model_registry,
+    probe_custom_model,
+    register_custom_model,
+    test_audio_model,
+)
 from app.services.mlx_whisper_provider import mlx_whisper_status, transcribe_with_mlx_whisper
 from app.services.jobs import Job, job_store
 from app.services.media import (
@@ -859,11 +866,52 @@ def get_model_registry() -> ModelRegistryStatus:
     return model_registry()
 
 
+@app.post("/api/models/probe", response_model=UnifiedModel)
+def probe_model(request: CustomModelRegistration) -> UnifiedModel:
+    path_or_id = request.path_or_id.strip()
+    if not path_or_id:
+        raise HTTPException(status_code=400, detail="请填写模型路径或模型 ID")
+    return probe_custom_model(request)
+
+
+@app.get("/api/models/register")
+def register_model_get_hint():
+    raise HTTPException(status_code=400, detail="注册 custom model 请使用 POST /api/models/register")
+
+
 @app.post("/api/models/register", response_model=UnifiedModel)
 def register_model(request: CustomModelRegistration) -> UnifiedModel:
-    if not request.path_or_id.strip():
+    path_or_id = request.path_or_id.strip()
+    if not path_or_id:
         raise HTTPException(status_code=400, detail="请填写模型路径或模型 ID")
+    if custom_path_or_id_is_path_like(path_or_id) and not custom_path_or_id_exists(path_or_id):
+        raise HTTPException(status_code=400, detail=f"模型路径不存在：{path_or_id}")
     return register_custom_model(request)
+
+
+@app.api_route("/api/models/pick-directory", methods=["GET", "POST"])
+def pick_model_directory():
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"当前 Python 环境无法打开系统文件夹选择器：{exc}") from exc
+
+    root = None
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        selected = filedialog.askdirectory(title="选择模型文件夹")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"打开系统文件夹选择器失败：{exc}") from exc
+    finally:
+        if root is not None:
+            root.destroy()
+
+    if not selected:
+        raise HTTPException(status_code=400, detail="未选择文件夹")
+    return {"path": selected}
 
 
 @app.post("/api/models/audio-test", response_model=AudioModelTestResult)

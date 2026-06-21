@@ -63,9 +63,9 @@ POLISH_PROFILES: tuple[PolishProfileDefinition, ...] = (
         ),
     ),
     PolishProfileDefinition(
-        id="repair_mode",
-        label="语义修复 / Repair Mode",
-        description="删除无意义内容，修正识别错误，并改善语义连贯性。",
+        id="repair",
+        label="Repair / 文本修复",
+        description="自动清理噪声 + 修正错误转录。",
         instruction=(
             "执行语义修复：删除无意义内容、明显口误和识别噪声，修正错别字、听错词和明显 ASR 错误。"
             "优化句子连贯性，但不得编造事实、人物、日期、数字或原文没有的信息。"
@@ -90,6 +90,8 @@ def profile_options() -> list[PolishProfile]:
 
 def get_profile(profile_id: str | None) -> PolishProfileDefinition:
     selected = profile_id or POLISH_PROFILES[0].id
+    if selected == "repair_mode":
+        selected = "repair"
     for profile in POLISH_PROFILES:
         if profile.id == selected:
             return profile

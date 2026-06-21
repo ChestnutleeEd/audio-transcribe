@@ -101,6 +101,7 @@ const fixPlan = document.querySelector("#fix-plan");
 const customModelPath = document.querySelector("#custom-model-path");
 const customModelProvider = document.querySelector("#custom-model-provider");
 const customModelCapability = document.querySelector("#custom-model-capability");
+const pickCustomModelFolderButton = document.querySelector("#pick-custom-model-folder-button");
 const addCustomModelButton = document.querySelector("#add-custom-model-button");
 const customModelMessage = document.querySelector("#custom-model-message");
 
@@ -127,6 +128,7 @@ let polishProfiles = [];
 let submittingJob = false;
 let clipDefaultsReady = false;
 let clipRangeTouched = false;
+let customModelProbeTimer = null;
 
 refreshPolishProfiles();
 loadSavedCustomInstruction();
@@ -154,6 +156,10 @@ audioModelSelect.addEventListener("change", () => {
 });
 audioTestButton.addEventListener("click", quickTestSelectedAudioModel);
 addCustomModelButton.addEventListener("click", registerCustomModel);
+pickCustomModelFolderButton.addEventListener("click", pickCustomModelFolder);
+customModelPath.addEventListener("input", scheduleCustomModelProbe);
+customModelProvider.addEventListener("change", scheduleCustomModelProbe);
+customModelCapability.addEventListener("change", scheduleCustomModelProbe);
 enablePolishInput.addEventListener("change", updatePolishControls);
 polishProfileSelect.addEventListener("change", () => {
   updatePolishProfileDescription();
@@ -466,14 +472,14 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-async function refreshModelRegistry() {
+async function refreshModelRegistry(preferred = {}) {
   registryRefreshButton.disabled = true;
   registryRefreshLabel.textContent = "检测中";
   try {
     const response = await fetch("/api/models/registry");
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || "模型检测失败");
-    renderModelRegistry(payload);
+    renderModelRegistry(payload, preferred);
     return payload;
   } catch (error) {
     audioModelHelp.textContent = `模型检测失败：${error.message}`;
@@ -485,21 +491,21 @@ async function refreshModelRegistry() {
   }
 }
 
-function renderModelRegistry(payload) {
+function renderModelRegistry(payload, preferred = {}) {
   lastModelRegistry = payload;
   const models = payload.models || [];
   const audioModels = models.filter((model) => isLocalAudioLlmModel(model) && model.metadata?.status === "available");
   const textModels = models.filter((model) => model.capabilities?.text && model.metadata?.status === "available");
-  renderAudioModelOptions(audioModels);
-  renderPolishModelOptions(textModels);
+  renderAudioModelOptions(audioModels, preferred.audioModelId);
+  renderPolishModelOptions(textModels, preferred.polishModelPath);
   renderModelDetection(payload.errors || []);
   renderSelectedAudioModel();
   renderModeStatus();
   renderEnvironmentStatus();
 }
 
-function renderAudioModelOptions(models) {
-  const current = audioModelSelect.value;
+function renderAudioModelOptions(models, preferredId = "") {
+  const current = preferredId || audioModelSelect.value;
   const options = [
     new Option(models.length ? "请选择支持 Audio Input 的模型" : "未检测到支持 Audio Input 的模型", ""),
     ...models.map((model) => new Option(modelOptionLabel(model), model.id)),
@@ -512,8 +518,8 @@ function renderAudioModelOptions(models) {
   audioModelHelp.title = models.length ? "" : "可用 provider：Ollama、MLX、HuggingFace local、llama.cpp";
 }
 
-function renderPolishModelOptions(models) {
-  const current = polishModelSelect.value;
+function renderPolishModelOptions(models, preferredPath = "") {
+  const current = preferredPath || polishModelSelect.value;
   const options = [
     new Option(models.length ? "请选择检测到的 Text 模型" : "未检测到 Text 模型", ""),
     ...models.map((model) => new Option(modelOptionLabel(model), model.path_or_id)),
@@ -533,6 +539,11 @@ function selectedAudioModel() {
 
 function selectedAudioMode() {
   return form.querySelector('input[name="transcription_engine"]:checked')?.value || "";
+}
+
+function selectAudioMode(mode) {
+  const input = form.querySelector(`input[name="transcription_engine"][value="${mode}"]`);
+  if (input) input.checked = true;
 }
 
 function isWhisperLikeModel(model) {
@@ -671,31 +682,25 @@ function renderModelDetectionGroup(label, models) {
 function applySelectedAudioModelToForm() {
   const model = selectedAudioModel();
   if (!model) return false;
-  const text = `${model.name} ${model.path_or_id}`.toLowerCase();
-  if (model.provider === "ollama") {
+  const engine = audioPipelineForModel(model);
+  if (engine === "ollama_audio") {
     ensureSelectOption(ollamaTranscriptionModelSelect, model.path_or_id, model.name);
     ollamaTranscriptionModelSelect.value = model.path_or_id;
     return true;
   }
-  if (model.provider === "mlx") {
-    if (text.includes("whisper")) {
-      mlxModelPathOrRepo.value = model.path_or_id;
-      return true;
-    }
+  if (engine === "mlx-whisper") {
+    mlxModelPathOrRepo.value = model.path_or_id;
+    return true;
+  }
+  if (engine === "qwen-audio") {
     qwenModelPathOrRepo.value = model.path_or_id;
     return true;
   }
-  if (model.provider === "huggingface" || model.provider === "custom") {
+  if (engine === "whisper") {
     const whisperId = whisperIdFromDetectedModel(model);
-    if (whisperId) {
-      ensureSelectOption(modelSelect, whisperId, model.name);
-      modelSelect.value = whisperId;
-      return true;
-    }
-    if (model.capabilities?.audio) {
-      qwenModelPathOrRepo.value = model.path_or_id;
-      return true;
-    }
+    ensureSelectOption(modelSelect, whisperId, model.name);
+    modelSelect.value = whisperId;
+    return true;
   }
   showDiagnostic({
     code: "AUDIO_PROVIDER_NOT_CONNECTED",
@@ -705,6 +710,17 @@ function applySelectedAudioModelToForm() {
     technical_detail: JSON.stringify(model, null, 2),
   });
   return false;
+}
+
+function audioPipelineForModel(model) {
+  if (!model?.capabilities?.audio) return "";
+  const text = `${model.name || ""} ${model.path_or_id || ""}`.toLowerCase();
+  if (model.provider === "ollama") return "ollama_audio";
+  if (model.provider === "mlx" && text.includes("whisper")) return "mlx-whisper";
+  if (model.provider === "mlx") return "qwen-audio";
+  if ((model.provider === "huggingface" || model.provider === "custom") && whisperIdFromDetectedModel(model)) return "whisper";
+  if (model.provider === "huggingface" || model.provider === "custom") return "qwen-audio";
+  return "";
 }
 
 function ensureSelectOption(select, value, label) {
@@ -763,30 +779,199 @@ async function registerCustomModel() {
     customModelMessage.textContent = "请填写 model path / id。";
     return;
   }
-  const capability = customModelCapability.value;
   addCustomModelButton.disabled = true;
   customModelMessage.textContent = "正在注册 custom model";
   try {
     const response = await fetch("/api/models/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        provider: customModelProvider.value,
-        path_or_id: pathOrId,
-        capabilities: {
-          audio: capability === "audio" || capability === "audio_text",
-          text: capability === "text" || capability === "audio_text",
-        },
-      }),
+      body: JSON.stringify(customModelPayload(pathOrId)),
     });
-    const payload = await response.json();
+    const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.detail || "custom model 注册失败");
     customModelMessage.textContent = `已注册：${payload.name || payload.path_or_id}`;
-    await refreshModelRegistry();
+    await refreshModelRegistry({
+      audioModelId: payload.capabilities?.audio ? payload.id : "",
+      polishModelPath: payload.capabilities?.text ? payload.path_or_id : "",
+    });
+    if (payload.capabilities?.audio) {
+      selectAudioMode("local_audio_llm");
+      applySelectedAudioModelToForm();
+      updateEngineControls();
+    }
   } catch (error) {
     customModelMessage.textContent = `注册失败：${error.message}`;
   } finally {
     addCustomModelButton.disabled = false;
+  }
+}
+
+function scheduleCustomModelProbe() {
+  clearTimeout(customModelProbeTimer);
+  const pathOrId = customModelPath.value.trim();
+  if (!pathOrId) {
+    customModelMessage.textContent = "手动导入只注册本地路径或模型 ID，不自动下载。";
+    return;
+  }
+  customModelMessage.textContent = "正在检测输入的 model path / id";
+  customModelProbeTimer = setTimeout(probeCustomModelInput, 350);
+}
+
+async function probeCustomModelInput() {
+  const pathOrId = customModelPath.value.trim();
+  if (!pathOrId) return;
+  try {
+    const response = await fetch("/api/models/probe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(customModelPayload(pathOrId)),
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.detail || "模型路径检测失败");
+    customModelMessage.textContent = customModelProbeMessage(payload);
+  } catch (error) {
+    customModelMessage.textContent = `检测失败：${error.message}`;
+  }
+}
+
+function customModelPayload(pathOrId) {
+  const capability = customModelCapability.value;
+  return {
+    provider: customModelProvider.value,
+    path_or_id: pathOrId,
+    capabilities: {
+      audio: capability === "audio" || capability === "audio_text",
+      text: capability === "text" || capability === "audio_text",
+    },
+  };
+}
+
+function customModelProbeMessage(model) {
+  const exists = model.metadata?.status === "available";
+  const capability = capabilityLabel(model.capabilities);
+  const engine = audioPipelineForModel(model);
+  const audioNote = !exists
+    ? "路径不存在，不能用于转录"
+    : model.capabilities?.audio
+    ? engine
+      ? `可用于转录管线：${transcriptionEngineLabel(engine)}`
+      : "当前 provider 尚未接入 Audio Input 转录管线"
+    : "不可用于 Audio Input";
+  return `exists=${exists ? "true" : "false"} · provider=${providerLabel(model.provider)} · capability=${capability} · ${audioNote}`;
+}
+
+async function pickCustomModelFolder() {
+  pickCustomModelFolderButton.disabled = true;
+  customModelMessage.textContent = "正在打开文件夹选择器";
+  try {
+    const path = await pickDirectoryPath();
+    if (!path) throw new Error("未选择文件夹");
+    customModelPath.value = path;
+    customModelPath.dispatchEvent(new Event("input", { bubbles: true }));
+    customModelMessage.textContent = "已选择模型文件夹。";
+  } catch (error) {
+    customModelMessage.textContent = `选择文件夹失败：${error.message}`;
+  } finally {
+    pickCustomModelFolderButton.disabled = false;
+  }
+}
+
+async function pickDirectoryPath() {
+  const electronPath = await pickDirectoryWithDesktopApi();
+  if (electronPath) return electronPath;
+
+  try {
+    const response = await fetch("/api/models/pick-directory", { method: "POST" });
+    const payload = await readJsonResponse(response);
+    if (response.ok && payload.path) return payload.path;
+    throw new Error(payload.detail || "后端文件夹选择器不可用");
+  } catch (backendError) {
+    const webkitPath = await pickDirectoryWithWebkitInput();
+    if (webkitPath) return webkitPath;
+    throw new Error(
+      `${backendError.message}；当前浏览器无法提供文件夹绝对路径，请使用桌面启动器或手动粘贴模型目录。`,
+    );
+  }
+}
+
+async function pickDirectoryWithDesktopApi() {
+  const apis = [
+    window.electronAPI?.selectDirectory,
+    window.electronAPI?.pickDirectory,
+    window.electronAPI?.openDirectory,
+    window.api?.selectDirectory,
+    window.audioTranscribe?.selectDirectory,
+  ].filter((item) => typeof item === "function");
+  for (const api of apis) {
+    try {
+      const result = await api();
+      const path = directoryPathFromPickerResult(result);
+      if (path) return path;
+    } catch {
+      continue;
+    }
+  }
+  return "";
+}
+
+function directoryPathFromPickerResult(result) {
+  if (!result) return "";
+  if (typeof result === "string") return result;
+  if (Array.isArray(result)) return result[0] || "";
+  if (typeof result.path === "string") return result.path;
+  if (Array.isArray(result.filePaths)) return result.filePaths[0] || "";
+  if (Array.isArray(result.paths)) return result.paths[0] || "";
+  return "";
+}
+
+function pickDirectoryWithWebkitInput() {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    let settled = false;
+    const finish = (path) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("focus", handleFocus);
+      input.remove();
+      resolve(path || "");
+    };
+    const handleFocus = () => {
+      setTimeout(() => {
+        if (!input.files?.length) finish("");
+      }, 350);
+    };
+    input.type = "file";
+    input.webkitdirectory = true;
+    input.directory = true;
+    input.multiple = true;
+    input.hidden = true;
+    input.addEventListener(
+      "change",
+      () => {
+        const file = input.files?.[0];
+        const filePath = file?.path || "";
+        const relativePath = file?.webkitRelativePath || "";
+        if (filePath && relativePath) {
+          finish(filePath.slice(0, -relativePath.length).replace(/\/$/, ""));
+          return;
+        }
+        finish("");
+      },
+      { once: true },
+    );
+    window.addEventListener("focus", handleFocus);
+    document.body.append(input);
+    input.click();
+  });
+}
+
+async function readJsonResponse(response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { detail: text };
   }
 }
 
@@ -1779,19 +1964,7 @@ function selectedTranscriptionEngine() {
   if (mode === "whisper" || mode === "mlx-whisper") return mode;
   if (mode !== "local_audio_llm") return "";
   const selected = selectedAudioModel();
-  if (selected) {
-    const text = `${selected.name} ${selected.path_or_id}`.toLowerCase();
-    if (selected.provider === "ollama") return "ollama_audio";
-    if (selected.provider === "mlx" && text.includes("whisper")) return "mlx-whisper";
-    if (selected.provider === "mlx") return "qwen-audio";
-    if ((selected.provider === "huggingface" || selected.provider === "custom") && whisperIdFromDetectedModel(selected)) {
-      return "whisper";
-    }
-    if ((selected.provider === "huggingface" || selected.provider === "custom") && selected.capabilities?.audio) {
-      return "qwen-audio";
-    }
-  }
-  return "";
+  return audioPipelineForModel(selected);
 }
 
 function updateEngineControls() {

@@ -290,12 +290,18 @@ def read_custom_models() -> list[CustomModelRegistration]:
     return models
 
 
+def custom_path_or_id_is_path_like(path_or_id: str) -> bool:
+    value = path_or_id.strip()
+    if not value:
+        return False
+    return value.startswith(("/", "~", ".")) or "\\" in value
+
+
 def custom_path_or_id_exists(path_or_id: str) -> bool:
     value = path_or_id.strip()
     if not value:
         return False
-    path_like = value.startswith(("/", "~", ".")) or "\\" in value
-    if path_like:
+    if custom_path_or_id_is_path_like(value):
         return Path(value).expanduser().exists()
     return True
 
@@ -326,6 +332,22 @@ def discover_custom(checked_at: str) -> tuple[list[UnifiedModel], list[str]]:
             )
         )
     return models, []
+
+
+def probe_custom_model(request: CustomModelRegistration) -> UnifiedModel:
+    path_or_id = request.path_or_id.strip()
+    checked = utc_now_iso()
+    exists = custom_path_or_id_exists(path_or_id)
+    return unified_model(
+        name=request.name or Path(path_or_id).name or path_or_id,
+        provider=request.provider,
+        path_or_id=path_or_id,
+        capabilities=request.capabilities,
+        status="available" if exists else "missing",
+        source="user_added",
+        detail="输入路径检测",
+        checked_at=checked,
+    )
 
 
 def register_custom_model(request: CustomModelRegistration) -> UnifiedModel:
