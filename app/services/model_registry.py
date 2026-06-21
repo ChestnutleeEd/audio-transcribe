@@ -290,6 +290,16 @@ def read_custom_models() -> list[CustomModelRegistration]:
     return models
 
 
+def custom_path_or_id_exists(path_or_id: str) -> bool:
+    value = path_or_id.strip()
+    if not value:
+        return False
+    path_like = value.startswith(("/", "~", ".")) or "\\" in value
+    if path_like:
+        return Path(value).expanduser().exists()
+    return True
+
+
 def write_custom_models(models: list[CustomModelRegistration]) -> None:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     CUSTOM_MODELS_FILE.write_text(
@@ -302,7 +312,7 @@ def discover_custom(checked_at: str) -> tuple[list[UnifiedModel], list[str]]:
     models = []
     for item in read_custom_models():
         path_or_id = item.path_or_id.strip()
-        exists = bool(path_or_id and (item.provider != "custom" or Path(path_or_id).expanduser().exists()))
+        exists = custom_path_or_id_exists(path_or_id)
         models.append(
             unified_model(
                 name=item.name or Path(path_or_id).name or path_or_id,
@@ -335,7 +345,7 @@ def register_custom_model(request: CustomModelRegistration) -> UnifiedModel:
         provider=next_model.provider,
         path_or_id=next_model.path_or_id,
         capabilities=next_model.capabilities,
-        status="available" if Path(next_model.path_or_id).expanduser().exists() else "missing",
+        status="available" if custom_path_or_id_exists(next_model.path_or_id) else "missing",
         source="user_added",
         detail="用户注册模型",
         checked_at=checked,

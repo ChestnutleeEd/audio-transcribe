@@ -73,6 +73,11 @@ const qwenModelHelp = document.querySelector("#qwen-model-help");
 const audioModelSelect = document.querySelector("#audio-model-select");
 const audioModelHelp = document.querySelector("#audio-model-help");
 const audioModelMeta = document.querySelector("#audio-model-meta");
+const localAudioLlmField = document.querySelector("#local-audio-llm-field");
+const whisperModelField = document.querySelector("#whisper-model-field");
+const whisperModeStatus = document.querySelector("#whisper-mode-status");
+const mlxModeStatus = document.querySelector("#mlx-mode-status");
+const localAudioModeStatus = document.querySelector("#local-audio-mode-status");
 const registryRefreshButton = document.querySelector("#registry-refresh-button");
 const registryRefreshLabel = document.querySelector("#registry-refresh-label");
 const audioTestButton = document.querySelector("#audio-test-button");
@@ -93,6 +98,11 @@ const fixAllButton = document.querySelector("#fix-all-button");
 const fixModal = document.querySelector("#fix-modal");
 const mirrorSourceToggle = document.querySelector("#mirror-source-toggle");
 const fixPlan = document.querySelector("#fix-plan");
+const customModelPath = document.querySelector("#custom-model-path");
+const customModelProvider = document.querySelector("#custom-model-provider");
+const customModelCapability = document.querySelector("#custom-model-capability");
+const addCustomModelButton = document.querySelector("#add-custom-model-button");
+const customModelMessage = document.querySelector("#custom-model-message");
 
 const HISTORY_KEY = "audio-transcribe:recent-jobs:v1";
 const CUSTOM_INSTRUCTION_KEY = "audio-transcribe:polish-custom-instruction:v1";
@@ -143,6 +153,7 @@ audioModelSelect.addEventListener("change", () => {
   updateEngineControls();
 });
 audioTestButton.addEventListener("click", quickTestSelectedAudioModel);
+addCustomModelButton.addEventListener("click", registerCustomModel);
 enablePolishInput.addEventListener("change", updatePolishControls);
 polishProfileSelect.addEventListener("change", () => {
   updatePolishProfileDescription();
@@ -215,6 +226,11 @@ localProviderSelect.addEventListener("change", renderLocalModelChoices);
 localModelSelect.addEventListener("change", applyDetectedLocalModelSelection);
 
 modelSelect.addEventListener("change", async () => {
+  if (!modelSelect.value) {
+    modelMessage.textContent = "请选择 Whisper 模型";
+    renderSelectedWhisperModelMeta();
+    return;
+  }
   modelSelect.disabled = true;
   modelMessage.textContent = `正在检查 ${modelSelect.value} 模型`;
   let status = null;
@@ -346,19 +362,42 @@ form.addEventListener("submit", async (event) => {
     showDiagnostic(diagnoseClientError("已有任务正在处理。请先等待完成或取消当前任务。", "TASK_ACTIVE"));
     return;
   }
-  const selectedAudio = selectedAudioModel();
-  if (!selectedAudio) {
+  const mode = selectedAudioMode();
+  if (!mode) {
     showDiagnostic({
-      code: "AUDIO_MODEL_REQUIRED",
-      title: "未选择音频模型",
-      message: "请选择支持 Audio Input 的模型（系统已自动筛选）。",
-      action: "点击“检测模型”刷新模型池，或在模型与环境状态面板确认 provider 状态。",
-      technical_detail: "audio_model_id is empty",
+      code: "AUDIO_MODE_REQUIRED",
+      title: "未选择 Audio Model Mode",
+      message: "请选择 Whisper、MLX Whisper 或 Local Audio LLM。",
+      action: "三种模式互相独立；检测失败只会标记 missing，不会隐藏选项。",
+      technical_detail: "transcription_engine is empty",
     });
     return;
   }
-  const modelApplied = applySelectedAudioModelToForm();
-  if (!modelApplied) return;
+  if (mode === "local_audio_llm") {
+    const selectedAudio = selectedAudioModel();
+    if (!selectedAudio) {
+      showDiagnostic({
+        code: "AUDIO_MODEL_REQUIRED",
+        title: "未选择 Local Audio LLM 模型",
+        message: "请选择 capabilities.audio=true 的模型，或在右侧添加 custom model。",
+        action: "点击“检测模型”刷新模型池，或使用 Add custom model 注册路径。",
+        technical_detail: "audio_model_id is empty",
+      });
+      return;
+    }
+    const modelApplied = applySelectedAudioModelToForm();
+    if (!modelApplied) return;
+  }
+  if (mode === "whisper" && !modelSelect.value) {
+    showDiagnostic({
+      code: "WHISPER_MODEL_REQUIRED",
+      title: "未选择 Whisper 模型",
+      message: "请选择一个检测到或可下载的 faster-whisper 模型。",
+      action: "Whisper 模式独立于 Local Audio LLM，不会自动选择模型。",
+      technical_detail: "whisper_model_id is empty",
+    });
+    return;
+  }
   const ready = await ensureSelectedOllamaModelsReady();
   if (!ready) return;
   const mlxReady = await ensureSelectedMlxReady();
@@ -449,12 +488,13 @@ async function refreshModelRegistry() {
 function renderModelRegistry(payload) {
   lastModelRegistry = payload;
   const models = payload.models || [];
-  const audioModels = models.filter((model) => model.capabilities?.audio && model.metadata?.status === "available");
+  const audioModels = models.filter((model) => isLocalAudioLlmModel(model) && model.metadata?.status === "available");
   const textModels = models.filter((model) => model.capabilities?.text && model.metadata?.status === "available");
   renderAudioModelOptions(audioModels);
   renderPolishModelOptions(textModels);
-  renderModelDetection(models, payload.errors || []);
+  renderModelDetection(payload.errors || []);
   renderSelectedAudioModel();
+  renderModeStatus();
   renderEnvironmentStatus();
 }
 
@@ -491,6 +531,18 @@ function selectedAudioModel() {
   return models.find((model) => model.id === audioModelSelect.value) || null;
 }
 
+function selectedAudioMode() {
+  return form.querySelector('input[name="transcription_engine"]:checked')?.value || "";
+}
+
+function isWhisperLikeModel(model) {
+  return /whisper/i.test(`${model.name || ""} ${model.path_or_id || ""}`);
+}
+
+function isLocalAudioLlmModel(model) {
+  return Boolean(model.capabilities?.audio && !isWhisperLikeModel(model));
+}
+
 function renderSelectedAudioModel() {
   const model = selectedAudioModel();
   audioTestButton.disabled = !model;
@@ -514,19 +566,13 @@ function metaPill(kind, text) {
   return span;
 }
 
-function renderModelDetection(models, errors) {
+function renderModelDetection(errors = []) {
   modelDetectionList.replaceChildren();
-  if (!models.length) {
-    const empty = document.createElement("p");
-    empty.className = "empty compact-empty";
-    empty.textContent = "未检测到本地大模型";
-    empty.title = "可用 provider：Ollama、MLX、HuggingFace local、llama.cpp";
-    modelDetectionList.append(empty);
-  }
+  const models = lastModelRegistry?.models || [];
   const groups = [
-    ["Whisper / faster-whisper", models.filter((model) => model.capabilities?.audio && /whisper/i.test(`${model.name} ${model.path_or_id}`))],
-    ["MLX Whisper", models.filter((model) => model.provider === "mlx" && /whisper/i.test(`${model.name} ${model.path_or_id}`))],
-    ["Local LLM models", models.filter((model) => model.capabilities?.text || model.provider === "ollama" || model.provider === "llama.cpp")],
+    ["Whisper / faster-whisper", whisperDetectionRows()],
+    ["MLX Whisper", mlxWhisperDetectionRows()],
+    ["Local Audio LLM", localAudioLlmDetectionRows(models)],
   ];
   for (const [label, group] of groups) {
     modelDetectionList.append(renderModelDetectionGroup(label, group));
@@ -539,31 +585,84 @@ function renderModelDetection(models, errors) {
   }
 }
 
+function whisperDetectionRows() {
+  const statusModels = lastModelStatus?.models || [];
+  if (!statusModels.length) {
+    return [
+      {
+        name: "Whisper model pool",
+        exists: false,
+        provider: "huggingface",
+        path: "models/",
+        capability: "Audio",
+        reason: "等待 faster-whisper 模型检测",
+      },
+    ];
+  }
+  return statusModels.map((model) => ({
+    name: model.label || model.id,
+    exists: Boolean(model.available),
+    provider: "huggingface",
+    path: model.available ? model.managed_path : model.managed_path,
+    capability: "Audio",
+    reason: model.available ? "available" : "missing",
+  }));
+}
+
+function mlxWhisperDetectionRows() {
+  return [
+    {
+      name: "MLX Whisper",
+      exists: Boolean(lastMlxStatus?.available),
+      provider: "mlx",
+      path: lastMlxStatus?.model_path_or_repo || mlxModelPathOrRepo.value.trim() || "未配置",
+      capability: "Audio",
+      reason: lastMlxStatus?.available ? "available" : lastMlxStatus?.reason || "missing",
+    },
+  ];
+}
+
+function localAudioLlmDetectionRows(models) {
+  const rows = models.filter(isLocalAudioLlmModel).map((model) => ({
+    name: model.name,
+    exists: model.metadata?.status === "available",
+    provider: model.provider,
+    path: model.path_or_id,
+    capability: capabilityLabel(model.capabilities),
+    reason: model.metadata?.status || "missing",
+  }));
+  if (rows.length) return rows;
+  return [
+    {
+      name: "Local Audio LLM",
+      exists: false,
+      provider: "ollama / mlx / huggingface / llama.cpp / custom",
+      path: "未检测到",
+      capability: "Audio",
+      reason: "missing",
+    },
+  ];
+}
+
 function renderModelDetectionGroup(label, models) {
   const section = document.createElement("section");
   section.className = "detection-group";
   const title = document.createElement("h4");
-  title.textContent = `${label} · ${models.length ? "存在" : "未检测到"}`;
+  const exists = models.some((model) => model.exists);
+  title.textContent = `${label} · ${exists ? "exists" : "missing"}`;
   section.append(title);
-  if (!models.length) {
-    const empty = document.createElement("p");
-    empty.textContent = "未检测到";
-    if (label === "Local LLM models") {
-      empty.title = "可用 provider：Ollama、MLX、HuggingFace local、llama.cpp";
-    }
-    section.append(empty);
-    return section;
-  }
   for (const model of models.slice(0, 8)) {
     const row = document.createElement("div");
-    row.className = "detected-model-row";
+    row.className = `detected-model-row ${model.exists ? "is-available" : "is-missing"}`;
     const name = document.createElement("strong");
     name.textContent = model.name;
     const meta = document.createElement("span");
-    meta.textContent = `${providerLabel(model.provider)} · ${capabilityLabel(model.capabilities)}`;
+    meta.textContent = `exists=${model.exists ? "true" : "false"} · provider=${providerLabel(model.provider)} · capability=${model.capability}`;
     const path = document.createElement("small");
-    path.textContent = model.path_or_id;
-    row.append(name, meta, path);
+    path.textContent = `path=${model.path}`;
+    const reason = document.createElement("small");
+    reason.textContent = `reason=${model.reason || "available"}`;
+    row.append(name, meta, path, reason);
     section.append(row);
   }
   return section;
@@ -572,36 +671,28 @@ function renderModelDetectionGroup(label, models) {
 function applySelectedAudioModelToForm() {
   const model = selectedAudioModel();
   if (!model) return false;
-  form.querySelectorAll('input[name="transcription_engine"]').forEach((input) => {
-    input.checked = false;
-  });
   const text = `${model.name} ${model.path_or_id}`.toLowerCase();
   if (model.provider === "ollama") {
-    checkEngineRadio("ollama_audio");
     ensureSelectOption(ollamaTranscriptionModelSelect, model.path_or_id, model.name);
     ollamaTranscriptionModelSelect.value = model.path_or_id;
     return true;
   }
   if (model.provider === "mlx") {
     if (text.includes("whisper")) {
-      checkEngineRadio("mlx-whisper");
       mlxModelPathOrRepo.value = model.path_or_id;
       return true;
     }
-    checkEngineRadio("qwen-audio");
     qwenModelPathOrRepo.value = model.path_or_id;
     return true;
   }
   if (model.provider === "huggingface" || model.provider === "custom") {
     const whisperId = whisperIdFromDetectedModel(model);
     if (whisperId) {
-      checkEngineRadio("whisper");
       ensureSelectOption(modelSelect, whisperId, model.name);
       modelSelect.value = whisperId;
       return true;
     }
     if (model.capabilities?.audio) {
-      checkEngineRadio("qwen-audio");
       qwenModelPathOrRepo.value = model.path_or_id;
       return true;
     }
@@ -614,11 +705,6 @@ function applySelectedAudioModelToForm() {
     technical_detail: JSON.stringify(model, null, 2),
   });
   return false;
-}
-
-function checkEngineRadio(value) {
-  const input = form.querySelector(`input[name="transcription_engine"][value="${value}"]`);
-  if (input) input.checked = true;
 }
 
 function ensureSelectOption(select, value, label) {
@@ -668,6 +754,39 @@ async function quickTestSelectedAudioModel() {
   } finally {
     audioTestButton.disabled = false;
     audioTestLabel.textContent = "快速测试模型";
+  }
+}
+
+async function registerCustomModel() {
+  const pathOrId = customModelPath.value.trim();
+  if (!pathOrId) {
+    customModelMessage.textContent = "请填写 model path / id。";
+    return;
+  }
+  const capability = customModelCapability.value;
+  addCustomModelButton.disabled = true;
+  customModelMessage.textContent = "正在注册 custom model";
+  try {
+    const response = await fetch("/api/models/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: customModelProvider.value,
+        path_or_id: pathOrId,
+        capabilities: {
+          audio: capability === "audio" || capability === "audio_text",
+          text: capability === "text" || capability === "audio_text",
+        },
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "custom model 注册失败");
+    customModelMessage.textContent = `已注册：${payload.name || payload.path_or_id}`;
+    await refreshModelRegistry();
+  } catch (error) {
+    customModelMessage.textContent = `注册失败：${error.message}`;
+  } finally {
+    addCustomModelButton.disabled = false;
   }
 }
 
@@ -1656,6 +1775,9 @@ function formatBytes(bytes) {
 }
 
 function selectedTranscriptionEngine() {
+  const mode = selectedAudioMode();
+  if (mode === "whisper" || mode === "mlx-whisper") return mode;
+  if (mode !== "local_audio_llm") return "";
   const selected = selectedAudioModel();
   if (selected) {
     const text = `${selected.name} ${selected.path_or_id}`.toLowerCase();
@@ -1669,15 +1791,18 @@ function selectedTranscriptionEngine() {
       return "qwen-audio";
     }
   }
-  return form.querySelector('input[name="transcription_engine"]:checked')?.value || "";
+  return "";
 }
 
 function updateEngineControls() {
   const engine = selectedTranscriptionEngine();
+  const mode = selectedAudioMode();
   const usingOllamaAudio = engine === "ollama_audio";
   const usingMlxWhisper = engine === "mlx-whisper";
   const usingQwenAudio = engine === "qwen-audio";
   const whisperDownloading = lastModelStatus?.download_state === "downloading";
+  whisperModelField.hidden = mode !== "whisper";
+  localAudioLlmField.hidden = mode !== "local_audio_llm";
   mlxModelField.hidden = !usingMlxWhisper;
   qwenModelField.hidden = !usingQwenAudio;
   modelSelect.disabled = usingOllamaAudio || usingMlxWhisper || usingQwenAudio || whisperDownloading;
@@ -1691,7 +1816,20 @@ function updateEngineControls() {
     refreshQwenStatus();
   }
   ollamaTranscriptionModelSelect.disabled = !usingOllamaAudio;
+  renderModeStatus();
   renderEnvironmentStatus();
+}
+
+function renderModeStatus() {
+  const whisperExists = Boolean(lastModelStatus?.available || (lastModelStatus?.models || []).some((model) => model.available));
+  whisperModeStatus.textContent = whisperExists ? "exists=true · provider=huggingface · capability=Audio" : "exists=false · provider=huggingface · capability=Audio";
+  mlxModeStatus.textContent = lastMlxStatus?.available
+    ? `exists=true · provider=MLX · path=${lastMlxStatus.model_path_or_repo || "已配置"}`
+    : `exists=false · provider=MLX · reason=${lastMlxStatus?.reason || "missing"}`;
+  const localCount = (lastModelRegistry?.models || []).filter(isLocalAudioLlmModel).length;
+  localAudioModeStatus.textContent = localCount
+    ? `exists=true · ${localCount} 个 capabilities.audio=true 模型`
+    : "exists=false · 可通过 Add custom model 导入";
 }
 
 function updatePolishControls() {
@@ -1817,11 +1955,11 @@ function renderHealthItem(item) {
   row.dataset.id = item.id;
   row._item = item;
   const title = document.createElement("strong");
-  title.textContent = item.label;
+  title.textContent = `${item.label} · ${item.status}`;
   const message = document.createElement("span");
-  message.textContent = item.message;
+  message.textContent = item.status === "success" ? "status=success" : `reason=${item.message || item.suggestion || "unknown"}`;
   row.append(title, message);
-  if (item.suggestion) {
+  if (item.suggestion && item.status !== "success") {
     const suggestion = document.createElement("small");
     suggestion.textContent = item.suggestion;
     row.append(suggestion);
@@ -2093,6 +2231,8 @@ function renderMlxStatus(status) {
     ? `${status.reason} ${status.hint || ""}`
     : status.hint || "MLX Whisper 可用。转录时不会自动下载模型。";
   mlxModelHelp.classList.toggle("warning-text", !status.available);
+  renderModeStatus();
+  renderModelDetection(lastModelRegistry?.errors || []);
   renderEnvironmentStatus();
 }
 
@@ -2511,7 +2651,7 @@ function renderModelStatus(status) {
   const downloading = status.download_state === "downloading";
   const engine = selectedTranscriptionEngine();
   modelSelect.disabled = downloading || engine === "ollama_audio" || engine === "mlx-whisper" || engine === "qwen-audio";
-  modelDownloadButton.disabled = status.available || downloading;
+  modelDownloadButton.disabled = !modelSelect.value || status.available || downloading;
   modelCancelButton.disabled = !downloading;
   modelRefreshButton.disabled = downloading;
   modelDownloadLabel.textContent = downloading ? "下载中" : status.available ? "模型已就绪" : "下载模型";
@@ -2520,6 +2660,8 @@ function renderModelStatus(status) {
   if (!modelRefreshButton.disabled) {
     modelRefreshLabel.textContent = "重新检测";
   }
+  renderModeStatus();
+  renderModelDetection(lastModelRegistry?.errors || []);
   renderEnvironmentStatus();
 }
 
@@ -2543,9 +2685,10 @@ function renderModelOptions(status) {
   if (!models.length) return;
 
   const existingValues = [...modelSelect.options].map((option) => option.value).join("|");
-  const nextValues = models.map((model) => model.id).join("|");
+  const nextValues = ["", ...models.map((model) => model.id)].join("|");
   if (existingValues !== nextValues) {
     modelSelect.replaceChildren(
+      new Option("请选择 Whisper 模型", ""),
       ...models.map((model) => {
         const option = document.createElement("option");
         option.value = model.id;
@@ -2564,7 +2707,11 @@ function renderModelOptions(status) {
     }
   }
 
-  modelSelect.value = status.selected_model;
+  if (modelSelect.value && models.some((model) => model.id === modelSelect.value)) {
+    modelSelect.value = modelSelect.value;
+  } else {
+    modelSelect.value = "";
+  }
 }
 
 function selectedWhisperModel() {

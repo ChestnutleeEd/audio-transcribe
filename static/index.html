@@ -67,9 +67,34 @@
             </label>
           </div>
 
-          <section class="model-pool-picker" aria-label="音频模型">
+          <fieldset class="choice-group audio-mode-group">
+            <legend>Audio Model Mode</legend>
+            <label>
+              <input type="radio" name="transcription_engine" value="whisper" />
+              <span>
+                <strong>Whisper（faster-whisper）</strong>
+                <small id="whisper-mode-status">独立 Whisper pipeline；检测失败也不会隐藏。</small>
+              </span>
+            </label>
+            <label>
+              <input type="radio" name="transcription_engine" value="mlx-whisper" />
+              <span>
+                <strong>MLX Whisper（Apple Silicon）</strong>
+                <small id="mlx-mode-status">独立 MLX Whisper pipeline；可手动输入模型路径或 repo id。</small>
+              </span>
+            </label>
+            <label>
+              <input type="radio" name="transcription_engine" value="local_audio_llm" />
+              <span>
+                <strong>Local Audio LLM</strong>
+                <small id="local-audio-mode-status">只显示 capabilities.audio=true 的本地大模型。</small>
+              </span>
+            </label>
+          </fieldset>
+
+          <section class="model-pool-picker" id="local-audio-llm-field" aria-label="Local Audio LLM 模型" hidden>
             <label class="field">
-              <span>音频模型</span>
+              <span>Local Audio LLM 模型</span>
               <select id="audio-model-select" aria-label="选择支持 Audio Input 的模型">
                 <option value="">请选择支持 Audio Input 的模型</option>
               </select>
@@ -88,37 +113,40 @@
             </div>
           </section>
 
-          <fieldset class="choice-group legacy-engine-options" hidden>
-            <legend>转录引擎</legend>
-            <label>
-              <input type="radio" name="transcription_engine" value="whisper" />
-              <span>
-                <strong>Whisper</strong>
-                <small>稳定本地转录，支持时间轴</small>
+          <section class="model-pool-picker" id="whisper-model-field" hidden>
+            <label class="model-selector">
+              <span class="selector-heading">
+                Whisper 模型
+                <button class="info-button" type="button" id="model-info-button" aria-label="查看当前 Whisper 模型说明" title="查看模型说明">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17v-5m0-5h.01"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                </button>
               </span>
+              <select id="model-select" aria-label="选择 Whisper 模型"></select>
             </label>
-            <label>
-              <input type="radio" name="transcription_engine" value="mlx-whisper" />
-              <span>
-                <strong>MLX Whisper</strong>
-                <small>需自行安装 mlx-whisper，并准备 MLX 格式模型</small>
-              </span>
-            </label>
-            <label>
-              <input type="radio" name="transcription_engine" value="ollama_audio" />
-              <span>
-                <strong>本地大模型音频转录</strong>
-                <small>通过本地多模态大模型直接处理音频，具体模型可在下方选择</small>
-              </span>
-            </label>
-            <label>
-              <input type="radio" name="transcription_engine" value="qwen-audio" />
-              <span>
-                <strong>MLX Audio</strong>
-                <small>Apple Silicon 本地运行，支持 chunk 级实时返回</small>
-              </span>
-            </label>
-          </fieldset>
+            <div class="model-info-popover" id="model-info-popover" hidden></div>
+            <div class="model-description" id="model-description"></div>
+            <p id="model-message">正在检测 Whisper 模型</p>
+            <div class="model-progress" id="model-progress" aria-hidden="true">
+              <div class="model-progress-track"><span id="model-progress-fill"></span></div>
+              <small id="model-progress-label"></small>
+            </div>
+            <span class="device-pill" id="model-device">运行设备：检测中</span>
+            <small id="model-path"></small>
+            <div class="model-actions">
+              <button class="secondary" type="button" id="model-refresh-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
+                <span id="model-refresh-label">重新检测</span>
+              </button>
+              <button class="secondary" type="button" id="model-download-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>
+                <span id="model-download-label">下载模型</span>
+              </button>
+              <button class="secondary model-cancel" type="button" id="model-cancel-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                <span id="model-cancel-label">取消下载</span>
+              </button>
+            </div>
+          </section>
 
           <label class="field" id="mlx-model-field" hidden>
             <span>MLX Whisper 模型路径或 repo id</span>
@@ -255,8 +283,8 @@
               <small id="environment-summary">正在检测模型和运行环境。</small>
             </summary>
             <div class="environment-sections">
-              <section>
-                <h3>环境检查</h3>
+              <details class="environment-module" open>
+                <summary>环境检查</summary>
                 <p id="health-message">检查 FFmpeg、Python runtime、MLX runtime、Whisper backend 和 API server status。</p>
                 <div id="environment-status-grid" class="status-grid"></div>
                 <div class="model-actions model-actions-two">
@@ -270,15 +298,43 @@
                   </button>
                 </div>
                 <div id="health-list" class="health-list"></div>
-              </section>
-              <section>
-                <h3>模型检测</h3>
+              </details>
+              <details class="environment-module" open>
+                <summary>模型检测</summary>
+                <div class="custom-model-form" aria-label="手动导入模型">
+                  <label class="field">
+                    <span>model path / id</span>
+                    <input id="custom-model-path" type="text" placeholder="/path/to/model 或 provider/model-id" autocomplete="off" />
+                  </label>
+                  <div class="custom-model-grid">
+                    <label class="field">
+                      <span>provider</span>
+                      <select id="custom-model-provider">
+                        <option value="custom">custom</option>
+                        <option value="mlx">MLX</option>
+                        <option value="huggingface">HuggingFace local</option>
+                        <option value="ollama">Ollama</option>
+                        <option value="llama.cpp">llama.cpp</option>
+                      </select>
+                    </label>
+                    <label class="field">
+                      <span>capability</span>
+                      <select id="custom-model-capability">
+                        <option value="audio">Audio</option>
+                        <option value="text">Text</option>
+                        <option value="audio_text">Audio + Text</option>
+                      </select>
+                    </label>
+                  </div>
+                  <button class="secondary" type="button" id="add-custom-model-button">Add custom model</button>
+                  <small id="custom-model-message">手动导入只注册本地路径或模型 ID，不自动下载。</small>
+                </div>
                 <div id="model-detection-list" class="model-detection-list"></div>
-              </section>
-              <section>
-                <h3>系统建议</h3>
+              </details>
+              <details class="environment-module" open>
+                <summary>系统状态</summary>
                 <div id="environment-advice" class="status-advice"></div>
-              </section>
+              </details>
             </div>
           </details>
 
@@ -288,47 +344,6 @@
               <p>正在检测模型和运行环境。</p>
             </div>
           </div>
-
-          <details class="model-details" hidden>
-            <summary>Whisper 模型详情</summary>
-          <div class="model-card" aria-live="polite">
-            <div>
-              <h3>Whisper 模型状态</h3>
-              <label class="model-selector">
-                <span class="selector-heading">
-                  选择模型
-                  <button class="info-button" type="button" id="model-info-button" aria-label="查看当前 Whisper 模型说明" title="查看模型说明">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17v-5m0-5h.01"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                  </button>
-                </span>
-                <select id="model-select" aria-label="选择语音转换模型"></select>
-              </label>
-              <div class="model-info-popover" id="model-info-popover" hidden></div>
-              <div class="model-description" id="model-description"></div>
-              <p id="model-message">正在检测本地音频模型</p>
-              <div class="model-progress" id="model-progress" aria-hidden="true">
-                <div class="model-progress-track"><span id="model-progress-fill"></span></div>
-                <small id="model-progress-label"></small>
-              </div>
-              <span class="device-pill" id="model-device">运行设备：检测中</span>
-              <small id="model-path"></small>
-            </div>
-            <div class="model-actions">
-              <button class="secondary" type="button" id="model-refresh-button">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
-                <span id="model-refresh-label">重新检测</span>
-              </button>
-              <button class="secondary" type="button" id="model-download-button">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>
-                <span id="model-download-label">下载模型</span>
-              </button>
-              <button class="secondary model-cancel" type="button" id="model-cancel-button">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                <span id="model-cancel-label">取消下载</span>
-              </button>
-            </div>
-          </div>
-          </details>
 
           <details class="model-details" hidden>
             <summary>本地大模型详情</summary>

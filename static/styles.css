@@ -1426,6 +1426,23 @@ textarea:focus-visible,
   padding-top: 12px;
 }
 
+.environment-module {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid rgba(229, 231, 235, 0.1);
+  padding-top: 12px;
+}
+
+.environment-module > summary {
+  color: #fff2d7;
+  font-size: 15px;
+  font-weight: 820;
+}
+
+.environment-module[open] > summary {
+  margin-bottom: 10px;
+}
+
 .environment-sections h3 {
   margin: 0;
   color: #fff2d7;
@@ -1470,6 +1487,14 @@ textarea:focus-visible,
   padding: 8px;
 }
 
+.detected-model-row.is-available {
+  border-left: 3px solid var(--success);
+}
+
+.detected-model-row.is-missing {
+  border-left: 3px solid var(--warning);
+}
+
 .detected-model-row strong {
   color: #fff2d7;
   overflow-wrap: anywhere;
@@ -1479,6 +1504,29 @@ textarea:focus-visible,
 .detected-model-row small {
   color: var(--text-muted);
   overflow-wrap: anywhere;
+}
+
+.custom-model-form {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(229, 231, 235, 0.1);
+  border-radius: var(--radius-md);
+  background: rgba(5, 6, 8, 0.34);
+  padding: 10px;
+}
+
+.custom-model-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.custom-model-form .field {
+  margin-bottom: 0;
+}
+
+.custom-model-form small {
+  color: var(--text-muted);
 }
 
 .modal {
@@ -1888,6 +1936,7 @@ textarea:focus-visible,
   .job-details,
   .model-actions,
   .local-model-actions,
+  .custom-model-grid,
   .output-row,
   .transcripts,
   .stage-timeline,
