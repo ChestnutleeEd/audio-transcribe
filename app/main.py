@@ -102,6 +102,14 @@ executor = ThreadPoolExecutor(max_workers=1)
 ollama_executor = ThreadPoolExecutor(max_workers=1)
 
 
+@app.middleware("http")
+async def disable_static_cache(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path in {"/", "/index.html", "/app.js", "/styles.css"}:
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -382,6 +390,12 @@ def resolve_polish_model_id(model_id: str | None) -> str:
 
 def terminal_state(state: JobState) -> bool:
     return state in {JobState.completed, JobState.failed, JobState.cancelled}
+
+
+def route_transcription_engine(engine: TranscriptionEngine, model_path_or_repo: str | None) -> TranscriptionEngine:
+    if engine == TranscriptionEngine.qwen_audio and is_mlx_vlm_audio_model(model_path_or_repo):
+        return TranscriptionEngine.mlx_vlm_audio
+    return engine
 
 
 def diagnose_error(error: str, context: str | None = None) -> ErrorDiagnostic:
@@ -1337,10 +1351,9 @@ async def create_job(
         active_transcription_model_id = (mlx_model_path_or_repo or settings.mlx_whisper_model_path_or_repo).strip()
     elif active_transcription_engine == TranscriptionEngine.qwen_audio:
         active_transcription_model_id = (qwen_model_path_or_repo or settings.qwen_audio_model_path_or_repo).strip()
-        if is_mlx_vlm_audio_model(active_transcription_model_id):
-            active_transcription_engine = TranscriptionEngine.mlx_vlm_audio
     elif active_transcription_engine == TranscriptionEngine.mlx_vlm_audio:
         active_transcription_model_id = (qwen_model_path_or_repo or "").strip()
+    active_transcription_engine = route_transcription_engine(active_transcription_engine, active_transcription_model_id)
     active_polish_model_ref = resolve_polish_model(polish_model_id) if enable_polish else None
     active_polish_model_id = active_polish_model_ref.path_or_id if active_polish_model_ref else None
     if enable_polish and not active_polish_model_ref:

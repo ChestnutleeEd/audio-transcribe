@@ -53,7 +53,7 @@ if [ -f "$PID_FILE" ]; then
   else
     echo "PID 文件记录的进程未运行：${PID:-空}"
   fi
-  rm "$PID_FILE"
+  rm -f "$PID_FILE"
 fi
 
 echo

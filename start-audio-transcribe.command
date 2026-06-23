@@ -27,24 +27,45 @@ export NO_PROXY="127.0.0.1,localhost,::1${NO_PROXY:+,$NO_PROXY}"
 export no_proxy="127.0.0.1,localhost,::1${no_proxy:+,$no_proxy}"
 
 cleanup() {
-  if [ -n "${SERVER_PID:-}" ] && kill -0 "$SERVER_PID" >/dev/null 2>&1; then
+  local PID="${SERVER_PID:-}"
+  if [ -n "$PID" ] && kill -0 "$PID" >/dev/null 2>&1; then
     echo
-    echo "正在停止 Audio-Transcribe 服务（PID $SERVER_PID）..."
-    kill "$SERVER_PID" >/dev/null 2>&1 || true
+    echo "正在停止 Audio-Transcribe 服务（PID $PID）..."
+    kill "$PID" >/dev/null 2>&1 || true
     for _ in {1..20}; do
-      if ! kill -0 "$SERVER_PID" >/dev/null 2>&1; then
+      if ! kill -0 "$PID" >/dev/null 2>&1; then
         break
       fi
       sleep 0.25
     done
-    if kill -0 "$SERVER_PID" >/dev/null 2>&1; then
+    if kill -0 "$PID" >/dev/null 2>&1; then
       echo "服务未响应普通停止信号，正在强制停止..."
-      kill -9 "$SERVER_PID" >/dev/null 2>&1 || true
+      kill -9 "$PID" >/dev/null 2>&1 || true
     fi
-    wait "$SERVER_PID" >/dev/null 2>&1 || true
+    wait "$PID" >/dev/null 2>&1 || true
   fi
   if [ -f "$PID_FILE" ]; then
     rm "$PID_FILE"
+  fi
+}
+
+stop_existing_pid() {
+  local PID="$1"
+  if [ -z "$PID" ] || ! kill -0 "$PID" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "发现已运行的 Audio-Transcribe 服务（PID $PID），正在重启以加载当前代码..."
+  kill "$PID" >/dev/null 2>&1 || true
+  for _ in {1..20}; do
+    if ! kill -0 "$PID" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.25
+  done
+  if kill -0 "$PID" >/dev/null 2>&1; then
+    echo "服务未响应普通停止信号，正在强制停止..."
+    kill -9 "$PID" >/dev/null 2>&1 || true
   fi
 }
 
@@ -72,14 +93,18 @@ if [ ! -x "$PYTHON_EXE" ]; then
 fi
 
 echo "[2/5] 正在检查 Audio-Transcribe 是否已经运行..."
+if [ -f "$PID_FILE" ]; then
+  EXISTING_PID="$(tr -d '[:space:]' < "$PID_FILE")"
+  stop_existing_pid "$EXISTING_PID"
+  rm "$PID_FILE"
+fi
+
 if curl --noproxy "*" --silent --fail --max-time 2 "$APP_URL" >/dev/null; then
-  echo "Audio-Transcribe 似乎已经在运行。"
-  echo "正在打开现有网页："
-  echo "  $APP_URL"
-  open "$APP_URL"
+  echo "端口 $APP_PORT 已有服务响应，但不是当前启动器管理的进程。"
+  echo "请先双击 stop-audio-transcribe.command 停止旧服务后再启动。"
   echo
-  echo "如需停止现有服务，请双击 stop-audio-transcribe.command。"
-  exit 0
+  read -r -p "按回车键关闭窗口。"
+  exit 1
 fi
 
 echo "[3/5] 正在检查 Python 依赖和 FFmpeg..."
