@@ -417,7 +417,15 @@ def diagnose_error(error: str, context: str | None = None) -> ErrorDiagnostic:
             action="确认当前是 Apple Silicon Mac、已自行安装 mlx-whisper，并配置本地 MLX 模型目录或已缓存 repo id。",
             technical_detail=text,
         )
-    if "qwen2-audio" in lower or "qwen-audio" in lower or "mlx-audio" in lower:
+    if "stt 后端不支持" in lower or "not supported for stt" in lower:
+        return ErrorDiagnostic(
+            code="AUDIO_MODEL_UNSUPPORTED",
+            title="音频模型暂未接入",
+            message="所选模型不能被当前 MLX Audio STT 转录管线调用。",
+            action="切换到 Qwen2-Audio MLX 模型，或使用 Whisper / MLX Whisper。Gemma 音频模型需要新的本地多模态适配器后才能用于转录。",
+            technical_detail=text,
+        )
+    if "qwen2-audio" in lower or "qwen-audio" in lower or "mlx-audio" in lower or "mlx audio" in lower:
         return ErrorDiagnostic(
             code="QWEN_AUDIO_UNAVAILABLE",
             title="Qwen2-Audio 不可用",

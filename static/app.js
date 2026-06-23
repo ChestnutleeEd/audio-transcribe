@@ -117,6 +117,7 @@ const CUSTOM_INSTRUCTION_KEY = "audio-transcribe:polish-custom-instruction:v1";
 const PROMPT_OVERRIDES_KEY = "audio-transcribe:polish-prompts:v1";
 const JOBS_COLLAPSED_KEY = "audio-transcribe:jobs-collapsed:v1";
 const JOB_DETAIL_COLLAPSED_KEY = "audio-transcribe:job-detail-collapsed:v1";
+const JOB_DIAGNOSTIC_DETAIL_OPEN_KEY = "audio-transcribe:job-diagnostic-detail-open:v1";
 const JOB_COMPARE_EXPANDED_KEY = "audio-transcribe:job-compare-expanded:v1";
 const HISTORY_LIMIT = 5;
 const HISTORY_TEXT_LIMIT = 12000;
@@ -139,6 +140,7 @@ let clipDefaultsReady = false;
 let clipRangeTouched = false;
 let customModelProbeTimer = null;
 let collapsedJobIds = loadStoredIdSet(JOB_DETAIL_COLLAPSED_KEY);
+let openDiagnosticDetailJobIds = loadStoredIdSet(JOB_DIAGNOSTIC_DETAIL_OPEN_KEY);
 let compareExpandedJobIds = loadStoredIdSet(JOB_COMPARE_EXPANDED_KEY);
 
 refreshPolishProfiles();
@@ -511,7 +513,9 @@ async function refreshModelRegistry(preferred = {}) {
 function renderModelRegistry(payload, preferred = {}) {
   lastModelRegistry = payload;
   const models = payload.models || [];
-  const audioModels = models.filter((model) => isLocalAudioLlmModel(model) && model.metadata?.status === "available");
+  const audioModels = models.filter(
+    (model) => isLocalAudioLlmModel(model) && audioPipelineForModel(model) && model.metadata?.status === "available",
+  );
   const textModels = models.filter((model) => model.capabilities?.text && model.metadata?.status === "available");
   renderAudioModelOptions(audioModels, preferred.audioModelId);
   renderPolishModelOptions(textModels, preferred.polishModelPath);
@@ -590,6 +594,11 @@ function isWhisperLikeModel(model) {
 
 function isLocalAudioLlmModel(model) {
   return Boolean(model.capabilities?.audio && !isWhisperLikeModel(model));
+}
+
+function isQwenAudioModel(model) {
+  const text = `${model?.name || ""} ${model?.path_or_id || ""}`.toLowerCase();
+  return text.includes("qwen2-audio") || text.includes("qwen-audio") || text.includes("qwen_audio");
 }
 
 function renderSelectedAudioModel() {
@@ -764,9 +773,9 @@ function audioPipelineForModel(model) {
   const text = `${model.name || ""} ${model.path_or_id || ""}`.toLowerCase();
   if (model.provider === "ollama") return "ollama_audio";
   if (model.provider === "mlx" && text.includes("whisper")) return "mlx-whisper";
-  if (model.provider === "mlx") return "qwen-audio";
+  if (model.provider === "mlx" && isQwenAudioModel(model)) return "qwen-audio";
   if ((model.provider === "huggingface" || model.provider === "custom") && whisperIdFromDetectedModel(model)) return "whisper";
-  if (model.provider === "huggingface" || model.provider === "custom") return "qwen-audio";
+  if ((model.provider === "huggingface" || model.provider === "custom") && isQwenAudioModel(model)) return "qwen-audio";
   return "";
 }
 
@@ -1696,6 +1705,15 @@ function renderJobDiagnostic(job) {
   wrap.append(title, message, action);
   if (diagnostic.technical_detail) {
     const detail = document.createElement("details");
+    detail.open = openDiagnosticDetailJobIds.has(job.id);
+    detail.addEventListener("toggle", () => {
+      if (detail.open) {
+        openDiagnosticDetailJobIds.add(job.id);
+      } else {
+        openDiagnosticDetailJobIds.delete(job.id);
+      }
+      storeIdSet(JOB_DIAGNOSTIC_DETAIL_OPEN_KEY, openDiagnosticDetailJobIds);
+    });
     const summary = document.createElement("summary");
     summary.textContent = "技术细节";
     const pre = document.createElement("pre");
@@ -2045,7 +2063,16 @@ function diagnoseClientError(message, codeHint) {
       technical_detail: text,
     };
   }
-  if (lower.includes("qwen2-audio") || lower.includes("qwen-audio") || lower.includes("mlx-audio")) {
+  if (text.includes("STT 后端不支持") || lower.includes("not supported for stt")) {
+    return {
+      code: "AUDIO_MODEL_UNSUPPORTED",
+      title: "音频模型暂未接入",
+      message: "所选模型不能被当前 MLX Audio STT 转录管线调用。",
+      action: "切换到 Qwen2-Audio MLX 模型，或使用 Whisper / MLX Whisper。Gemma 音频模型需要新的本地多模态适配器后才能用于转录。",
+      technical_detail: text,
+    };
+  }
+  if (lower.includes("qwen2-audio") || lower.includes("qwen-audio") || lower.includes("mlx-audio") || lower.includes("mlx audio")) {
     return {
       code: "QWEN_AUDIO_UNAVAILABLE",
       title: "MLX Audio 不可用",

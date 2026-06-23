@@ -35,6 +35,8 @@ class QwenAudioStatus:
     arch: str
     model_path_or_repo: str
     default_model_label: str
+    model_type: str | None = None
+    model_supported: bool | None = None
     reason: str | None = None
     hint: str | None = None
 
@@ -81,6 +83,39 @@ def configured_model(value: str | None = None) -> str:
     return (value if value is not None else settings.qwen_audio_model_path_or_repo).strip()
 
 
+def local_config_path(model_path_or_repo: str) -> Path | None:
+    if not is_local_model_path(model_path_or_repo):
+        return None
+    config_path = Path(model_path_or_repo).expanduser() / "config.json"
+    return config_path if config_path.exists() else None
+
+
+def local_model_type(model_path_or_repo: str) -> str | None:
+    config_path = local_config_path(model_path_or_repo)
+    if not config_path:
+        return None
+    try:
+        payload = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    model_type = payload.get("model_type")
+    return str(model_type).strip().lower() if model_type else None
+
+
+def qwen_audio_model_supported(model_path_or_repo: str) -> bool | None:
+    model_type = local_model_type(model_path_or_repo)
+    if model_type is not None:
+        return model_type == "qwen2_audio"
+    value = model_path_or_repo.strip().lower()
+    if not value:
+        return None
+    if "qwen2-audio" in value or "qwen_audio" in value or "qwen-audio" in value:
+        return True
+    if "gemma" in value:
+        return False
+    return None
+
+
 def qwen_audio_status(model_path_or_repo: str | None = None) -> QwenAudioStatus:
     configured = configured_model(model_path_or_repo)
     platform_supported = is_macos() and is_apple_silicon()
@@ -89,6 +124,8 @@ def qwen_audio_status(model_path_or_repo: str | None = None) -> QwenAudioStatus:
     ffmpeg_ok = ffmpeg_available()
     offline_mode = not settings.qwen_audio_allow_download
     available = platform_supported and dependency_installed and model_configured and ffmpeg_ok
+    model_type = local_model_type(configured) if configured else None
+    model_supported = qwen_audio_model_supported(configured) if configured else None
 
     reason = None
     hint = None
@@ -101,6 +138,11 @@ def qwen_audio_status(model_path_or_repo: str | None = None) -> QwenAudioStatus:
     elif not model_configured:
         reason = "未配置 Qwen2-Audio 模型路径或 repo id。"
         hint = f"默认模型是 {QWEN_AUDIO_MODEL_ID}，建议先下载到本地目录再填写路径。"
+    elif model_supported is False:
+        label = model_type or Path(configured).name or configured
+        reason = f"当前 MLX Audio STT 后端不支持 {label} 模型。"
+        hint = "Local Audio LLM 的 MLX Audio 转录管线目前只支持 Qwen2-Audio；Gemma 音频模型暂未接入可用的本地音频转录适配器。"
+        available = False
     elif not ffmpeg_ok:
         reason = "FFmpeg 不可用。"
         hint = "安装 FFmpeg，或设置 AUDIO_TRANSCRIBE_FFMPEG 指向可执行文件。"
@@ -136,6 +178,8 @@ def qwen_audio_status(model_path_or_repo: str | None = None) -> QwenAudioStatus:
         arch=platform.machine() or "unknown",
         model_path_or_repo=configured,
         default_model_label=settings.qwen_audio_default_model_label,
+        model_type=model_type,
+        model_supported=model_supported,
         reason=reason,
         hint=hint,
     )

@@ -244,6 +244,8 @@ class QwenAudioStatus(BaseModel):
     arch: str
     model_path_or_repo: str = ""
     default_model_label: str = "Qwen2-Audio-7B-Instruct-4bit"
+    model_type: str | None = None
+    model_supported: bool | None = None
     reason: str | None = None
     hint: str | None = None
 
