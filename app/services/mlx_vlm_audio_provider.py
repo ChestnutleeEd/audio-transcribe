@@ -1352,9 +1352,6 @@ def _run_mlx_vlm_generate(
         detail = (stderr or stdout or "").strip()
         raise RuntimeError(f"Gemma4 MLX VLM Audio 转录失败：{detail}")
     transcript = clean_transcript_text(parse_mlx_vlm_generate_output(stdout))
-    if not transcript:
-        detail = (stderr or stdout or "").strip()
-        raise RuntimeError(f"Gemma4 MLX VLM Audio 未返回转写文本：{detail}")
     return transcript
 
 
