@@ -424,7 +424,7 @@ def diagnose_error(error: str, context: str | None = None) -> ErrorDiagnostic:
             code="MLX_VLM_AUDIO_UNAVAILABLE",
             title="Gemma4 MLX Audio 不可用",
             message="Gemma4 MLX 多模态音频转录前置条件未满足。",
-            action="确认 AUDIO_TRANSCRIBE_MLX_VLM_PYTHON 指向已安装 mlx-vlm 的 Python，并选择本地 Gemma4 MLX Audio/Text 模型目录。",
+            action="确认项目 .venv 已安装 mlx-vlm，并选择本地 Gemma4 MLX Audio/Text 模型目录。",
             technical_detail=text,
         )
     if "stt 后端不支持" in lower or "not supported for stt" in lower:

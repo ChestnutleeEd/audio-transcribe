@@ -89,10 +89,10 @@ def mlx_vlm_audio_status(model_path_or_repo: str | None = None) -> MLXVlmAudioSt
         hint = "Gemma4 MLX 音频模型主要适用于 M 系列 Mac。"
     elif not py_available:
         reason = "未找到 mlx_vlm Python 解释器。"
-        hint = "设置 AUDIO_TRANSCRIBE_MLX_VLM_PYTHON 指向已安装 mlx-vlm 的 Python，例如 /opt/anaconda3/envs/gemma4-audio/bin/python。"
+        hint = "请先运行项目安装脚本创建 .venv；如需自定义解释器，可设置 AUDIO_TRANSCRIBE_MLX_VLM_PYTHON。"
     elif not dependency_installed:
         reason = "该 Python 环境未检测到 mlx_vlm。"
-        hint = "请确认 gemma4-audio conda 环境已安装 mlx-vlm，或设置 AUDIO_TRANSCRIBE_MLX_VLM_PYTHON 指向正确环境。"
+        hint = "请运行项目安装脚本安装 requirements.txt，或在当前 .venv 中安装 mlx-vlm。"
     elif not model_configured:
         reason = "未配置 Gemma4 MLX 音频模型路径。"
         hint = "请选择或填写本地 gemma4-e4b-qat-4bit 模型目录。"

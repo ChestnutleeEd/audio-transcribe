@@ -23,8 +23,10 @@ if [ ! -x ".venv/bin/python" ]; then
   python3 -m venv .venv
 fi
 
+PIP_INDEX_URL="${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
+
 ".venv/bin/python" -m pip install --upgrade pip
-".venv/bin/python" -m pip install --use-deprecated=legacy-resolver -r requirements.txt
+".venv/bin/python" -m pip install -i "$PIP_INDEX_URL" --use-deprecated=legacy-resolver -r requirements.txt
 
 echo "Audio Transcribe macOS 环境已准备完成。"
 echo "启动命令：./start-audio-transcribe.command"

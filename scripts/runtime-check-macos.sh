@@ -26,7 +26,18 @@ if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; 
   exit 3
 fi
 
-if ! "$PYTHON_EXE" -c "import fastapi, uvicorn, faster_whisper, yt_dlp" >/dev/null 2>&1; then
+if ! "$PYTHON_EXE" - <<'PY' >/dev/null 2>&1
+import importlib.util
+import platform
+
+required = ["fastapi", "uvicorn", "faster_whisper", "yt_dlp"]
+if platform.system().lower() == "darwin" and platform.machine().lower() in {"arm64", "aarch64"}:
+    required.append("mlx_vlm")
+
+missing = [name for name in required if importlib.util.find_spec(name) is None]
+raise SystemExit(1 if missing else 0)
+PY
+then
   echo "Python 依赖尚未安装完整。"
   echo "请运行："
   echo "  ./scripts/setup-macos.sh"

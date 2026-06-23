@@ -29,8 +29,10 @@ if (-not (Test-Path $Python)) {
   }
 }
 
+$PipIndexUrl = if ($env:PIP_INDEX_URL) { $env:PIP_INDEX_URL } else { "https://pypi.tuna.tsinghua.edu.cn/simple" }
+
 & $Python -m pip install --upgrade pip
-& $Python -m pip install --use-deprecated=legacy-resolver -r requirements.txt
+& $Python -m pip install -i $PipIndexUrl --use-deprecated=legacy-resolver -r requirements.txt
 
 Write-Host "Audio Transcribe Windows 环境已准备完成。"
 Write-Host "启动命令：.\start-audio-transcribe.bat"

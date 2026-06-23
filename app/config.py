@@ -160,10 +160,10 @@ def mlx_vlm_default_python() -> str:
     configured = os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_PYTHON")
     if configured:
         return configured
-    conda_python = Path("/opt/anaconda3/envs/gemma4-audio/bin/python")
-    if conda_python.exists():
-        return str(conda_python)
-    return "python"
+    venv_python = ROOT_DIR / ".venv" / "bin" / "python"
+    if venv_python.exists():
+        return str(venv_python)
+    return str(venv_python)
 
 
 @dataclass(frozen=True)
