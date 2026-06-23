@@ -16,6 +16,11 @@ class ErrorDiagnosticTest(unittest.TestCase):
 
         self.assertEqual("AUDIO_MODEL_UNSUPPORTED", diagnostic.code)
 
+    def test_mlx_vlm_error_is_classified(self) -> None:
+        diagnostic = diagnose_error("Gemma4 MLX VLM Audio 转录失败：missing dependency")
+
+        self.assertEqual("MLX_VLM_AUDIO_UNAVAILABLE", diagnostic.code)
+
 
 if __name__ == "__main__":
     unittest.main()

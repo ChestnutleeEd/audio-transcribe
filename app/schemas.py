@@ -35,6 +35,7 @@ class TranscriptionEngine(str, Enum):
     mlx_whisper = "mlx-whisper"
     ollama_audio = "ollama_audio"
     qwen_audio = "qwen-audio"
+    mlx_vlm_audio = "mlx-vlm-audio"
 
 
 class OutputFile(BaseModel):
@@ -246,6 +247,26 @@ class QwenAudioStatus(BaseModel):
     default_model_label: str = "Qwen2-Audio-7B-Instruct-4bit"
     model_type: str | None = None
     model_supported: bool | None = None
+    reason: str | None = None
+    hint: str | None = None
+
+
+class MLXVlmAudioStatus(BaseModel):
+    engine: str = "mlx-vlm-audio"
+    available: bool
+    platform_supported: bool
+    dependency_installed: bool
+    model_configured: bool
+    python_available: bool
+    ffmpeg_available: bool
+    is_macos: bool
+    is_apple_silicon: bool
+    os: str
+    arch: str
+    python_executable: str = ""
+    model_path_or_repo: str = ""
+    model_type: str | None = None
+    max_tokens: int = 200
     reason: str | None = None
     hint: str | None = None
 

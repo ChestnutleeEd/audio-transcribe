@@ -129,6 +129,7 @@ let lastModelStatus = null;
 let lastOllamaStatus = null;
 let lastMlxStatus = null;
 let lastQwenStatus = null;
+let lastMlxVlmStatus = null;
 let lastLocalModelDetection = null;
 let lastModelRegistry = null;
 let lastJobs = [];
@@ -429,6 +430,8 @@ form.addEventListener("submit", async (event) => {
   if (!mlxReady) return;
   const qwenReady = await ensureSelectedQwenReady();
   if (!qwenReady) return;
+  const mlxVlmReady = await ensureSelectedMlxVlmReady();
+  if (!mlxVlmReady) return;
 
   const data = new FormData(form);
   const selectedFormats = [...form.querySelectorAll('input[name="formats"]:checked')].map((input) => input.value);
@@ -601,6 +604,11 @@ function isQwenAudioModel(model) {
   return text.includes("qwen2-audio") || text.includes("qwen-audio") || text.includes("qwen_audio");
 }
 
+function isMlxVlmAudioModel(model) {
+  const text = `${model?.name || ""} ${model?.path_or_id || ""}`.toLowerCase();
+  return text.includes("gemma4") || text.includes("mlx-vlm") || text.includes("mlx_vlm");
+}
+
 function renderSelectedAudioModel() {
   const model = selectedAudioModel();
   audioTestButton.disabled = !model;
@@ -752,6 +760,10 @@ function applySelectedAudioModelToForm() {
     qwenModelPathOrRepo.value = model.path_or_id;
     return true;
   }
+  if (engine === "mlx-vlm-audio") {
+    qwenModelPathOrRepo.value = model.path_or_id;
+    return true;
+  }
   if (engine === "whisper") {
     const whisperId = whisperIdFromDetectedModel(model);
     ensureSelectOption(modelSelect, whisperId, model.name);
@@ -762,7 +774,7 @@ function applySelectedAudioModelToForm() {
     code: "AUDIO_PROVIDER_NOT_CONNECTED",
     title: "模型尚未接入转录流程",
     message: `${providerLabel(model.provider)} / ${model.name} 已检测到，但当前转录适配器无法直接调用该音频模型。`,
-    action: "请选择 MLX Whisper、MLX Audio、Ollama Audio 或项目已管理的 faster-whisper 模型。",
+    action: "请选择 MLX Whisper、MLX Audio、MLX VLM Audio、Ollama Audio 或项目已管理的 faster-whisper 模型。",
     technical_detail: JSON.stringify(model, null, 2),
   });
   return false;
@@ -773,8 +785,10 @@ function audioPipelineForModel(model) {
   const text = `${model.name || ""} ${model.path_or_id || ""}`.toLowerCase();
   if (model.provider === "ollama") return "ollama_audio";
   if (model.provider === "mlx" && text.includes("whisper")) return "mlx-whisper";
+  if (model.provider === "mlx" && isMlxVlmAudioModel(model)) return "mlx-vlm-audio";
   if (model.provider === "mlx" && isQwenAudioModel(model)) return "qwen-audio";
   if ((model.provider === "huggingface" || model.provider === "custom") && whisperIdFromDetectedModel(model)) return "whisper";
+  if ((model.provider === "huggingface" || model.provider === "custom") && isMlxVlmAudioModel(model)) return "mlx-vlm-audio";
   if ((model.provider === "huggingface" || model.provider === "custom") && isQwenAudioModel(model)) return "qwen-audio";
   return "";
 }
@@ -2063,6 +2077,15 @@ function diagnoseClientError(message, codeHint) {
       technical_detail: text,
     };
   }
+  if (lower.includes("mlx vlm") || lower.includes("mlx-vlm") || lower.includes("gemma4 mlx vlm audio")) {
+    return {
+      code: "MLX_VLM_AUDIO_UNAVAILABLE",
+      title: "Gemma4 MLX Audio 不可用",
+      message: "Gemma4 MLX 多模态音频转录前置条件未满足。",
+      action: "确认 AUDIO_TRANSCRIBE_MLX_VLM_PYTHON 指向已安装 mlx-vlm 的 Python，并选择本地 Gemma4 MLX Audio/Text 模型目录。",
+      technical_detail: text,
+    };
+  }
   if (text.includes("STT 后端不支持") || lower.includes("not supported for stt")) {
     return {
       code: "AUDIO_MODEL_UNSUPPORTED",
@@ -2176,6 +2199,7 @@ function transcriptionEngineLabel(engine) {
     "mlx-whisper": "MLX Whisper",
     ollama_audio: "本地大模型音频转录",
     "qwen-audio": "MLX Audio",
+    "mlx-vlm-audio": "MLX VLM Audio",
   }[engine] || engine || "Whisper";
 }
 
@@ -2222,12 +2246,13 @@ function updateEngineControls() {
   const usingOllamaAudio = engine === "ollama_audio";
   const usingMlxWhisper = engine === "mlx-whisper";
   const usingQwenAudio = engine === "qwen-audio";
+  const usingMlxVlmAudio = engine === "mlx-vlm-audio";
   const whisperDownloading = lastModelStatus?.download_state === "downloading";
   whisperModelField.hidden = mode !== "whisper";
   localAudioLlmField.hidden = mode !== "local_audio_llm";
   mlxModelField.hidden = !usingMlxWhisper;
-  qwenModelField.hidden = !usingQwenAudio;
-  modelSelect.disabled = usingOllamaAudio || usingMlxWhisper || usingQwenAudio || whisperDownloading;
+  qwenModelField.hidden = !(usingQwenAudio || usingMlxVlmAudio);
+  modelSelect.disabled = usingOllamaAudio || usingMlxWhisper || usingQwenAudio || usingMlxVlmAudio || whisperDownloading;
   if (engine === "whisper") {
     refreshModelStatus();
   }
@@ -2236,6 +2261,9 @@ function updateEngineControls() {
   }
   if (usingQwenAudio) {
     refreshQwenStatus();
+  }
+  if (usingMlxVlmAudio) {
+    refreshMlxVlmStatus();
   }
   ollamaTranscriptionModelSelect.disabled = !usingOllamaAudio;
   renderModeStatus();
@@ -2399,6 +2427,7 @@ function renderEnvironmentStatus() {
   const textCount = registryModels.filter((model) => model.capabilities?.text && model.metadata?.status === "available").length;
   const whisperReady = Boolean(lastModelStatus?.available || registryModels.some((model) => model.capabilities?.audio && /whisper/i.test(`${model.name} ${model.path_or_id}`)));
   const mlxReady = Boolean(lastMlxStatus?.available);
+  const mlxVlmReady = Boolean(lastMlxVlmStatus?.available);
   const ollamaReady = Boolean(lastOllamaStatus?.available);
   const selectedModel = selected ? `${selected.name} · ${providerLabel(selected.provider)}` : "未选择模型";
 
@@ -2414,6 +2443,7 @@ function renderEnvironmentStatus() {
     statusRow("平台适配", platform.label, platform.status, platform.detail),
     statusRow("Whisper / faster-whisper", whisperReady ? "已检测" : "未配置", whisperReady ? "success" : "warning", lastModelStatus?.message || "等待检测"),
     statusRow("MLX Whisper", mlxReady ? "可用" : mlxStatusLabel(lastMlxStatus), mlxReady ? "success" : mlxStatusKind(lastMlxStatus), mlxStatusDetail(lastMlxStatus)),
+    statusRow("MLX VLM Audio", mlxVlmReady ? "可用" : mlxVlmStatusLabel(lastMlxVlmStatus), mlxVlmReady ? "success" : mlxVlmStatusKind(lastMlxVlmStatus), mlxVlmStatusDetail(lastMlxVlmStatus)),
     statusRow("Local LLM models", ollamaReady ? "服务可用" : "未检测到本地大模型", ollamaReady ? "success" : "warning", lastOllamaStatus?.message || "可用 provider：Ollama、MLX、HuggingFace local、llama.cpp"),
   );
   environmentAdvice.replaceChildren(...environmentAdviceItems(platform, engine));
@@ -2449,6 +2479,7 @@ function currentEngineStatus(engine) {
   if (!engine) return "neutral";
   if (engine === "mlx-whisper") return lastMlxStatus?.available ? "success" : "warning";
   if (engine === "qwen-audio") return lastQwenStatus?.available ? "success" : "warning";
+  if (engine === "mlx-vlm-audio") return lastMlxVlmStatus?.available ? "success" : "warning";
   if (engine === "ollama_audio") return lastOllamaStatus?.available ? "success" : "warning";
   return lastModelStatus?.available ? "success" : "warning";
 }
@@ -2489,6 +2520,26 @@ function qwenStatusKind(status) {
 function qwenStatusDetail(status) {
   if (!status) return "等待检测 MLX Audio";
   return status.reason || status.hint || "MLX Audio 可用";
+}
+
+function mlxVlmStatusLabel(status) {
+  if (!status) return "等待检测";
+  if (!status.platform_supported) return "平台不适配";
+  if (!status.python_available) return "Python 缺失";
+  if (!status.dependency_installed) return "依赖缺失";
+  if (!status.model_configured) return "未配置";
+  if (!status.ffmpeg_available) return "FFmpeg 缺失";
+  return "模型未找到";
+}
+
+function mlxVlmStatusKind(status) {
+  if (!status) return "neutral";
+  return status.platform_supported ? "warning" : "muted";
+}
+
+function mlxVlmStatusDetail(status) {
+  if (!status) return "等待检测 MLX VLM Audio";
+  return status.reason || status.hint || "MLX VLM Audio 可用";
 }
 
 function dependencyLabel(id) {
@@ -2533,7 +2584,10 @@ function environmentAdviceItems(platform, engine) {
   if (engine === "qwen-audio" && !lastQwenStatus?.available) {
     add(lastQwenStatus?.hint || "请先安装 mlx-audio 并配置 MLX Audio 模型。");
   }
-  add("本项目不会自动下载 MLX Whisper 或 MLX Audio 模型。");
+  if (engine === "mlx-vlm-audio" && !lastMlxVlmStatus?.available) {
+    add(lastMlxVlmStatus?.hint || "请先配置安装了 mlx-vlm 的 Python 环境和 Gemma4 MLX 模型。");
+  }
+  add("本项目不会自动下载 MLX Whisper、MLX Audio 或 MLX VLM Audio 模型。");
   return items.slice(0, 3);
 }
 
@@ -2629,6 +2683,21 @@ async function ensureSelectedQwenReady() {
   return false;
 }
 
+async function ensureSelectedMlxVlmReady() {
+  if (selectedTranscriptionEngine() !== "mlx-vlm-audio") return true;
+  if (!mockBanner.hidden) return true;
+  const status = await refreshMlxVlmStatus();
+  if (status?.available) return true;
+  showDiagnostic({
+    code: "MLX_VLM_AUDIO_UNAVAILABLE",
+    title: "MLX VLM Audio 不可用",
+    message: status?.reason || "MLX VLM Audio 前置条件未满足。",
+    action: status?.hint || "请确认 AUDIO_TRANSCRIBE_MLX_VLM_PYTHON 指向已安装 mlx-vlm 的 Python，并选择本地 Gemma4 MLX Audio/Text 模型。",
+    technical_detail: JSON.stringify(status || {}, null, 2),
+  });
+  return false;
+}
+
 async function refreshMlxStatus() {
   try {
     const params = new URLSearchParams();
@@ -2687,6 +2756,36 @@ function renderQwenStatus(status) {
   qwenModelHelp.textContent = status.reason
     ? `${status.reason} ${status.hint || ""}`
     : status.hint || "MLX Audio 可用。chunk 级结果会随任务状态逐步更新。";
+  qwenModelHelp.classList.toggle("warning-text", !status.available);
+  renderEnvironmentStatus();
+}
+
+async function refreshMlxVlmStatus() {
+  try {
+    const params = new URLSearchParams();
+    const configured = qwenModelPathOrRepo.value.trim();
+    if (configured) params.set("model_path_or_repo", configured);
+    const response = await fetch(`/api/mlx-vlm-audio/status${params.toString() ? `?${params.toString()}` : ""}`);
+    const status = await response.json();
+    if (!response.ok) throw new Error(status.detail || "MLX VLM Audio 状态检测失败");
+    renderMlxVlmStatus(status);
+    return status;
+  } catch (error) {
+    qwenModelHelp.textContent = `MLX VLM Audio 状态检测失败：${error.message}`;
+    lastMlxVlmStatus = null;
+    renderEnvironmentStatus();
+    return null;
+  }
+}
+
+function renderMlxVlmStatus(status) {
+  lastMlxVlmStatus = status;
+  if (!qwenModelPathOrRepo.value && status.model_path_or_repo) {
+    qwenModelPathOrRepo.value = status.model_path_or_repo;
+  }
+  qwenModelHelp.textContent = status.reason
+    ? `${status.reason} ${status.hint || ""}`
+    : status.hint || `MLX VLM Audio 可用。Python：${status.python_executable || "未记录"}`;
   qwenModelHelp.classList.toggle("warning-text", !status.available);
   renderEnvironmentStatus();
 }
@@ -3085,7 +3184,7 @@ function renderModelStatus(status) {
 
   const downloading = status.download_state === "downloading";
   const engine = selectedTranscriptionEngine();
-  modelSelect.disabled = downloading || engine === "ollama_audio" || engine === "mlx-whisper" || engine === "qwen-audio";
+  modelSelect.disabled = downloading || engine === "ollama_audio" || engine === "mlx-whisper" || engine === "qwen-audio" || engine === "mlx-vlm-audio";
   modelDownloadButton.disabled = !modelSelect.value || status.available || downloading;
   modelCancelButton.disabled = !downloading;
   modelRefreshButton.disabled = downloading;

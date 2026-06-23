@@ -156,6 +156,16 @@ def qwen_audio_default_model_path_or_repo() -> str:
     return ""
 
 
+def mlx_vlm_default_python() -> str:
+    configured = os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_PYTHON")
+    if configured:
+        return configured
+    conda_python = Path("/opt/anaconda3/envs/gemma4-audio/bin/python")
+    if conda_python.exists():
+        return str(conda_python)
+    return "python"
+
+
 @dataclass(frozen=True)
 class Settings:
     app_name: str = "Audio Transcribe"
@@ -185,6 +195,10 @@ class Settings:
     qwen_audio_chunk_seconds: int = int(os.getenv("AUDIO_TRANSCRIBE_QWEN_AUDIO_CHUNK_SECONDS", "20"))
     qwen_audio_overlap_seconds: int = int(os.getenv("AUDIO_TRANSCRIBE_QWEN_AUDIO_OVERLAP_SECONDS", "1"))
     qwen_audio_allow_download: bool = os.getenv("AUDIO_TRANSCRIBE_QWEN_AUDIO_ALLOW_DOWNLOAD", "0") in {"1", "true", "True", "yes", "YES"}
+    mlx_vlm_python: str = mlx_vlm_default_python()
+    mlx_vlm_prompt: str = os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_PROMPT", "请准确转写这段音频，只输出转写文本。")
+    mlx_vlm_max_tokens: int = int(os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_MAX_TOKENS", "200"))
+    mlx_vlm_timeout_seconds: int = int(os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_TIMEOUT_SECONDS", "600"))
     mock_mode: bool = os.getenv("AUDIO_TRANSCRIBE_MOCK", "0") in {"1", "true", "True", "yes", "YES"}
     mock_polish_fail: bool = os.getenv("AUDIO_TRANSCRIBE_MOCK_POLISH_FAIL", "0") in {"1", "true", "True", "yes", "YES"}
     ollama_polish_batch_size: int | None = optional_positive_int_env("OLLAMA_POLISH_BATCH_SIZE")

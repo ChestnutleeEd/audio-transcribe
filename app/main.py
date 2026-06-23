@@ -29,6 +29,7 @@ from app.schemas import (
     ModelCapabilities,
     ModelRegistryStatus,
     ModelSelection,
+    MLXVlmAudioStatus,
     WhisperModelPathBinding,
     OllamaModelCheck,
     OllamaPreflightStatus,
@@ -59,6 +60,7 @@ from app.services.model_registry import (
     test_audio_model,
 )
 from app.services.mlx_whisper_provider import mlx_whisper_status, transcribe_with_mlx_whisper
+from app.services.mlx_vlm_audio_provider import mlx_vlm_audio_status, transcribe_with_mlx_vlm_audio
 from app.services.jobs import Job, job_store
 from app.services.media import (
     OperationCanceled,
@@ -415,6 +417,14 @@ def diagnose_error(error: str, context: str | None = None) -> ErrorDiagnostic:
             title="MLX Whisper 不可用",
             message="MLX Whisper 转录前置条件未满足。",
             action="确认当前是 Apple Silicon Mac、已自行安装 mlx-whisper，并配置本地 MLX 模型目录或已缓存 repo id。",
+            technical_detail=text,
+        )
+    if "mlx vlm" in lower or "mlx-vlm" in lower or "gemma4 mlx vlm audio" in lower:
+        return ErrorDiagnostic(
+            code="MLX_VLM_AUDIO_UNAVAILABLE",
+            title="Gemma4 MLX Audio 不可用",
+            message="Gemma4 MLX 多模态音频转录前置条件未满足。",
+            action="确认 AUDIO_TRANSCRIBE_MLX_VLM_PYTHON 指向已安装 mlx-vlm 的 Python，并选择本地 Gemma4 MLX Audio/Text 模型目录。",
             technical_detail=text,
         )
     if "stt 后端不支持" in lower or "not supported for stt" in lower:
@@ -797,6 +807,63 @@ def run_job(
                     state=JobState.failed,
                     progress=100,
                     message=f"Qwen2-Audio 多模态音频理解失败：{exc}",
+                    error=str(exc),
+                    error_diagnostic=diagnose_error(str(exc)),
+                    processing_finished_at=utc_now_iso(),
+                )
+                return
+        elif transcription_engine == TranscriptionEngine.mlx_vlm_audio:
+            active_vlm_model = (transcription_model_id or "").strip()
+            job_store.update(
+                job_id,
+                state=JobState.transcribing,
+                progress=50,
+                message="正在使用 Gemma4 MLX VLM Audio 转录音频",
+                model_label=f"{Path(active_vlm_model).name or active_vlm_model}（MLX VLM Audio）",
+                engine_metadata={
+                    "engine": "mlx-vlm-audio",
+                    "backend": "mlx-vlm",
+                    "model": active_vlm_model,
+                    "python": settings.mlx_vlm_python,
+                },
+            )
+            add_event(job_id, "Gemma4 MLX VLM Audio 转录开始")
+            try:
+                if settings.mock_mode:
+                    segments = [TranscriptSegment(start=0.0, end=15.0, text="这是 mock Gemma4 MLX VLM Audio 转录文本。")]
+                    job_store.update(
+                        job_id,
+                        state=JobState.transcribing,
+                        progress=58,
+                        message="Mock Gemma4 MLX VLM Audio 转录完成",
+                        model_label=f"{Path(active_vlm_model).name or active_vlm_model}（MLX VLM mock）",
+                        raw_segments=segments,
+                        raw_text=segment_text(segments, include_timestamps=False),
+                        duration_seconds=max((segment.end for segment in segments), default=None),
+                        engine_metadata={
+                            "engine": "mlx-vlm-audio",
+                            "backend": "mlx-vlm",
+                            "model": active_vlm_model,
+                            "python": settings.mlx_vlm_python,
+                        },
+                    )
+                else:
+                    vlm_result = transcribe_with_mlx_vlm_audio(wav_path, active_vlm_model, language)
+                    segments = vlm_result.segments
+                    job_store.update(
+                        job_id,
+                        model_label=vlm_result.model_label,
+                        engine_metadata=vlm_result.metadata,
+                    )
+                add_event(job_id, "Gemma4 MLX VLM Audio 转录完成")
+            except Exception as exc:
+                unlink_file(wav_path)
+                add_event(job_id, f"Gemma4 MLX VLM Audio 转录失败：{exc}", "error")
+                job_store.update(
+                    job_id,
+                    state=JobState.failed,
+                    progress=100,
+                    message=f"Gemma4 MLX VLM Audio 转录失败：{exc}",
                     error=str(exc),
                     error_diagnostic=diagnose_error(str(exc)),
                     processing_finished_at=utc_now_iso(),
@@ -1207,6 +1274,11 @@ def get_qwen_audio_status(model_path_or_repo: str | None = None) -> QwenAudioSta
     return qwen_audio_status(model_path_or_repo)
 
 
+@app.get("/api/mlx-vlm-audio/status", response_model=MLXVlmAudioStatus)
+def get_mlx_vlm_audio_status(model_path_or_repo: str | None = None) -> MLXVlmAudioStatus:
+    return mlx_vlm_audio_status(model_path_or_repo)
+
+
 @app.get("/api/health", response_model=HealthCheckStatus)
 def get_health_check() -> HealthCheckStatus:
     return health_check()
@@ -1265,6 +1337,8 @@ async def create_job(
         active_transcription_model_id = (mlx_model_path_or_repo or settings.mlx_whisper_model_path_or_repo).strip()
     elif active_transcription_engine == TranscriptionEngine.qwen_audio:
         active_transcription_model_id = (qwen_model_path_or_repo or settings.qwen_audio_model_path_or_repo).strip()
+    elif active_transcription_engine == TranscriptionEngine.mlx_vlm_audio:
+        active_transcription_model_id = (qwen_model_path_or_repo or "").strip()
     active_polish_model_ref = resolve_polish_model(polish_model_id) if enable_polish else None
     active_polish_model_id = active_polish_model_ref.path_or_id if active_polish_model_ref else None
     if enable_polish and not active_polish_model_ref:
@@ -1297,6 +1371,20 @@ async def create_job(
             raise HTTPException(status_code=409, detail=status.reason or "未安装 mlx-audio")
         if not status.model_configured:
             raise HTTPException(status_code=409, detail=status.reason or "未配置 Qwen2-Audio 模型")
+        if not status.ffmpeg_available:
+            raise HTTPException(status_code=409, detail=status.reason or "FFmpeg 不可用")
+        if not status.available and status.reason:
+            raise HTTPException(status_code=409, detail=status.reason)
+    elif active_transcription_engine == TranscriptionEngine.mlx_vlm_audio and not settings.mock_mode:
+        status = mlx_vlm_audio_status(active_transcription_model_id)
+        if not status.platform_supported:
+            raise HTTPException(status_code=409, detail=status.reason or "Gemma4 MLX Audio 当前平台不适配")
+        if not status.python_available:
+            raise HTTPException(status_code=409, detail=status.reason or "未找到 mlx_vlm Python 解释器")
+        if not status.dependency_installed:
+            raise HTTPException(status_code=409, detail=status.reason or "未安装 mlx_vlm")
+        if not status.model_configured:
+            raise HTTPException(status_code=409, detail=status.reason or "未配置 Gemma4 MLX Audio 模型")
         if not status.ffmpeg_available:
             raise HTTPException(status_code=409, detail=status.reason or "FFmpeg 不可用")
         if not status.available and status.reason:
@@ -1336,6 +1424,8 @@ async def create_job(
         planned_label = f"{active_transcription_model_id or settings.mlx_whisper_default_model_label}（MLX Whisper）"
     elif active_transcription_engine == TranscriptionEngine.qwen_audio:
         planned_label = f"{settings.qwen_audio_default_model_label}（MLX Audio）"
+    elif active_transcription_engine == TranscriptionEngine.mlx_vlm_audio:
+        planned_label = f"{Path(active_transcription_model_id or '').name or active_transcription_model_id}（MLX VLM Audio）"
     elif enable_polish and active_polish_model_id:
         planned_label = f"{planned_model_label(model_id)} + {active_polish_model_id} polish"
     else:
@@ -1369,7 +1459,12 @@ async def create_job(
     add_event(job_id, "任务已创建")
     add_event(job_id, "模型检查开始")
     checked_models = [model_id]
-    if active_transcription_engine in {TranscriptionEngine.ollama_audio, TranscriptionEngine.mlx_whisper, TranscriptionEngine.qwen_audio}:
+    if active_transcription_engine in {
+        TranscriptionEngine.ollama_audio,
+        TranscriptionEngine.mlx_whisper,
+        TranscriptionEngine.qwen_audio,
+        TranscriptionEngine.mlx_vlm_audio,
+    }:
         checked_models = [active_transcription_model_id]
     if enable_polish and active_polish_model_id:
         checked_models.append(active_polish_model_id)
