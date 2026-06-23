@@ -842,6 +842,24 @@ def run_job(
                 },
             )
             add_event(job_id, "Gemma4 MLX VLM Audio 转录开始")
+
+            def update_vlm_partial(result: AudioEngineResult) -> None:
+                if is_job_canceled(job_id):
+                    return
+                partial_count = len(result.metadata.get("partial_results") or [])
+                progress = min(72, 50 + partial_count * 4)
+                job_store.update(
+                    job_id,
+                    state=JobState.transcribing,
+                    progress=progress,
+                    message=f"Gemma4 MLX VLM Audio 已完成 {partial_count} 个音频 chunk",
+                    raw_segments=result.segments,
+                    raw_text=result.raw_text,
+                    duration_seconds=max((segment.end for segment in result.segments), default=None),
+                    engine_metadata=result.metadata,
+                    model_label=result.model_label,
+                )
+
             try:
                 if settings.mock_mode:
                     segments = [TranscriptSegment(start=0.0, end=15.0, text="这是 mock Gemma4 MLX VLM Audio 转录文本。")]
@@ -862,7 +880,14 @@ def run_job(
                         },
                     )
                 else:
-                    vlm_result = transcribe_with_mlx_vlm_audio(wav_path, active_vlm_model, language)
+                    vlm_result = transcribe_with_mlx_vlm_audio(
+                        wav_path,
+                        active_vlm_model,
+                        language,
+                        work_dir=work_dir,
+                        is_canceled=lambda: is_job_canceled(job_id),
+                        on_partial=update_vlm_partial,
+                    )
                     segments = vlm_result.segments
                     job_store.update(
                         job_id,

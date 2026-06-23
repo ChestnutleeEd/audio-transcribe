@@ -5,10 +5,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from app.services.qwen_audio.qwen_infer import qwen_audio_model_supported
+from app.services.qwen_audio.qwen_infer import clean_qwen_transcript_text, qwen_audio_model_supported
 
 
 class QwenAudioModelSupportTest(unittest.TestCase):
+    def test_clean_qwen_transcript_text_removes_english_wrapper(self) -> None:
+        text = "The original content of this audio is: '秦淮河畔，南京夫子庙商家新建秦淮小吃博物馆。'"
+
+        self.assertEqual("秦淮河畔，南京夫子庙商家新建秦淮小吃博物馆。", clean_qwen_transcript_text(text))
+
     def test_local_qwen2_audio_config_is_supported(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             model_dir = Path(directory)

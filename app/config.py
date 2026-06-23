@@ -190,15 +190,20 @@ class Settings:
     qwen_audio_default_model_label: str = os.getenv("AUDIO_TRANSCRIBE_QWEN_AUDIO_LABEL", "Qwen2-Audio-7B-Instruct-4bit")
     qwen_audio_prompt: str = os.getenv(
         "AUDIO_TRANSCRIBE_QWEN_AUDIO_PROMPT",
-        "Transcribe the audio in the original language. Return only the transcript.",
+        "Transcribe the audio in the original language. Return only the spoken content. Do not add introductions, labels, quotes, translations, or explanations.",
     )
     qwen_audio_chunk_seconds: int = int(os.getenv("AUDIO_TRANSCRIBE_QWEN_AUDIO_CHUNK_SECONDS", "20"))
     qwen_audio_overlap_seconds: int = int(os.getenv("AUDIO_TRANSCRIBE_QWEN_AUDIO_OVERLAP_SECONDS", "1"))
     qwen_audio_allow_download: bool = os.getenv("AUDIO_TRANSCRIBE_QWEN_AUDIO_ALLOW_DOWNLOAD", "0") in {"1", "true", "True", "yes", "YES"}
     mlx_vlm_python: str = mlx_vlm_default_python()
-    mlx_vlm_prompt: str = os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_PROMPT", "请准确转写这段音频，只输出转写文本。")
+    mlx_vlm_prompt: str = os.getenv(
+        "AUDIO_TRANSCRIBE_MLX_VLM_PROMPT",
+        "请准确转写这段音频，只输出说话内容本身。不要添加说明、标签、引号或翻译；如果是中文，请使用简体中文。",
+    )
     mlx_vlm_max_tokens: int = int(os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_MAX_TOKENS", "200"))
     mlx_vlm_timeout_seconds: int = int(os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_TIMEOUT_SECONDS", "600"))
+    mlx_vlm_chunk_seconds: int = int(os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_CHUNK_SECONDS", "20"))
+    mlx_vlm_overlap_seconds: int = int(os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_OVERLAP_SECONDS", "1"))
     mock_mode: bool = os.getenv("AUDIO_TRANSCRIBE_MOCK", "0") in {"1", "true", "True", "yes", "YES"}
     mock_polish_fail: bool = os.getenv("AUDIO_TRANSCRIBE_MOCK_POLISH_FAIL", "0") in {"1", "true", "True", "yes", "YES"}
     ollama_polish_batch_size: int | None = optional_positive_int_env("OLLAMA_POLISH_BATCH_SIZE")

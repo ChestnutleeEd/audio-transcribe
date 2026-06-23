@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 import platform
+import re
 import shutil
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -114,6 +115,24 @@ def qwen_audio_model_supported(model_path_or_repo: str) -> bool | None:
     if "gemma" in value:
         return False
     return None
+
+
+def clean_qwen_transcript_text(text: str) -> str:
+    value = re.sub(r"\s+", " ", text or "").strip()
+    wrappers = (
+        r"^(?:The\s+)?original content of this audio is\s*:\s*['\"“”‘’]?(?P<body>.+?)['\"“”‘’]?[。.!！]?$",
+        r"^The audio says\s*:\s*['\"“”‘’]?(?P<body>.+?)['\"“”‘’]?[。.!！]?$",
+        r"^The transcript is\s*:\s*['\"“”‘’]?(?P<body>.+?)['\"“”‘’]?[。.!！]?$",
+        r"^Transcription\s*:\s*['\"“”‘’]?(?P<body>.+?)['\"“”‘’]?[。.!！]?$",
+        r"^原始音频内容[是为]?\s*[:：]\s*['\"“”‘’]?(?P<body>.+?)['\"“”‘’]?[。.!！]?$",
+        r"^这段音频的内容[是为]?\s*[:：]?\s*['\"“”‘’]?(?P<body>.+?)['\"“”‘’]?[。.!！]?$",
+    )
+    for pattern in wrappers:
+        match = re.match(pattern, value, flags=re.IGNORECASE | re.DOTALL)
+        if match:
+            value = match.group("body").strip()
+            break
+    return value.strip(" \n\t`'\"“”‘’")
 
 
 def qwen_audio_status(model_path_or_repo: str | None = None) -> QwenAudioStatus:
@@ -237,7 +256,7 @@ class QwenAudioTranscriber:
         text = getattr(result, "text", None)
         if text is None:
             text = result.get("text") if isinstance(result, dict) else str(result)
-        return str(text or "").strip()
+        return clean_qwen_transcript_text(str(text or ""))
 
     def transcribe_chunk(self, audio_path: Path | str, prompt: str | None = None) -> str:
         return self.generate(audio_path, prompt=prompt)

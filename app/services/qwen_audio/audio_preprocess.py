@@ -173,10 +173,11 @@ def prepare_audio_chunks(
     work_dir: Path,
     chunk_seconds: float = 20.0,
     overlap_seconds: float = 1.0,
+    namespace: str = "qwen_audio",
     is_canceled: Callable[[], bool] = lambda: False,
 ) -> list[dict[str, object]]:
-    normalized_path = work_dir / "qwen_audio" / "input_16k_mono.wav"
-    chunk_dir = work_dir / "qwen_audio" / "chunks"
+    normalized_path = work_dir / namespace / "input_16k_mono.wav"
+    chunk_dir = work_dir / namespace / "chunks"
     normalize_to_16k_mono(input_path, normalized_path, is_canceled)
     return [
         chunk.as_dict()
