@@ -60,7 +60,7 @@ from app.services.model_registry import (
     test_audio_model,
 )
 from app.services.mlx_whisper_provider import mlx_whisper_status, transcribe_with_mlx_whisper
-from app.services.mlx_vlm_audio_provider import mlx_vlm_audio_status, transcribe_with_mlx_vlm_audio
+from app.services.mlx_vlm_audio_provider import is_mlx_vlm_audio_model, mlx_vlm_audio_status, transcribe_with_mlx_vlm_audio
 from app.services.jobs import Job, job_store
 from app.services.media import (
     OperationCanceled,
@@ -1337,6 +1337,8 @@ async def create_job(
         active_transcription_model_id = (mlx_model_path_or_repo or settings.mlx_whisper_model_path_or_repo).strip()
     elif active_transcription_engine == TranscriptionEngine.qwen_audio:
         active_transcription_model_id = (qwen_model_path_or_repo or settings.qwen_audio_model_path_or_repo).strip()
+        if is_mlx_vlm_audio_model(active_transcription_model_id):
+            active_transcription_engine = TranscriptionEngine.mlx_vlm_audio
     elif active_transcription_engine == TranscriptionEngine.mlx_vlm_audio:
         active_transcription_model_id = (qwen_model_path_or_repo or "").strip()
     active_polish_model_ref = resolve_polish_model(polish_model_id) if enable_polish else None

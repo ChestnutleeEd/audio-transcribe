@@ -55,6 +55,17 @@ def local_model_type(model_path_or_repo: str) -> str | None:
     return str(model_type).strip().lower() if model_type else None
 
 
+def is_mlx_vlm_audio_model(model_path_or_repo: str | None) -> bool:
+    configured = configured_model(model_path_or_repo)
+    if not configured:
+        return False
+    model_type = local_model_type(configured)
+    if model_type:
+        return model_type == "gemma4"
+    text = configured.lower()
+    return "gemma4" in text or "mlx-vlm" in text or "mlx_vlm" in text
+
+
 def dependency_available(python_executable: str | None = None) -> bool:
     executable = (python_executable or settings.mlx_vlm_python).strip()
     if not python_available(executable):

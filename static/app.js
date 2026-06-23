@@ -2672,6 +2672,9 @@ async function ensureSelectedQwenReady() {
   if (selectedTranscriptionEngine() !== "qwen-audio") return true;
   if (!mockBanner.hidden) return true;
   const status = await refreshQwenStatus();
+  if (status?.model_supported === false && isMlxVlmAudioModel({ path_or_id: status.model_path_or_repo || qwenModelPathOrRepo.value })) {
+    return ensureSelectedMlxVlmReady(true);
+  }
   if (status?.available) return true;
   showDiagnostic({
     code: "QWEN_AUDIO_UNAVAILABLE",
@@ -2683,8 +2686,8 @@ async function ensureSelectedQwenReady() {
   return false;
 }
 
-async function ensureSelectedMlxVlmReady() {
-  if (selectedTranscriptionEngine() !== "mlx-vlm-audio") return true;
+async function ensureSelectedMlxVlmReady(force = false) {
+  if (!force && selectedTranscriptionEngine() !== "mlx-vlm-audio") return true;
   if (!mockBanner.hidden) return true;
   const status = await refreshMlxVlmStatus();
   if (status?.available) return true;

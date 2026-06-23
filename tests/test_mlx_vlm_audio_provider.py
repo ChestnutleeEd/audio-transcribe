@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from app.services.mlx_vlm_audio_provider import mlx_vlm_audio_status, parse_mlx_vlm_generate_output
+from app.services.mlx_vlm_audio_provider import is_mlx_vlm_audio_model, mlx_vlm_audio_status, parse_mlx_vlm_generate_output
 
 
 class MLXVlmAudioProviderTest(unittest.TestCase):
@@ -42,6 +42,13 @@ Generation: 4 tokens
 
         self.assertTrue(status.available)
         self.assertEqual("gemma4", status.model_type)
+
+    def test_gemma4_path_is_mlx_vlm_audio_model(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            model_dir = Path(directory)
+            (model_dir / "config.json").write_text(json.dumps({"model_type": "gemma4"}), encoding="utf-8")
+
+            self.assertTrue(is_mlx_vlm_audio_model(str(model_dir)))
 
 
 if __name__ == "__main__":
