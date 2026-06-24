@@ -16,6 +16,17 @@ class PolishProfileDefinition:
 
 POLISH_PROFILES: tuple[PolishProfileDefinition, ...] = (
     PolishProfileDefinition(
+        id="repair",
+        label="Repair / 文本修复",
+        description="自动清理噪声 + 修正错误转录。",
+        instruction=(
+            "执行语义修复：删除无意义内容、明显口误和识别噪声，修正错别字、听错词和明显 ASR 错误。"
+            "如果某段只是模型对静音、音乐或无语音片段的说明，例如“我没有收到任何音频”“没有可转写的人声”，请删除该说明并返回空文本。"
+            "优化句子连贯性，但不得编造事实、人物、日期、数字或原文没有的信息。"
+            "不总结，不扩写，不改变说话者意图。"
+        ),
+    ),
+    PolishProfileDefinition(
         id="punctuation",
         label="标点修复",
         description="只补标点和自然断句，尽量不改原文。",
@@ -60,16 +71,6 @@ POLISH_PROFILES: tuple[PolishProfileDefinition, ...] = (
             "保留原文含义并补充翻译。"
             "如果原文主要是中文，给出英文翻译；否则给出中文翻译。"
             "每段输出应同时包含原文整理版和译文，避免总结和扩写。"
-        ),
-    ),
-    PolishProfileDefinition(
-        id="repair",
-        label="Repair / 文本修复",
-        description="自动清理噪声 + 修正错误转录。",
-        instruction=(
-            "执行语义修复：删除无意义内容、明显口误和识别噪声，修正错别字、听错词和明显 ASR 错误。"
-            "优化句子连贯性，但不得编造事实、人物、日期、数字或原文没有的信息。"
-            "不总结，不扩写，不改变说话者意图。"
         ),
     ),
     PolishProfileDefinition(

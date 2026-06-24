@@ -1288,7 +1288,42 @@ def to_simplified_chinese(text: str) -> str:
 def clean_transcript_text(text: str) -> str:
     value = re.sub(r"\s+", " ", text or "").strip()
     value = value.strip(" \n\t`'\"“”‘’「」『』")
+    if is_no_speech_placeholder(value):
+        return ""
     return to_simplified_chinese(value)
+
+
+def is_no_speech_placeholder(text: str) -> bool:
+    value = re.sub(r"\s+", "", to_simplified_chinese(text or "").strip().lower())
+    value = value.strip("。.!！?？,，;；:：'\"“”‘’「」『』()（）[]【】")
+    if not value:
+        return False
+    placeholders = {
+        "我没有收到任何音频",
+        "我没有收到任何音频这句话",
+        "没有收到任何音频",
+        "我没有听到任何音频",
+        "没有听到任何音频",
+        "我没有听到任何说话内容",
+        "没有听到任何说话内容",
+        "音频中没有说话内容",
+        "这段音频没有说话内容",
+        "这段音频中没有说话内容",
+        "音频中没有可转写内容",
+        "这段音频没有可转写内容",
+        "这段音频中没有可转写内容",
+        "没有可转写的人声",
+        "音频为空",
+        "静音",
+        "nospeech",
+        "noaudio",
+    }
+    if value in placeholders:
+        return True
+    return bool(
+        re.fullmatch(r"(我)?(没有|未)(收到|听到)(任何)?(音频|声音|说话内容|人声)", value)
+        or re.fullmatch(r"(这段)?音频(中)?(没有|无)(可转写的?)?(说话内容|人声|语音内容|文本内容)", value)
+    )
 
 
 def _run_mlx_vlm_generate(
@@ -1382,12 +1417,14 @@ def transcribe_with_mlx_vlm_audio(
     }
 
     def transcribe_chunk(chunk_path: Path) -> str:
-        return _run_mlx_vlm_generate(
-            audio_path=chunk_path,
-            model_path_or_repo=model_path_or_repo,
-            prompt=settings.mlx_vlm_prompt,
-            python_executable=status.python_executable,
-            is_canceled=is_canceled,
+        return clean_transcript_text(
+            _run_mlx_vlm_generate(
+                audio_path=chunk_path,
+                model_path_or_repo=model_path_or_repo,
+                prompt=settings.mlx_vlm_prompt,
+                python_executable=status.python_executable,
+                is_canceled=is_canceled,
+            )
         )
 
     model_label = f"{Path(model_path_or_repo).name or model_path_or_repo}（MLX VLM Audio）"

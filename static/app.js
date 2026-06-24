@@ -1337,6 +1337,7 @@ async function cleanupJobWorkFiles() {
 }
 
 function renderJobs(jobs) {
+  const transcriptScrollPositions = captureTranscriptScrollPositions();
   lastJobs = jobs;
   storeCompletedJobs(jobs);
   const activeCount = jobs.filter((job) => isActiveState(job.state)).length;
@@ -1366,6 +1367,7 @@ function renderJobs(jobs) {
     }
   }
   jobsList.replaceChildren(...nodes);
+  restoreTranscriptScrollPositions(transcriptScrollPositions);
   if (!jobs.length) {
     jobElements.clear();
     const empty = document.createElement("p");
@@ -1373,6 +1375,27 @@ function renderJobs(jobs) {
     empty.textContent = "还没有任务。提交后会在这里显示队列、进度和文件。";
     jobsList.append(empty);
   }
+}
+
+function captureTranscriptScrollPositions() {
+  const positions = new Map();
+  jobsList.querySelectorAll(".transcript-block pre[data-scroll-key]").forEach((node) => {
+    positions.set(node.dataset.scrollKey, {
+      top: node.scrollTop,
+      left: node.scrollLeft,
+    });
+  });
+  return positions;
+}
+
+function restoreTranscriptScrollPositions(positions) {
+  if (!positions.size) return;
+  jobsList.querySelectorAll(".transcript-block pre[data-scroll-key]").forEach((node) => {
+    const position = positions.get(node.dataset.scrollKey);
+    if (!position) return;
+    node.scrollTop = position.top;
+    node.scrollLeft = position.left;
+  });
 }
 
 function loadHistory() {
@@ -1853,20 +1876,21 @@ function renderTranscripts(job) {
   if (!job.raw_text && !job.polished_text) return wrap;
 
   if (job.raw_text) {
-    wrap.append(renderTranscriptBlock("原始转录文本", job.raw_text));
+    wrap.append(renderTranscriptBlock("原始转录文本", job.raw_text, job.id, "raw"));
   }
   if (job.polished_text) {
-    wrap.append(renderTranscriptBlock("整理后转录文本", job.polished_text));
+    wrap.append(renderTranscriptBlock("整理后转录文本", job.polished_text, job.id, "polished"));
   }
   return wrap;
 }
 
-function renderTranscriptBlock(title, text) {
+function renderTranscriptBlock(title, text, jobId, kind) {
   const block = document.createElement("section");
   block.className = "transcript-block";
   const heading = document.createElement("h4");
   heading.textContent = title;
   const body = document.createElement("pre");
+  body.dataset.scrollKey = `${jobId}:${kind}`;
   body.textContent = truncateText(text, 1800);
   block.append(heading, body);
   return block;
@@ -1952,7 +1976,7 @@ async function rerunPolish(jobId, button) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model_id: polishModelSelect.value || "",
-        profile_id: selectedPolishProfileIds().join(",") || "punctuation",
+        profile_id: selectedPolishProfileIds().join(",") || "repair",
         custom_instruction: effectivePolishInstructionValue(),
         export_scope: form.querySelector('input[name="export_scope"]:checked')?.value || "raw",
         formats: [...form.querySelectorAll('input[name="formats"]:checked')].map((input) => input.value),
@@ -2429,7 +2453,7 @@ function primarySelectedPolishProfile() {
 }
 
 function syncPolishProfileValue() {
-  polishProfileSelect.value = selectedPolishProfileIds().join(",") || "punctuation";
+  polishProfileSelect.value = selectedPolishProfileIds().join(",") || "repair";
 }
 
 function loadSavedCustomInstruction() {

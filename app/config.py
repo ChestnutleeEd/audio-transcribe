@@ -198,7 +198,9 @@ class Settings:
     mlx_vlm_python: str = mlx_vlm_default_python()
     mlx_vlm_prompt: str = os.getenv(
         "AUDIO_TRANSCRIBE_MLX_VLM_PROMPT",
-        "请准确转写这段音频，只输出说话内容本身。不要添加说明、标签、引号或翻译；如果是中文，请使用简体中文。",
+        "请准确转写这段音频，只输出可听见的人声说话内容本身。"
+        "不要添加说明、标签、引号或翻译；如果没有可转写的人声、只有音乐、噪声或静音，请输出空文本，不要解释。"
+        "如果是中文，请使用简体中文。",
     )
     mlx_vlm_max_tokens: int = int(os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_MAX_TOKENS", "200"))
     mlx_vlm_polish_max_tokens: int = int(os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_POLISH_MAX_TOKENS", "2048"))

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Audio Transcribe</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070707'/%3E%3Cpath d='M18 40V24M28 48V16M38 42V22M48 36V28' stroke='%23d8b15e' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="/styles.css?v=20260624-feature-polish-multi" />
+    <link rel="stylesheet" href="/styles.css?v=20260624-bugfix-empty-audio-ui" />
   </head>
   <body>
     <main class="shell">
@@ -214,7 +214,7 @@
             <div class="field polish-field" id="polish-profile-field">
               <span>文本整理配置</span>
               <div class="polish-profile-list" id="polish-profile-list" role="group" aria-label="选择文本整理配置"></div>
-              <input type="hidden" name="polish_profile_id" id="polish-profile-select" value="punctuation" />
+              <input type="hidden" name="polish_profile_id" id="polish-profile-select" value="repair" />
               <small id="polish-profile-description">可同时选择多个配置；系统会合并为一次整理任务。</small>
               <button class="secondary inline-action" type="button" id="edit-prompt-button">编辑 prompt</button>
             </div>
@@ -488,6 +488,6 @@
       </form>
     </dialog>
 
-    <script src="/app.js?v=20260624-feature-polish-multi" type="module"></script>
+    <script src="/app.js?v=20260624-bugfix-empty-audio-ui" type="module"></script>
   </body>
 </html>

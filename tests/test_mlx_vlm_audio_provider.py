@@ -61,6 +61,18 @@ Generation: 4 tokens
     def test_clean_transcript_text_converts_common_traditional_chinese(self) -> None:
         self.assertEqual("这是测试内容。", clean_transcript_text("「這是測試內容。」"))
 
+    def test_clean_transcript_text_removes_no_speech_placeholders(self) -> None:
+        placeholders = [
+            "我没有收到任何音频。",
+            "没有可转写的人声",
+            "这段音频中没有说话内容。",
+            "音频中没有可转写内容",
+        ]
+
+        for text in placeholders:
+            with self.subTest(text=text):
+                self.assertEqual("", clean_transcript_text(text))
+
     def test_transcribe_with_mlx_vlm_audio_uses_chunked_pipeline(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -146,7 +158,7 @@ Generation: 4 tokens
                     {"chunk_id": 2, "start": 19.0, "end": 40.0, "audio_path": str(root / "chunk_2.wav")},
                     {"chunk_id": 3, "start": 39.0, "end": 60.0, "audio_path": str(root / "chunk_3.wav")},
                 ]
-                infer_mock.side_effect = ["第一段内容", "", "第三段内容"]
+                infer_mock.side_effect = ["第一段内容", "我没有收到任何音频。", "第三段内容"]
 
                 result = transcribe_with_mlx_vlm_audio(
                     audio_path,
