@@ -6,6 +6,8 @@ from app.config import settings
 from app.schemas import UnifiedModel
 from app.services.exporters import TranscriptSegment
 from app.services.model_registry import model_registry
+from app.services.mlx_vlm_audio_provider import is_mlx_vlm_audio_model, mlx_vlm_audio_status
+from app.services.mlx_vlm_polish import polish_segments_with_mlx_vlm
 from app.services.ollama_model_manager import check_model as check_ollama_model
 from app.services.ollama_provider import PolishResult, polish_segments as polish_with_ollama
 from app.services.qwen_audio.qwen_infer import qwen_audio_status
@@ -27,6 +29,10 @@ class PolishModelRef:
     def is_mlx_audio(self) -> bool:
         text = f"{self.model_id} {self.path_or_id}".lower()
         return self.provider in {"mlx", "custom", "huggingface"} and ("qwen2-audio" in text or "audio" in text)
+
+    @property
+    def is_mlx_vlm(self) -> bool:
+        return self.provider in {"mlx", "custom", "huggingface"} and is_mlx_vlm_audio_model(self.path_or_id)
 
 
 def resolve_polish_model(model_id: str | None) -> PolishModelRef | None:
@@ -64,6 +70,12 @@ def validate_polish_model(model_ref: PolishModelRef) -> None:
             raise RuntimeError(status.reason or "MLX Audio 文本整理模型不可用")
         return
 
+    if model_ref.is_mlx_vlm:
+        status = mlx_vlm_audio_status(model_ref.path_or_id)
+        if not status.available:
+            raise RuntimeError(status.reason or "Gemma4 MLX VLM 文本整理模型不可用")
+        return
+
     raise RuntimeError(f"当前暂不支持使用 {model_ref.provider} 模型执行文本整理：{model_ref.path_or_id}")
 
 
@@ -77,4 +89,6 @@ def polish_segments(
         return polish_with_ollama(segments, model_ref.path_or_id, profile_instruction, **callbacks)
     if model_ref.is_mlx_audio:
         return polish_segments_with_qwen_audio(segments, model_ref.path_or_id, profile_instruction, **callbacks)
+    if model_ref.is_mlx_vlm:
+        return polish_segments_with_mlx_vlm(segments, model_ref.path_or_id, profile_instruction, **callbacks)
     raise RuntimeError(f"当前暂不支持使用 {model_ref.provider} 模型执行文本整理：{model_ref.path_or_id}")

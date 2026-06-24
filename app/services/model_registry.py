@@ -37,11 +37,13 @@ def stable_model_id(provider: str, path_or_id: str) -> str:
 
 def capabilities_for_name(name: str, provider: str) -> ModelCapabilities:
     lower = name.lower()
-    audio = any(token in lower for token in ["whisper", "audio", "asr", "speech", "qwen2-audio"])
+    is_qwen_audio = any(token in lower for token in ["qwen2-audio", "qwen-audio", "qwen_audio"])
+    is_gemma4 = "gemma4" in lower
+    audio = any(token in lower for token in ["whisper", "audio", "asr", "speech"]) or is_qwen_audio or is_gemma4
     vision = any(token in lower for token in ["vision", "vl", "llava", "qwen2-vl", "qwen-vl"])
-    text = provider in {"ollama", "llama.cpp", "huggingface", "custom"} and not audio
+    text = provider in {"ollama", "llama.cpp", "huggingface", "custom"} and (not audio or is_qwen_audio or is_gemma4)
     if provider == "mlx":
-        text = any(token in lower for token in ["llm", "text", "instruct", "chat"]) and not audio
+        text = is_qwen_audio or is_gemma4 or any(token in lower for token in ["llm", "text", "instruct", "chat"])
     return ModelCapabilities(audio=audio, text=text or provider in {"ollama", "llama.cpp"}, vision=vision or None)
 
 

@@ -201,6 +201,7 @@ class Settings:
         "请准确转写这段音频，只输出说话内容本身。不要添加说明、标签、引号或翻译；如果是中文，请使用简体中文。",
     )
     mlx_vlm_max_tokens: int = int(os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_MAX_TOKENS", "200"))
+    mlx_vlm_polish_max_tokens: int = int(os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_POLISH_MAX_TOKENS", "2048"))
     mlx_vlm_timeout_seconds: int = int(os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_TIMEOUT_SECONDS", "600"))
     mlx_vlm_chunk_seconds: int = int(os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_CHUNK_SECONDS", "20"))
     mlx_vlm_overlap_seconds: int = int(os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_OVERLAP_SECONDS", "1"))
