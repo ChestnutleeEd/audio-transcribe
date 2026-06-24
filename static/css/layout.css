@@ -1,0 +1,102 @@
+@import url('./variables.css');
+
+.shell {
+  width: min(1200px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 40px 0 60px;
+}
+
+/* --- Hero Section --- */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 32px;
+  align-items: end;
+  margin-bottom: 40px;
+  animation: fade-up var(--duration-normal) var(--spring-ease) both;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: var(--secondary-label);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+h1 {
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  margin-bottom: 12px;
+  color: var(--label);
+  line-height: 1.1;
+}
+
+h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--label);
+  margin-bottom: 4px;
+}
+
+.lede {
+  font-size: 17px;
+  color: var(--secondary-label);
+  max-width: 600px;
+  line-height: 1.5;
+  margin-bottom: 0;
+}
+
+.status-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 200px;
+}
+
+.status-strip span {
+  padding: 6px 12px;
+  background: var(--system-bg-elevated);
+  border: 1px solid var(--separator-non-opaque);
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--secondary-label);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.mock-banner {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 6px 12px;
+  background: var(--system-orange);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* --- Workspace Grid --- */
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(360px, 0.7fr);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+  h1 {
+    font-size: 36px;
+  }
+}

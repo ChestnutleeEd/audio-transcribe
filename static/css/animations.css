@@ -1,0 +1,78 @@
+@import url('./variables.css');
+
+@keyframes fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Used by app.js when a new job is created */
+.is-new {
+  animation: pop-in var(--duration-normal) var(--spring-ease) forwards;
+}
+
+dialog[open] {
+  animation: fade-up var(--duration-fast) var(--spring-ease) forwards;
+}
+
+dialog::backdrop {
+  animation: fade-in var(--duration-fast) ease-out forwards;
+}
+
+@keyframes fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.model-progress-track span {
+  transition: width 0.4s var(--spring-ease);
+}
+
+/* Micro-interaction for hoverable cards */
+.job-card, .history-card {
+  transition: transform var(--duration-normal) var(--spring-ease),
+              box-shadow var(--duration-normal) var(--spring-ease);
+}
+
+.job-card:hover, .history-card:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: var(--shadow-md);
+}
+
+/* Form interactions */
+input:focus, select:focus, textarea:focus {
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+}
+
+/* Button pulse on active */
+button:active {
+  transform: scale(0.95);
+  transition: transform 50ms linear;
+}
