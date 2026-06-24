@@ -44,6 +44,7 @@ const localModelMessage = document.querySelector("#local-model-message");
 const localModelResults = document.querySelector("#local-model-results");
 const polishProfileField = document.querySelector("#polish-profile-field");
 const polishProfileSelect = document.querySelector("#polish-profile-select");
+const polishProfileList = document.querySelector("#polish-profile-list");
 const polishProfileDescription = document.querySelector("#polish-profile-description");
 const polishCustomInstruction = document.querySelector("#polish-custom-instruction");
 const clearPolishCustomButton = document.querySelector("#clear-polish-custom-button");
@@ -111,6 +112,8 @@ const customModelCapability = document.querySelector("#custom-model-capability")
 const pickCustomModelFolderButton = document.querySelector("#pick-custom-model-folder-button");
 const addCustomModelButton = document.querySelector("#add-custom-model-button");
 const customModelMessage = document.querySelector("#custom-model-message");
+const tutorialButton = document.querySelector("#tutorial-button");
+const tutorialModal = document.querySelector("#tutorial-modal");
 
 const HISTORY_KEY = "audio-transcribe:recent-jobs:v1";
 const CUSTOM_INSTRUCTION_KEY = "audio-transcribe:polish-custom-instruction:v1";
@@ -181,6 +184,7 @@ polishProfileSelect.addEventListener("change", () => {
   updatePolishProfileDescription();
   updatePromptPreview();
 });
+tutorialButton.addEventListener("click", () => tutorialModal.showModal());
 polishCustomInstruction.addEventListener("input", () => {
   localStorage.setItem(CUSTOM_INSTRUCTION_KEY, polishCustomInstruction.value);
   updatePromptPreview();
@@ -449,6 +453,7 @@ form.addEventListener("submit", async (event) => {
   data.set("enable_polish", enablePolishInput.checked ? "true" : "false");
   data.set("export_scope", form.querySelector('input[name="export_scope"]:checked')?.value || "raw");
   data.set("polish_custom_instruction", effectivePolishInstructionValue());
+  data.set("polish_profile_id", selectedPolishProfileIds().join(","));
   if (!enablePolishInput.checked) {
     data.delete("polish_model_id");
     data.delete("polish_profile_id");
@@ -1153,7 +1158,7 @@ function currentProfilePrompt(profile) {
 }
 
 function openPromptEditor() {
-  const profile = polishProfiles.find((item) => item.id === polishProfileSelect.value);
+  const profile = primarySelectedPolishProfile();
   if (!profile) return;
   promptModalTitle.textContent = `${profile.label} · 当前 prompt`;
   promptEditor.value = currentProfilePrompt(profile);
@@ -1161,7 +1166,7 @@ function openPromptEditor() {
 }
 
 function savePromptOverride() {
-  const profile = polishProfiles.find((item) => item.id === polishProfileSelect.value);
+  const profile = primarySelectedPolishProfile();
   if (!profile) return;
   const overrides = promptOverrides();
   overrides[profile.id] = promptEditor.value.trim() || profile.default_prompt || "";
@@ -1171,7 +1176,7 @@ function savePromptOverride() {
 }
 
 function restorePromptDefault() {
-  const profile = polishProfiles.find((item) => item.id === polishProfileSelect.value);
+  const profile = primarySelectedPolishProfile();
   if (!profile) return;
   const overrides = promptOverrides();
   delete overrides[profile.id];
@@ -1947,7 +1952,7 @@ async function rerunPolish(jobId, button) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model_id: polishModelSelect.value || "",
-        profile_id: polishProfileSelect.value || "punctuation",
+        profile_id: selectedPolishProfileIds().join(",") || "punctuation",
         custom_instruction: effectivePolishInstructionValue(),
         export_scope: form.querySelector('input[name="export_scope"]:checked')?.value || "raw",
         formats: [...form.querySelectorAll('input[name="formats"]:checked')].map((input) => input.value),
@@ -2292,7 +2297,9 @@ function updatePolishControls() {
   localProviderSelect.disabled = true;
   localModelSelect.disabled = true;
   localModelDetectButton.disabled = true;
-  polishProfileSelect.disabled = !enablePolishInput.checked;
+  polishProfileList.querySelectorAll("input").forEach((input) => {
+    input.disabled = !enablePolishInput.checked;
+  });
   polishCustomInstruction.disabled = !enablePolishInput.checked;
   updatePromptPreview();
   updateExportScopeControls();
@@ -2330,14 +2337,7 @@ async function refreshPolishProfiles() {
     const response = await fetch("/api/polish/profiles");
     polishProfiles = await response.json();
     if (!response.ok) throw new Error("文本整理配置读取失败");
-    polishProfileSelect.replaceChildren(
-      ...polishProfiles.map((profile) => {
-        const option = document.createElement("option");
-        option.value = profile.id;
-        option.textContent = profile.label;
-        return option;
-      }),
-    );
+    renderPolishProfileOptions();
     updatePolishProfileDescription();
     updatePromptPreview();
   } catch {
@@ -2346,27 +2346,90 @@ async function refreshPolishProfiles() {
 }
 
 function updatePolishProfileDescription() {
-  const selected = polishProfiles.find((profile) => profile.id === polishProfileSelect.value);
-  polishProfileDescription.textContent = selected?.description || "选择后处理策略。";
+  const selected = selectedPolishProfiles();
+  if (!selected.length) {
+    polishProfileDescription.textContent = "至少选择一个文本整理配置。";
+    return;
+  }
+  const names = selected.map((profile) => profile.label).join(" + ");
+  polishProfileDescription.textContent =
+    selected.length === 1 ? selected[0].description : `已选择 ${selected.length} 个配置：${names}。系统会按顺序合并指令。`;
 }
 
 function updatePromptPreview() {
-  const selected = polishProfiles.find((profile) => profile.id === polishProfileSelect.value);
-  const base = selected ? currentProfilePrompt(selected) : "读取 profile 后显示基础指令。";
+  const selected = selectedPolishProfiles();
+  const base = selected.length
+    ? selected.map((profile, index) => `${index + 1}. ${profile.label}\n${currentProfilePrompt(profile)}`).join("\n\n")
+    : "读取 profile 后显示基础指令。";
   const custom = polishCustomInstruction.value.trim();
   promptPreviewText.textContent = custom ? `${base}\n追加用户指令：${custom}` : base;
 }
 
 function effectivePolishInstructionValue() {
-  const selected = polishProfiles.find((profile) => profile.id === polishProfileSelect.value);
+  const selected = selectedPolishProfiles();
   const custom = polishCustomInstruction.value.trim();
-  if (!selected) return custom;
-  const base = currentProfilePrompt(selected);
-  const defaultPrompt = selected.default_prompt || selected.prompt_preview || "";
-  if (base && base !== defaultPrompt) {
+  if (!selected.length) return custom;
+  const hasOverride = selected.some((profile) => {
+    const base = currentProfilePrompt(profile);
+    const defaultPrompt = profile.default_prompt || profile.prompt_preview || "";
+    return base && base !== defaultPrompt;
+  });
+  if (hasOverride) {
+    const base = selected.map((profile) => currentProfilePrompt(profile)).filter(Boolean).join("\n\n");
     return `__OVERRIDE_PROMPT__${custom ? `${base}\n追加用户指令：${custom}` : base}`;
   }
   return custom;
+}
+
+function renderPolishProfileOptions() {
+  const previousIds = selectedPolishProfileIds();
+  polishProfileList.replaceChildren(
+    ...polishProfiles.map((profile, index) => {
+      const label = document.createElement("label");
+      label.className = "polish-profile-option";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = profile.id;
+      input.checked = previousIds.includes(profile.id) || (!previousIds.length && index === 0);
+      input.addEventListener("change", () => {
+        if (!selectedPolishProfileIds().length) input.checked = true;
+        syncPolishProfileValue();
+        updatePolishProfileDescription();
+        updatePromptPreview();
+      });
+      const content = document.createElement("span");
+      const title = document.createElement("strong");
+      title.textContent = profile.label;
+      const description = document.createElement("small");
+      description.textContent = profile.description;
+      content.append(title, description);
+      label.append(input, content);
+      return label;
+    }),
+  );
+  syncPolishProfileValue();
+}
+
+function selectedPolishProfileIds() {
+  const checked = [...polishProfileList.querySelectorAll('input[type="checkbox"]:checked')].map((input) => input.value);
+  if (checked.length) return checked;
+  return (polishProfileSelect.value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function selectedPolishProfiles() {
+  const ids = selectedPolishProfileIds();
+  return ids.map((id) => polishProfiles.find((profile) => profile.id === id)).filter(Boolean);
+}
+
+function primarySelectedPolishProfile() {
+  return selectedPolishProfiles()[0] || polishProfiles[0] || null;
+}
+
+function syncPolishProfileValue() {
+  polishProfileSelect.value = selectedPolishProfileIds().join(",") || "punctuation";
 }
 
 function loadSavedCustomInstruction() {

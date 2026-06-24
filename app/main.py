@@ -93,7 +93,7 @@ from app.services.ollama_model_manager import (
 from app.services.ollama_provider import transcribe_audio_direct
 from app.services.polish_router import polish_segments, resolve_polish_model, validate_polish_model
 from app.services.qwen_audio import qwen_audio_status
-from app.services.polish_profiles import combine_instruction, get_profile, profile_options
+from app.services.polish_profiles import combine_profiles_instruction, get_profiles, profile_options
 from app.services.transcriber import transcribe_audio
 
 
@@ -974,15 +974,17 @@ def run_job(
             if active_polish_model_ref is None:
                 raise RuntimeError("请选择文本整理模型")
             active_polish_model = active_polish_model_ref.path_or_id
-            profile = get_profile(polish_profile_id)
-            profile_instruction = combine_instruction(profile, polish_custom_instruction)
+            profiles = get_profiles(polish_profile_id)
+            profile_ids = ",".join(profile.id for profile in profiles)
+            profile_label = " + ".join(profile.label for profile in profiles)
+            profile_instruction = combine_profiles_instruction(profiles, polish_custom_instruction)
             job_store.update(
                 job_id,
                 state=JobState.polishing,
                 progress=74,
-                message=f"正在使用 {active_polish_model} 执行 {profile.label}",
-                polish_profile_id=profile.id,
-                polish_profile_label=profile.label,
+                message=f"正在使用 {active_polish_model} 执行 {profile_label}",
+                polish_profile_id=profile_ids,
+                polish_profile_label=profile_label,
                 polish_custom_instruction=(polish_custom_instruction or "").strip() or None,
             )
             add_event(job_id, "文本整理开始")
@@ -1383,7 +1385,9 @@ async def create_job(
     active_polish_model_id = active_polish_model_ref.path_or_id if active_polish_model_ref else None
     if enable_polish and not active_polish_model_ref:
         raise HTTPException(status_code=400, detail="请选择文本整理模型")
-    active_profile = get_profile(polish_profile_id)
+    active_profiles = get_profiles(polish_profile_id)
+    active_profile_ids = ",".join(profile.id for profile in active_profiles)
+    active_profile_label = " + ".join(profile.label for profile in active_profiles)
 
     if active_transcription_engine == TranscriptionEngine.ollama_audio:
         check = check_ollama_model(active_transcription_model_id or settings.default_ollama_transcription_model_id)
@@ -1488,8 +1492,8 @@ async def create_job(
             active_transcription_model_id,
             enable_polish,
             active_polish_model_id,
-            active_profile.id if enable_polish else None,
-            active_profile.label if enable_polish else None,
+            active_profile_ids if enable_polish else None,
+            active_profile_label if enable_polish else None,
             (polish_custom_instruction or "").strip() if enable_polish else None,
             active_export_scope,
             base_name,
@@ -1525,7 +1529,7 @@ async def create_job(
         active_transcription_model_id,
         enable_polish,
         active_polish_model_id,
-        active_profile.id,
+        active_profile_ids if enable_polish else None,
         (polish_custom_instruction or "").strip() if enable_polish else None,
         active_export_scope,
     )
@@ -1593,26 +1597,28 @@ def rerun_polish(job_id: str, request: PolishRequest) -> JobStatus:
         status_code = 503 if "Ollama 服务不可用" in detail else 409
         raise HTTPException(status_code=status_code, detail=detail) from exc
 
-    profile = get_profile(request.profile_id or job.polish_profile_id)
+    profiles = get_profiles(request.profile_id or job.polish_profile_id)
+    profile_ids = ",".join(profile.id for profile in profiles)
+    profile_label = " + ".join(profile.label for profile in profiles)
     custom_instruction = (request.custom_instruction or "").strip()
-    profile_instruction = combine_instruction(profile, custom_instruction)
+    profile_instruction = combine_profiles_instruction(profiles, custom_instruction)
     job_store.update(
         job_id,
         state=JobState.polishing,
         progress=74,
-        message=f"正在重新执行 {profile.label}",
+        message=f"正在重新执行 {profile_label}",
         error=None,
         enable_polish=True,
         polish_model_id=model_id,
-        polish_profile_id=profile.id,
-        polish_profile_label=profile.label,
+        polish_profile_id=profile_ids,
+        polish_profile_label=profile_label,
         polish_custom_instruction=custom_instruction or None,
         export_scope=request.export_scope or job.export_scope,
         formats=request.formats or job.formats,
         processing_started_at=utc_now_iso(),
         processing_finished_at=None,
     )
-    add_event(job_id, f"重新执行文本整理：{profile.id}")
+    add_event(job_id, f"重新执行文本整理：{profile_ids}")
     try:
         result = polish_segments(
             job.raw_segments,

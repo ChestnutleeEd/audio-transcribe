@@ -111,6 +111,22 @@ def get_profile(profile_id: str | None) -> PolishProfileDefinition:
     return POLISH_PROFILES[0]
 
 
+def get_profiles(profile_ids: str | None) -> list[PolishProfileDefinition]:
+    selected_ids = [
+        item.strip()
+        for item in (profile_ids or POLISH_PROFILES[0].id).split(",")
+        if item.strip()
+    ]
+    profiles: list[PolishProfileDefinition] = []
+    seen: set[str] = set()
+    for profile_id in selected_ids:
+        profile = get_profile(profile_id)
+        if profile.id not in seen:
+            profiles.append(profile)
+            seen.add(profile.id)
+    return profiles or [POLISH_PROFILES[0]]
+
+
 def build_profile_prompt(profile: PolishProfileDefinition, segments: list[TranscriptSegment]) -> str:
     from app.services.ollama_provider import build_polish_prompt
 
@@ -125,3 +141,16 @@ def combine_instruction(profile: PolishProfileDefinition, custom_instruction: st
     if custom.startswith(override_marker):
         return custom.removeprefix(override_marker).strip() or profile.instruction
     return f"{profile.instruction}\n追加用户指令：{custom}"
+
+
+def combine_profiles_instruction(profiles: list[PolishProfileDefinition], custom_instruction: str | None) -> str:
+    if len(profiles) <= 1:
+        return combine_instruction(profiles[0], custom_instruction)
+    custom = (custom_instruction or "").strip()
+    override_marker = "__OVERRIDE_PROMPT__"
+    if custom.startswith(override_marker):
+        return custom.removeprefix(override_marker).strip() or profiles[0].instruction
+    base = "\n\n".join(f"{index}. {profile.label}\n{profile.instruction}" for index, profile in enumerate(profiles, start=1))
+    if not custom:
+        return base
+    return f"{base}\n追加用户指令：{custom}"

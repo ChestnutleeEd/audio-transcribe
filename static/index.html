@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Audio Transcribe</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070707'/%3E%3Cpath d='M18 40V24M28 48V16M38 42V22M48 36V28' stroke='%23d8b15e' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="/styles.css?v=20260624-gemma4-vlm-route" />
+    <link rel="stylesheet" href="/styles.css?v=20260624-feature-polish-multi" />
   </head>
   <body>
     <main class="shell">
@@ -20,6 +20,10 @@
           <span>本地优先</span>
           <span>上传 / YouTube / Bilibili</span>
           <span>Word / TXT / Markdown</span>
+          <button class="secondary tutorial-button" type="button" id="tutorial-button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1 0-4h12"/><path d="M8 7h6"/></svg>
+            使用教程
+          </button>
         </div>
       </section>
 
@@ -207,14 +211,13 @@
               <p id="local-model-message">检测只读取本机已存在模型，不会自动下载。</p>
               <div id="local-model-results" class="local-model-results"></div>
             </div>
-            <label class="field polish-field" id="polish-profile-field">
+            <div class="field polish-field" id="polish-profile-field">
               <span>文本整理配置</span>
-              <select name="polish_profile_id" id="polish-profile-select">
-                <option value="punctuation">标点修复</option>
-              </select>
-              <small id="polish-profile-description">只补标点和自然断句，尽量不改原文。</small>
+              <div class="polish-profile-list" id="polish-profile-list" role="group" aria-label="选择文本整理配置"></div>
+              <input type="hidden" name="polish_profile_id" id="polish-profile-select" value="punctuation" />
+              <small id="polish-profile-description">可同时选择多个配置；系统会合并为一次整理任务。</small>
               <button class="secondary inline-action" type="button" id="edit-prompt-button">编辑 prompt</button>
-            </label>
+            </div>
             <label class="field polish-field" id="polish-custom-field">
               <span>追加整理指令</span>
               <textarea name="polish_custom_instruction" id="polish-custom-instruction" rows="3" placeholder="例如：保留语气词；不要翻译；更适合字幕。"></textarea>
@@ -273,6 +276,9 @@
               <button class="icon-button" type="button" id="jobs-collapse-button" aria-label="收起任务列表" title="收起任务列表">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>
               </button>
+              <button class="icon-button model-cancel" type="button" id="history-clear-button" aria-label="清空最近历史" title="清空历史">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2m-8 3 1 9h8l1-9"/><path d="M10 12v4m4-4v4"/></svg>
+              </button>
               <button class="icon-button" type="button" id="jobs-refresh-button" aria-label="刷新任务列表" title="刷新任务列表">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
               </button>
@@ -285,16 +291,13 @@
           <div id="jobs-region">
             <p class="cleanup-status" id="jobs-cleanup-status">正在检查工作文件占用。</p>
             <div id="jobs-list" class="jobs-list"></div>
-          </div>
 
-          <div class="model-card history-card">
-            <div>
-              <h3>最近历史</h3>
-              <p id="history-message">最近 5 条结果保存在当前浏览器。</p>
-              <div id="history-list" class="history-list"></div>
-            </div>
-            <div class="model-actions">
-              <button class="secondary model-cancel" type="button" id="history-clear-button">清空历史</button>
+            <div class="model-card history-card">
+              <div>
+                <h3>最近历史</h3>
+                <p id="history-message">最近 5 条结果保存在当前浏览器。</p>
+                <div id="history-list" class="history-list"></div>
+              </div>
             </div>
           </div>
 
@@ -304,7 +307,7 @@
               <small id="environment-summary">正在检测模型和运行环境。</small>
             </summary>
             <div class="environment-sections">
-              <details class="environment-module" open>
+              <details class="environment-module">
                 <summary>环境检查</summary>
                 <p id="health-message">检查 FFmpeg、Python runtime、MLX runtime、Whisper backend 和 API server status。</p>
                 <div id="environment-status-grid" class="status-grid"></div>
@@ -320,7 +323,7 @@
                 </div>
                 <div id="health-list" class="health-list"></div>
               </details>
-              <details class="environment-module" open>
+              <details class="environment-module">
                 <summary>模型检测</summary>
                 <div class="custom-model-form" aria-label="手动导入模型">
                   <label class="field">
@@ -358,7 +361,7 @@
                 </div>
                 <div id="model-detection-list" class="model-detection-list"></div>
               </details>
-              <details class="environment-module" open>
+              <details class="environment-module">
                 <summary>系统状态</summary>
                 <div id="environment-advice" class="status-advice"></div>
               </details>
@@ -462,6 +465,29 @@
       </form>
     </dialog>
 
-    <script src="/app.js?v=20260624-gemma4-vlm-route" type="module"></script>
+    <dialog id="tutorial-modal" class="modal tutorial-modal">
+      <form method="dialog" class="modal-panel tutorial-panel">
+        <div class="panel-head">
+          <div>
+            <h2>使用教程</h2>
+            <p>从准备环境到导出结果的基本流程。</p>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="关闭" title="关闭" type="submit">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <ol class="tutorial-steps">
+          <li><strong>检查环境。</strong>展开右侧“模型与环境状态”，先看“环境检查”和“模型检测”；缺少依赖时点 Fix All 查看处理步骤。</li>
+          <li><strong>选择来源。</strong>上传本地音频/视频，或填写 YouTube、Bilibili 链接；同时填写时优先处理上传文件。</li>
+          <li><strong>选择转录模型。</strong>Whisper 用本地 Whisper 模型；MLX Whisper 需要 MLX 格式模型；Local Audio LLM 只显示支持 Audio Input 的本地大模型。</li>
+          <li><strong>配置输出。</strong>选择语言、时间轴、导出格式和导出内容；SRT 需要开启时间轴。</li>
+          <li><strong>整理文本。</strong>开启“使用本地大模型整理转录结果”，选择 Text 模型，并勾选一个或多个文本整理配置；可以追加指令或编辑 prompt。</li>
+          <li><strong>查看结果。</strong>任务完成后在右侧复制、下载、对比原文和整理后文本；最近历史与任务列表一起收起。</li>
+          <li><strong>强制刷新。</strong>如果页面资源没有更新，按 Command + Shift + R 强制刷新浏览器缓存。</li>
+        </ol>
+      </form>
+    </dialog>
+
+    <script src="/app.js?v=20260624-feature-polish-multi" type="module"></script>
   </body>
 </html>
