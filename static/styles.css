@@ -275,6 +275,38 @@ summary:focus-visible {
   background: transparent;
 }
 
+.dashboard-workspace {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+}
+
+.workspace-view {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workspace-view[hidden] {
+  display: none !important;
+}
+
+.tasks-workspace {
+  padding: 0;
+}
+
+.workbench-grid {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(520px, 1fr) minmax(360px, 420px);
+  gap: 18px;
+  padding: 24px;
+}
+
 .dashboard-header {
   height: 64px;
   min-height: 64px;
@@ -290,7 +322,8 @@ summary:focus-visible {
 }
 
 .dashboard-center {
-  padding: 44px clamp(28px, 5vw, 72px);
+  min-height: 0;
+  padding: 20px clamp(16px, 3vw, 36px);
   align-items: stretch;
 }
 
@@ -433,6 +466,35 @@ textarea {
   min-height: 98px;
 }
 
+.workbench-jobs {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: rgba(5, 11, 20, 0.82);
+  border: 1px solid rgba(126, 169, 255, 0.15);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.045);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+.workbench-jobs .panel-head {
+  min-height: 92px;
+}
+
+.jobs-page-body {
+  display: flex;
+  align-items: stretch;
+}
+
+.jobs-page-body .workbench-jobs {
+  width: min(100%, 1120px);
+  min-height: 620px;
+  margin: 0 auto;
+}
+
 .side-panel {
   min-height: 0;
   flex: 1;
@@ -448,15 +510,84 @@ textarea {
   min-height: 0;
   flex: 1;
   overflow: auto;
-  padding: 18px;
+  padding: 24px;
+}
+
+.status-page-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 18px;
+}
+
+.status-page-grid > .environment-card,
+.status-page-grid > .model-details,
+.status-page-grid > .history-card {
+  width: min(100%, 1120px);
+  margin: 0 auto;
+}
+
+.status-workspace-card {
+  min-height: 0;
+  padding: 22px;
+  display: grid;
+  gap: 16px;
+}
+
+.workspace-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(126, 169, 255, 0.12);
+}
+
+.workspace-card-head > span {
+  color: var(--text-main);
+  font-size: 1.08rem;
+  font-weight: 700;
+}
+
+.workspace-card-head > small {
+  max-width: 520px;
+  text-align: right;
+}
+
+.status-page-grid .status-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.status-page-grid .health-list,
+.status-page-grid .model-detection-list,
+.status-page-grid .status-advice,
+.status-page-grid .local-model-results {
+  max-height: none;
+}
+
+.status-page-grid .custom-model-form {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(126, 169, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.status-page-grid .model-detection-list,
+.status-page-grid .status-advice,
+.status-page-grid .health-list {
+  display: grid;
+  gap: 10px;
 }
 
 .history-side-panel .history-card {
   min-height: 260px;
-  border-radius: 999px 12px 12px 999px;
-  padding: 28px 22px 28px 34px;
+  border-radius: 12px;
+  padding: 24px;
   background:
-    radial-gradient(circle at 20% 50%, rgba(47, 140, 255, 0.16), transparent 46%),
+    linear-gradient(135deg, rgba(47, 140, 255, 0.1), rgba(124, 92, 255, 0.045)),
     rgba(8, 16, 28, 0.76);
 }
 
@@ -469,20 +600,20 @@ textarea {
   background: linear-gradient(135deg, rgba(47, 140, 255, 0.1), rgba(124, 92, 255, 0.08));
 }
 
-.environment-side-panel .environment-card,
+.health-side-panel .environment-card,
+.model-detection-side-panel .environment-card,
+.system-status-side-panel .environment-card,
 .models-side-panel .model-details {
   display: block;
   min-height: 100%;
 }
 
-.environment-side-panel .environment-card > summary,
 .models-side-panel .model-details > summary {
   min-height: 58px;
   padding: 16px 18px;
   border-bottom: 1px solid rgba(126, 169, 255, 0.14);
 }
 
-.environment-side-panel .environment-sections,
 .models-side-panel .ollama-card {
   padding: 16px;
 }
@@ -554,9 +685,8 @@ textarea {
     min-width: 292px;
   }
 
-  .dashboard-right-panel {
-    width: 360px;
-    min-width: 360px;
+  .workbench-grid {
+    grid-template-columns: minmax(480px, 1fr) minmax(320px, 380px);
   }
 }
 
@@ -587,6 +717,26 @@ textarea {
 
   .dashboard-right-panel {
     order: 3;
+  }
+
+  .dashboard-workspace,
+  .workspace-view,
+  .workbench-grid {
+    overflow: visible;
+  }
+
+  .workbench-grid {
+    height: auto;
+    grid-template-columns: 1fr;
+    padding: 18px;
+  }
+
+  .workbench-jobs {
+    min-height: 420px;
+  }
+
+  .status-page-grid .status-grid {
+    grid-template-columns: 1fr;
   }
 }
 

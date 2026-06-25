@@ -469,12 +469,15 @@ details summary::-webkit-details-marker {
   display: none;
 }
 details summary::before {
-  content: '▸';
+  content: "";
   display: inline-block;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid var(--text-tertiary);
   margin-right: var(--space-2);
-  font-size: 0.8rem;
   transition: transform var(--transition-fast);
-  color: var(--text-tertiary);
 }
 details[open] > summary::before {
   transform: rotate(90deg);
