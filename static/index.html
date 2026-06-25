@@ -76,12 +76,12 @@
         
         <div class="sidebar-modules">
           <div class="model-card history-card">
-              <div>
-                <h3>最近历史</h3>
-                <p id="history-message">最近 5 条结果保存在当前浏览器。</p>
-                <div id="history-list" class="history-list"></div>
-              </div>
-          <details class="model-card environment-card" id="environment-panel" open aria-live="polite">
+            <h3>最近历史</h3>
+            <p id="history-message">最近 5 条结果保存在当前浏览器。</p>
+            <div id="history-list" class="history-list"></div>
+          </div>
+
+          <details class="environment-card" id="environment-panel" open aria-live="polite">
             <summary>
               <span>模型与环境状态</span>
               <small id="environment-summary">正在检测模型和运行环境。</small>
@@ -89,20 +89,25 @@
             <div class="environment-sections">
               <details class="environment-module">
                 <summary>环境检查</summary>
-                <p id="health-message">检查 FFmpeg、Python runtime、MLX runtime、Whisper backend 和 API server status。</p>
-                <div id="environment-status-grid" class="status-grid"></div>
-                <div class="model-actions model-actions-two">
-                  <button class="secondary" type="button" id="health-refresh-button">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
-                    <span id="health-refresh-label">重新检查</span>
-                  </button>
-                  <button class="secondary" type="button" id="fix-all-button">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v6m0 8v6M4.93 4.93l4.24 4.24m5.66 5.66 4.24 4.24M2 12h6m8 0h6M4.93 19.07l4.24-4.24m5.66-5.66 4.24-4.24"/></svg>
-                    Fix All
-                  </button>
+                <div>
+                  <p id="health-message">检查 FFmpeg、Python runtime、MLX runtime、Whisper backend 和 API server status。</p>
+                  <div id="environment-status-grid" class="status-grid"></div>
+                  <div class="model-actions model-actions-two">
+                    <button class="secondary" type="button" id="health-refresh-button">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
+                      <span id="health-refresh-label">重新检查</span>
+                    </button>
+                    <button class="secondary" type="button" id="fix-all-button">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v6m0 8v6M4.93 4.93l4.24 4.24m5.66 5.66 4.24 4.24M2 12h6m8 0h6M4.93 19.07l4.24-4.24m5.66-5.66 4.24-4.24"/></svg>
+                      Fix All
+                    </button>
+                  </div>
+                  <div id="health-list" class="health-list"></div>
                 </div>
-                <div id="health-list" class="health-list"></div>
               </details>
+            </div>
+          </details>
+
           <div class="legacy-status-panels" hidden>
             <div>
               <h3>模型与环境状态</h3>
@@ -112,42 +117,42 @@
 
           <details class="model-details" hidden>
             <summary>本地大模型详情</summary>
-          <div class="model-card ollama-card" aria-live="polite">
-            <div>
-              <h3>Ollama 状态</h3>
-              <p id="ollama-message">正在检测 Ollama 服务</p>
-              <label class="model-selector">
-                <span>音频直转模型</span>
-                <select id="ollama-transcription-model-select" aria-label="选择 Ollama 直转模型">
-                </select>
-              </label>
-              <label class="model-selector">
-                <span>模型下载状态</span>
-                <select id="ollama-managed-model-select" aria-label="选择要检查或下载的 Ollama 模型">
-                </select>
-              </label>
-              <div class="model-progress" id="ollama-progress" aria-hidden="true">
-                <div class="model-progress-track"><span id="ollama-progress-fill"></span></div>
-                <small id="ollama-progress-label"></small>
+            <div class="model-card ollama-card" aria-live="polite">
+              <div>
+                <h3>Ollama 状态</h3>
+                <p id="ollama-message">正在检测 Ollama 服务</p>
+                <label class="model-selector">
+                  <span>音频直转模型</span>
+                  <select id="ollama-transcription-model-select" aria-label="选择 Ollama 直转模型">
+                  </select>
+                </label>
+                <label class="model-selector">
+                  <span>模型下载状态</span>
+                  <select id="ollama-managed-model-select" aria-label="选择要检查或下载的 Ollama 模型">
+                  </select>
+                </label>
+                <div class="model-progress" id="ollama-progress" aria-hidden="true">
+                  <div class="model-progress-track"><span id="ollama-progress-fill"></span></div>
+                  <small id="ollama-progress-label"></small>
+                </div>
+                <span class="device-pill" id="ollama-service-pill">服务：检测中</span>
+                <small id="ollama-model-path">Ollama 模型由 Ollama 管理，不下载到项目目录。</small>
               </div>
-              <span class="device-pill" id="ollama-service-pill">服务：检测中</span>
-              <small id="ollama-model-path">Ollama 模型由 Ollama 管理，不下载到项目目录。</small>
+              <div class="model-actions">
+                <button class="secondary" type="button" id="ollama-refresh-button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
+                  <span id="ollama-refresh-label">重新检测</span>
+                </button>
+                <button class="secondary" type="button" id="ollama-download-button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>
+                  <span id="ollama-download-label">下载模型</span>
+                </button>
+                <button class="secondary model-cancel" type="button" id="ollama-cancel-button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  <span id="ollama-cancel-label">取消下载</span>
+                </button>
+              </div>
             </div>
-            <div class="model-actions">
-              <button class="secondary" type="button" id="ollama-refresh-button">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
-                <span id="ollama-refresh-label">重新检测</span>
-              </button>
-              <button class="secondary" type="button" id="ollama-download-button">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>
-                <span id="ollama-download-label">下载模型</span>
-              </button>
-              <button class="secondary model-cancel" type="button" id="ollama-cancel-button">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                <span id="ollama-cancel-label">取消下载</span>
-              </button>
-            </div>
-          </div>
           </details>
         </div>
 
@@ -165,7 +170,7 @@
             <span class="breadcrumb">Workspace /</span> 新建任务
           </div>
           <div class="header-actions">
-            <button class="icon-button" type="button" id="tutorial-button-dash" aria-label="使用教程" title="使用教程">
+            <button class="icon-button" type="button" id="tutorial-button" aria-label="使用教程" title="使用教程">
               <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1 0-4h12"/><path d="M8 7h6"/></svg>
             </button>
             <button class="icon-button" id="return-home-button" title="返回欢迎页">
@@ -541,6 +546,13 @@
         if(startAppButton) startAppButton.addEventListener("click", showDashboard);
         if(navStartButton) navStartButton.addEventListener("click", showDashboard);
         if(returnHomeButton) returnHomeButton.addEventListener("click", showWelcome);
+
+        // Hero tutorial button opens tutorial modal
+        const heroTutorialButton = document.getElementById("hero-tutorial-button");
+        const tutorialModalEl = document.getElementById("tutorial-modal");
+        if(heroTutorialButton && tutorialModalEl) {
+          heroTutorialButton.addEventListener("click", () => tutorialModalEl.showModal());
+        }
         
         // Empty state for upload
         const fileInput = document.getElementById("file-input");

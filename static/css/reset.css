@@ -6,9 +6,9 @@
 
 html {
   min-width: 320px;
-  background: var(--system-bg);
+  background: var(--bg-color);
   scroll-behavior: smooth;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-family);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -16,8 +16,8 @@ html {
 body {
   min-height: 100dvh;
   margin: 0;
-  color: var(--label);
-  background: var(--system-bg);
+  color: var(--text-main);
+  background: var(--bg-color);
   font-size: 15px;
   line-height: 1.47059;
   font-weight: 400;
@@ -30,7 +30,7 @@ h1, h2, h3, h4, p {
 }
 
 a {
-  color: var(--system-blue);
+  color: var(--primary-color);
   text-decoration: none;
 }
 
@@ -61,7 +61,7 @@ svg {
 }
 
 ::selection {
-  background: var(--system-blue);
+  background: var(--primary-color);
   color: white;
 }
 

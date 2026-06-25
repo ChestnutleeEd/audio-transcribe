@@ -75,6 +75,11 @@ button {
   font-size: 0.9rem;
 }
 
+.inline-action {
+  font-size: 0.85rem;
+  padding: var(--space-1) var(--space-3);
+}
+
 /* --- STICKY ACTION BAR (Start Button) --- */
 #job-form > button[type="submit"] {
   position: sticky;
@@ -82,10 +87,11 @@ button {
   z-index: 20;
   width: 100%;
   padding: var(--space-3);
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 600;
   border-radius: var(--radius-md);
   box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  margin-top: var(--space-3);
 }
 
 /* --- CARDS & PANELS --- */
@@ -113,7 +119,7 @@ button {
 fieldset {
   border: none;
   padding: 0;
-  margin: 0 0 var(--space-4) 0;
+  margin: 0 0 var(--space-3) 0;
 }
 legend {
   font-size: 0.9rem;
@@ -126,28 +132,41 @@ legend {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 .field > span {
   font-size: 0.9rem;
   color: var(--text-secondary);
 }
 input[type="text"], input[type="url"], input[type="time"], select, textarea {
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--panel-border);
   color: var(--text-main);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   font-family: var(--font-family);
   font-size: 0.95rem;
   transition: border-color var(--transition-fast);
-  appearance: none;
-  -webkit-appearance: none;
 }
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--primary-color);
-  background: rgba(0,0,0,0.6);
+  background: rgba(255, 255, 255, 0.08);
+}
+select {
+  padding-right: var(--space-5);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+select option {
+  background: #1a1a1e;
+  color: var(--text-main);
+}
+
+small {
+  font-size: 0.82rem;
+  color: var(--text-tertiary);
 }
 
 /* --- DROPZONE --- */
@@ -156,13 +175,13 @@ input:focus, select:focus, textarea:focus {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--space-8) var(--space-4);
+  padding: var(--space-6) var(--space-4);
   border: 1px dashed var(--text-tertiary);
-  border-radius: var(--radius-xl);
-  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.02);
   cursor: pointer;
   transition: all var(--transition-fast);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
   text-align: center;
 }
 .dropzone:hover {
@@ -173,73 +192,95 @@ input:focus, select:focus, textarea:focus {
   display: none;
 }
 .upload-empty-img {
-  max-width: 180px;
-  opacity: 0.8;
-  margin-bottom: var(--space-4);
+  max-width: 140px;
+  opacity: 0.6;
+  margin-bottom: var(--space-3);
+}
+.dropzone .drop-icon {
+  margin-bottom: var(--space-2);
+  color: var(--text-tertiary);
+}
+.dropzone .drop-icon svg {
+  width: 32px;
+  height: 32px;
 }
 .dropzone strong {
-  font-size: 1.1rem;
+  font-size: 1rem;
   margin-bottom: var(--space-1);
 }
 .dropzone small {
   color: var(--text-tertiary);
 }
 
-/* --- SEGMENTED CONTROLS (Radios) --- */
+/* --- RADIO CARD GROUP (Model Mode) --- */
 .choice-group {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+.choice-group legend {
+  margin-bottom: var(--space-2);
 }
 .choice-group label {
   display: block;
   cursor: pointer;
 }
 .choice-group input[type="radio"] {
-  display: none;
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
 }
 .choice-group label span {
   display: flex;
   flex-direction: column;
   padding: var(--space-3);
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
 }
 .choice-group label:hover span {
-  background: rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 .choice-group input[type="radio"]:checked + span {
   background: rgba(47, 128, 237, 0.1);
   border-color: var(--primary-color);
+  box-shadow: 0 0 0 1px var(--primary-color);
 }
 .choice-group strong {
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: var(--text-main);
   margin-bottom: 2px;
 }
 .choice-group small {
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
 }
 
-/* --- PILL CHECKBOX GROUP (Formats) --- */
+/* --- PILL CHECKBOX / RADIO GROUP (Formats, Export) --- */
 .formats {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+  align-items: center;
+}
+.formats legend {
+  width: 100%;
+  flex-basis: 100%;
 }
 .formats label {
   cursor: pointer;
 }
 .formats input[type="checkbox"], .formats input[type="radio"] {
-  display: none;
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
 }
 .formats label span {
   display: inline-block;
   padding: 6px 16px;
-  background: rgba(0,0,0,0.4);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--panel-border);
   border-radius: 20px;
   font-size: 0.9rem;
@@ -247,7 +288,8 @@ input:focus, select:focus, textarea:focus {
   transition: all var(--transition-fast);
 }
 .formats label:hover span {
-  background: rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 .formats input:checked + span {
   background: var(--primary-color);
@@ -262,12 +304,13 @@ input:focus, select:focus, textarea:focus {
   gap: var(--space-2);
   cursor: pointer;
 }
-.switch input {
+.switch input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
   width: 40px;
+  min-width: 40px;
   height: 24px;
-  background: rgba(0,0,0,0.5);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   position: relative;
   border: 1px solid var(--panel-border);
@@ -275,7 +318,7 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
   margin: 0;
 }
-.switch input::after {
+.switch input[type="checkbox"]::after {
   content: '';
   position: absolute;
   top: 2px; left: 2px;
@@ -284,17 +327,89 @@ input:focus, select:focus, textarea:focus {
   border-radius: 50%;
   transition: var(--transition-fast);
 }
-.switch input:checked {
+.switch input[type="checkbox"]:checked {
   background: var(--primary-color);
   border-color: var(--primary-color);
 }
-.switch input:checked::after {
+.switch input[type="checkbox"]:checked::after {
   transform: translateX(16px);
   background: #fff;
 }
 .switch b {
   font-weight: 500;
   color: var(--text-main);
+}
+.post-switch {
+  margin-bottom: var(--space-3);
+}
+
+/* --- POST-PROCESSING SECTION --- */
+.post-processing {
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: rgba(255, 255, 255, 0.02);
+}
+.polish-field {
+  margin-top: var(--space-3);
+}
+.polish-profile-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.local-model-tools {
+  margin-top: var(--space-3);
+}
+.local-model-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.local-model-results {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* Model pool picker sections */
+.model-pool-picker {
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* --- PROMPT PREVIEW --- */
+.prompt-preview {
+  margin-top: var(--space-2);
+}
+.prompt-preview pre {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Advanced details (time trim) */
+.advanced {
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: rgba(255, 255, 255, 0.02);
+}
+.advanced summary {
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 /* --- RESULTS EMPTY STATE & LOGS --- */
@@ -309,10 +424,20 @@ input:focus, select:focus, textarea:focus {
   text-align: center;
 }
 .result-empty-state img {
-  max-width: 160px;
+  max-width: 140px;
   opacity: 0.4;
   margin-bottom: var(--space-3);
   filter: grayscale(100%);
+}
+.result-empty-state p {
+  font-size: 0.9rem;
+}
+
+.cleanup-status {
+  font-size: 0.82rem;
+  color: var(--text-tertiary);
+  padding: 0 0 var(--space-2) 0;
+  margin: 0;
 }
 
 .jobs-list {
@@ -323,12 +448,13 @@ input:focus, select:focus, textarea:focus {
 
 /* Make jobs items look like terminal output */
 .jobs-list > div {
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.4);
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-sm);
   padding: var(--space-3);
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  word-break: break-all;
 }
 
 /* Sidebar Accordions */
@@ -337,9 +463,76 @@ details summary {
   padding: var(--space-2) 0;
   font-weight: 500;
   outline: none;
+  list-style: none;
+}
+details summary::-webkit-details-marker {
+  display: none;
+}
+details summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: var(--space-2);
+  font-size: 0.8rem;
+  transition: transform var(--transition-fast);
+  color: var(--text-tertiary);
+}
+details[open] > summary::before {
+  transform: rotate(90deg);
 }
 details > div {
   padding-bottom: var(--space-3);
+}
+
+/* Diagnostic card */
+.diagnostic-card {
+  padding: var(--space-3);
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+/* --- MODAL --- */
+.modal {
+  background: transparent;
+  border: none;
+  padding: 0;
+  max-width: 600px;
+  width: 90vw;
+  margin: auto;
+}
+.modal::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+}
+.modal-panel {
+  background: rgba(20, 20, 23, 0.95);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  color: var(--text-main);
+}
+.modal-primary {
+  min-width: 120px;
+}
+
+.tutorial-modal {
+  max-width: 700px;
+}
+.tutorial-steps {
+  padding-left: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.tutorial-steps strong {
+  color: var(--text-main);
+}
+
+.fix-plan {
+  margin: var(--space-3) 0;
+  font-size: 0.9rem;
 }
 
 /* Misc Utilities */
@@ -347,4 +540,20 @@ details > div {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
+  align-items: start;
+}
+
+.mock-banner {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-sm);
+  color: var(--warning-color);
+  font-size: 0.85rem;
+}
+
+.health-list {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
 }

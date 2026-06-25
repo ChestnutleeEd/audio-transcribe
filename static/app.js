@@ -174,11 +174,11 @@ audioModelSelect.addEventListener("change", () => {
   updateEngineControls();
 });
 audioTestButton.addEventListener("click", quickTestSelectedAudioModel);
-addCustomModelButton.addEventListener("click", registerCustomModel);
-pickCustomModelFolderButton.addEventListener("click", pickCustomModelFolder);
-customModelPath.addEventListener("input", scheduleCustomModelProbe);
-customModelProvider.addEventListener("change", scheduleCustomModelProbe);
-customModelCapability.addEventListener("change", scheduleCustomModelProbe);
+addCustomModelButton?.addEventListener("click", registerCustomModel);
+pickCustomModelFolderButton?.addEventListener("click", pickCustomModelFolder);
+customModelPath?.addEventListener("input", scheduleCustomModelProbe);
+customModelProvider?.addEventListener("change", scheduleCustomModelProbe);
+customModelCapability?.addEventListener("change", scheduleCustomModelProbe);
 enablePolishInput.addEventListener("change", updatePolishControls);
 polishProfileSelect.addEventListener("change", () => {
   updatePolishProfileDescription();
@@ -510,7 +510,7 @@ async function refreshModelRegistry(preferred = {}) {
     return payload;
   } catch (error) {
     audioModelHelp.textContent = `模型检测失败：${error.message}`;
-    modelDetectionList.replaceChildren();
+    modelDetectionList?.replaceChildren();
     return null;
   } finally {
     registryRefreshButton.disabled = false;
@@ -638,7 +638,7 @@ function metaPill(kind, text) {
 }
 
 function renderModelDetection(errors = []) {
-  modelDetectionList.replaceChildren();
+  modelDetectionList?.replaceChildren();
   const models = lastModelRegistry?.models || [];
   const groups = [
     ["Whisper / faster-whisper", whisperDetectionRows()],
@@ -646,13 +646,13 @@ function renderModelDetection(errors = []) {
     ["Local Audio LLM", localAudioLlmDetectionRows(models)],
   ];
   for (const [label, group] of groups) {
-    modelDetectionList.append(renderModelDetectionGroup(label, group));
+    modelDetectionList?.append(renderModelDetectionGroup(label, group));
   }
   for (const error of errors.slice(0, 4)) {
     const row = document.createElement("small");
     row.className = "provider-error";
     row.textContent = error;
-    modelDetectionList.append(row);
+    modelDetectionList?.append(row);
   }
 }
 
@@ -2533,7 +2533,7 @@ function renderEnvironmentStatus() {
     statusRow("MLX VLM Audio", mlxVlmReady ? "可用" : mlxVlmStatusLabel(lastMlxVlmStatus), mlxVlmReady ? "success" : mlxVlmStatusKind(lastMlxVlmStatus), mlxVlmStatusDetail(lastMlxVlmStatus)),
     statusRow("Local LLM models", ollamaReady ? "服务可用" : "未检测到本地大模型", ollamaReady ? "success" : "warning", lastOllamaStatus?.message || "可用 provider：Ollama、MLX、HuggingFace local、llama.cpp"),
   );
-  environmentAdvice.replaceChildren(...environmentAdviceItems(platform, engine));
+  environmentAdvice?.replaceChildren(...environmentAdviceItems(platform, engine));
 }
 
 function statusRow(label, value, kind, detail) {
