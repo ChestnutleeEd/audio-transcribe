@@ -1,78 +1,42 @@
-@import url('./variables.css');
+/* --- ANIMATIONS --- */
 
-@keyframes fade-up {
-  0% {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+  100% { transform: translateY(0px); }
 }
 
-@keyframes slide-in {
-  0% {
-    opacity: 0;
-    transform: translateX(-16px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0);
-  }
+.floating-mockup {
+  animation: float 6s ease-in-out infinite;
 }
 
-@keyframes pop-in {
-  0% {
+/* Fade in for the app dashboard */
+@keyframes fadeInScale {
+  from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.98);
   }
-  100% {
+  to {
     opacity: 1;
     transform: scale(1);
   }
 }
 
-/* Used by app.js when a new job is created */
-.is-new {
-  animation: pop-in var(--duration-normal) var(--spring-ease) forwards;
+.dashboard-container:not([hidden]) {
+  animation: fadeInScale 0.4s cubic-bezier(0.2, 0, 0, 1) forwards;
 }
 
-dialog[open] {
-  animation: fade-up var(--duration-fast) var(--spring-ease) forwards;
+.welcome-container:not([hidden]) {
+  animation: fadeInScale 0.4s cubic-bezier(0.2, 0, 0, 1) forwards;
 }
 
-dialog::backdrop {
-  animation: fade-in var(--duration-fast) ease-out forwards;
+/* Subtle pulse for the status dot */
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(48, 209, 88, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(48, 209, 88, 0); }
 }
 
-@keyframes fade-in {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-.model-progress-track span {
-  transition: width 0.4s var(--spring-ease);
-}
-
-/* Micro-interaction for hoverable cards */
-.job-card, .history-card {
-  transition: transform var(--duration-normal) var(--spring-ease),
-              box-shadow var(--duration-normal) var(--spring-ease);
-}
-
-.job-card:hover, .history-card:hover {
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: var(--shadow-md);
-}
-
-/* Form interactions */
-input:focus, select:focus, textarea:focus {
-  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
-}
-
-/* Button pulse on active */
-button:active {
-  transform: scale(0.95);
-  transition: transform 50ms linear;
+.status-dot {
+  animation: pulse 2s infinite;
 }

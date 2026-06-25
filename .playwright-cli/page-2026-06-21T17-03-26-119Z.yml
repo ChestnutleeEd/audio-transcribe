@@ -1,0 +1,250 @@
+- main [ref=e2]:
+  - region "Audio Transcribe" [ref=e3]:
+    - generic [ref=e4]:
+      - paragraph [ref=e5]: Local Model Workstation
+      - heading "Audio Transcribe" [level=1] [ref=e6]
+      - paragraph [ref=e7]: 基于本地模型池的音频转写台。上传文件或粘贴视频链接，选择支持 Audio Input 的模型、语言、格式和时间轴，一次生成可下载文档。
+      - paragraph [ref=e8]: Mock 模式：不会调用真实模型
+    - generic "运行信息" [ref=e9]:
+      - generic [ref=e10]: 本地优先
+      - generic [ref=e11]: 上传 / YouTube / Bilibili
+      - generic [ref=e12]: Word / TXT / Markdown
+  - generic [ref=e13]:
+    - form "创建转写任务" [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - heading "新建任务" [level=2] [ref=e17]
+          - paragraph [ref=e18]: 文件和链接二选一；如果同时填写，会优先处理上传文件。
+        - button "清空表单" [ref=e19] [cursor=pointer]:
+          - img [ref=e20]
+      - generic [ref=e22] [cursor=pointer]:
+        - button "选择本地音频或视频 支持 mp3、m4a、wav、flac、mp4、mov、mkv、webm 等" [ref=e23]
+        - img [ref=e25]
+        - strong [ref=e27]: 选择本地音频或视频
+        - generic [ref=e28]: 支持 mp3、m4a、wav、flac、mp4、mov、mkv、webm 等
+      - generic [ref=e29] [cursor=pointer]:
+        - generic [ref=e30]: 视频链接
+        - textbox "视频链接" [ref=e31]:
+          - /placeholder: https://www.youtube.com/watch?v=... 或 Bilibili 链接
+      - generic [ref=e32]:
+        - generic [ref=e33] [cursor=pointer]:
+          - generic [ref=e34]: 转换语言
+          - combobox "转换语言" [ref=e35]:
+            - option "自动识别" [selected]
+            - option "中文"
+            - option "日语"
+            - option "英语"
+            - option "韩语"
+        - generic [ref=e36] [cursor=pointer]:
+          - checkbox "带时间轴" [checked] [ref=e37]
+          - generic [ref=e38]: 带时间轴
+      - group "Audio Model Mode" [ref=e39]:
+        - generic [ref=e40]: Audio Model Mode
+        - generic [ref=e41] [cursor=pointer]:
+          - radio "Whisper（faster-whisper） exists=true · provider=huggingface · capability=Audio" [ref=e42]
+          - generic [ref=e43]:
+            - strong [ref=e44]: Whisper（faster-whisper）
+            - generic [ref=e45]: exists=true · provider=huggingface · capability=Audio
+        - generic [ref=e46] [cursor=pointer]:
+          - radio "MLX Whisper（Apple Silicon） exists=false · provider=MLX · reason=未检测到 mlx-whisper Python 包。" [ref=e47]
+          - generic [ref=e48]:
+            - strong [ref=e49]: MLX Whisper（Apple Silicon）
+            - generic [ref=e50]: exists=false · provider=MLX · reason=未检测到 mlx-whisper Python 包。
+        - generic [ref=e51] [cursor=pointer]:
+          - radio "Local Audio LLM exists=false · 可通过 Add custom model 导入" [ref=e52]
+          - generic [ref=e53]:
+            - strong [ref=e54]: Local Audio LLM
+            - generic [ref=e55]: exists=false · 可通过 Add custom model 导入
+      - region "后处理选项" [ref=e56]:
+        - generic [ref=e57] [cursor=pointer]:
+          - checkbox "使用本地大模型整理转录结果" [ref=e58]
+          - generic [ref=e59]: 使用本地大模型整理转录结果
+      - group "转录文件格式" [ref=e60]:
+        - generic [ref=e61]: 转录文件格式
+        - generic [ref=e62] [cursor=pointer]:
+          - checkbox "TXT" [checked] [ref=e63]
+          - generic [ref=e64]: TXT
+        - generic [ref=e65] [cursor=pointer]:
+          - checkbox "Markdown" [ref=e66]
+          - generic [ref=e67]: Markdown
+        - generic [ref=e68] [cursor=pointer]:
+          - checkbox "JSON" [ref=e69]
+          - generic [ref=e70]: JSON
+        - generic "包含时间戳 segments 时可导出字幕" [ref=e71] [cursor=pointer]:
+          - checkbox "SRT" [ref=e72]
+          - generic [ref=e73]: SRT
+        - generic [ref=e74] [cursor=pointer]:
+          - checkbox "Word" [ref=e75]
+          - generic [ref=e76]: Word
+      - group "导出内容" [ref=e77]:
+        - generic [ref=e78]: 导出内容
+        - generic [ref=e79] [cursor=pointer]:
+          - radio "原始文本" [checked] [ref=e80]
+          - generic [ref=e81]: 原始文本
+        - generic [ref=e82] [cursor=pointer]:
+          - radio "原始 + 整理后" [disabled] [ref=e83]
+          - generic [ref=e84]: 原始 + 整理后
+        - generic [ref=e85] [cursor=pointer]:
+          - radio "整理后文本" [disabled] [ref=e86]
+          - generic [ref=e87]: 整理后文本
+      - group [ref=e88]:
+        - generic "截取时间段" [ref=e89] [cursor=pointer]
+      - button "开始转写" [ref=e90] [cursor=pointer]:
+        - img [ref=e91]
+        - text: 开始转写
+    - complementary [ref=e93]:
+      - generic [ref=e94]:
+        - generic [ref=e95]:
+          - heading "任务列表" [level=2] [ref=e96]
+          - paragraph [ref=e97]: 等待创建任务
+        - generic [ref=e98]:
+          - button "收起任务列表" [ref=e99] [cursor=pointer]:
+            - img [ref=e100]
+          - button "刷新任务列表" [ref=e102] [cursor=pointer]:
+            - img [ref=e103]
+          - button "清理过往任务工作文件" [ref=e105] [cursor=pointer]:
+            - img [ref=e106]
+      - generic [ref=e108]:
+        - paragraph [ref=e109]: 正在检查工作文件占用。
+        - paragraph [ref=e111]: 还没有任务。提交后会在这里显示队列、进度和文件。
+      - generic [ref=e112]:
+        - generic [ref=e113]:
+          - heading "最近历史" [level=3] [ref=e114]
+          - paragraph [ref=e115]: 最近 5 条结果保存在当前浏览器。
+          - paragraph [ref=e117]: 暂无历史记录。
+        - button "清空历史" [ref=e119] [cursor=pointer]
+      - group [ref=e120]:
+        - generic "模型与环境状态 未选择引擎 · 未选择模型" [ref=e121] [cursor=pointer]:
+          - generic [ref=e122]: 模型与环境状态
+          - generic [ref=e123]: 未选择引擎 · 未选择模型
+        - generic [ref=e124]:
+          - group [ref=e125]:
+            - generic "环境检查" [ref=e126] [cursor=pointer]
+            - paragraph [ref=e127]: 检查 FFmpeg、Python runtime、MLX runtime、Whisper backend 和 API server status。
+            - generic [ref=e128]:
+              - generic [ref=e129]:
+                - generic [ref=e130]: API server status
+                - strong [ref=e131]: 可响应
+                - generic [ref=e132]: FastAPI API server
+              - generic [ref=e133]:
+                - generic [ref=e134]: Python runtime
+                - strong [ref=e135]: 需确认
+                - generic [ref=e136]: 等待检测
+              - generic [ref=e137]:
+                - generic [ref=e138]: FFmpeg
+                - strong [ref=e139]: 需确认
+                - generic [ref=e140]: 等待检测
+              - generic [ref=e141]:
+                - generic [ref=e142]: MLX runtime
+                - strong [ref=e143]: 需确认
+                - generic [ref=e144]: 等待检测
+              - generic [ref=e145]:
+                - generic [ref=e146]: Whisper backend
+                - strong [ref=e147]: 需确认
+                - generic [ref=e148]: 等待检测
+              - generic [ref=e149]:
+                - generic [ref=e150]: 统一模型池
+                - strong [ref=e151]: 0 Audio / 0 Text
+                - generic [ref=e152]: 等待检测
+              - generic [ref=e153]:
+                - generic [ref=e154]: 当前引擎
+                - strong [ref=e155]: 未选择
+                - generic [ref=e156]: 未选择模型
+              - generic [ref=e157]:
+                - generic [ref=e158]: 平台适配
+                - strong [ref=e159]: Darwin / Apple Silicon
+                - generic [ref=e160]: 可使用 MLX Whisper 或 faster-whisper
+              - generic [ref=e161]:
+                - generic [ref=e162]: Whisper / faster-whisper
+                - strong [ref=e163]: 已检测
+                - generic [ref=e164]: 已检测到可用 large-v3 模型
+              - generic [ref=e165]:
+                - generic [ref=e166]: MLX Whisper
+                - strong [ref=e167]: 依赖缺失
+                - generic [ref=e168]: 未检测到 mlx-whisper Python 包。
+              - generic [ref=e169]:
+                - generic [ref=e170]: Local LLM models
+                - strong [ref=e171]: 服务可用
+                - generic [ref=e172]: Mock 模式：不会调用真实模型
+            - generic [ref=e173]:
+              - button "重新检查" [ref=e174] [cursor=pointer]:
+                - img [ref=e175]
+                - generic [ref=e177]: 重新检查
+              - button "Fix All" [ref=e178] [cursor=pointer]:
+                - img [ref=e179]
+                - text: Fix All
+          - group [ref=e181]:
+            - generic "模型检测" [ref=e182] [cursor=pointer]
+            - generic "手动导入模型" [ref=e183]:
+              - generic [ref=e184] [cursor=pointer]:
+                - generic [ref=e185]: LLM 模型目录地址
+                - generic [ref=e186]:
+                  - textbox "LLM 模型目录地址 选择文件夹" [ref=e187]:
+                    - /placeholder: /完整/模型/目录
+                  - button "选择文件夹" [ref=e188]:
+                    - img [ref=e189]
+                    - text: 选择文件夹
+              - generic [ref=e191]:
+                - generic [ref=e192] [cursor=pointer]:
+                  - generic [ref=e193]: provider
+                  - combobox "provider" [ref=e194]:
+                    - option "custom" [selected]
+                    - option "MLX"
+                    - option "HuggingFace local"
+                    - option "Ollama"
+                    - option "llama.cpp"
+                - generic [ref=e195] [cursor=pointer]:
+                  - generic [ref=e196]: capability
+                  - combobox "capability" [ref=e197]:
+                    - option "Audio" [selected]
+                    - option "Text"
+                    - option "Audio + Text"
+              - button "绑定 LLM 模型" [ref=e198] [cursor=pointer]
+              - generic [ref=e199]: 请填写本地模型目录；系统只记录绑定，不自动下载。
+            - generic [ref=e200]:
+              - generic [ref=e201]:
+                - heading "Whisper / faster-whisper · exists" [level=4] [ref=e202]
+                - generic [ref=e203]:
+                  - strong [ref=e204]: faster-whisper tiny
+                  - generic [ref=e205]: exists=false · provider=HuggingFace local · capability=Audio
+                  - generic [ref=e206]: path=/Users/chestnut/BaiduSyncdisk/Project/audio-transcribe/models/tiny-local
+                  - generic [ref=e207]: reason=missing
+                - generic [ref=e208]:
+                  - strong [ref=e209]: faster-whisper base
+                  - generic [ref=e210]: exists=false · provider=HuggingFace local · capability=Audio
+                  - generic [ref=e211]: path=/Users/chestnut/BaiduSyncdisk/Project/audio-transcribe/models/base-local
+                  - generic [ref=e212]: reason=missing
+                - generic [ref=e213]:
+                  - strong [ref=e214]: faster-whisper small
+                  - generic [ref=e215]: exists=true · provider=HuggingFace local · capability=Audio
+                  - generic [ref=e216]: path=/Users/chestnut/BaiduSyncdisk/Project/audio-transcribe/models/small-local
+                  - generic [ref=e217]: reason=available
+                - generic [ref=e218]:
+                  - strong [ref=e219]: faster-whisper medium
+                  - generic [ref=e220]: exists=false · provider=HuggingFace local · capability=Audio
+                  - generic [ref=e221]: path=/Users/chestnut/BaiduSyncdisk/Project/audio-transcribe/models/medium-local
+                  - generic [ref=e222]: reason=missing
+                - generic [ref=e223]:
+                  - strong [ref=e224]: faster-whisper large-v3
+                  - generic [ref=e225]: exists=true · provider=HuggingFace local · capability=Audio
+                  - generic [ref=e226]: path=/Users/chestnut/BaiduSyncdisk/Project/audio-transcribe/models/large-v3-local
+                  - generic [ref=e227]: reason=available
+              - generic [ref=e228]:
+                - heading "MLX Whisper · missing" [level=4] [ref=e229]
+                - generic [ref=e230]:
+                  - strong [ref=e231]: MLX Whisper
+                  - generic [ref=e232]: exists=false · provider=MLX · capability=Audio
+                  - generic [ref=e233]: path=未配置
+                  - generic [ref=e234]: reason=未检测到 mlx-whisper Python 包。
+              - generic [ref=e235]:
+                - heading "Local Audio LLM · missing" [level=4] [ref=e236]
+                - generic [ref=e237]:
+                  - strong [ref=e238]: Local Audio LLM
+                  - generic [ref=e239]: exists=false · provider=ollama / mlx / huggingface / llama.cpp / custom · capability=Audio
+                  - generic [ref=e240]: path=未检测到
+                  - generic [ref=e241]: reason=missing
+          - group [ref=e242]:
+            - generic "系统状态" [ref=e243] [cursor=pointer]
+            - generic [ref=e244]:
+              - paragraph [ref=e245]: Mac 用户可优先配置 MLX Whisper。
+              - paragraph [ref=e246]: 本项目不会自动下载 MLX Whisper 或 MLX Audio 模型。

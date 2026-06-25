@@ -1,0 +1,137 @@
+- main [ref=e2]:
+  - region "Audio Transcribe" [ref=e3]:
+    - generic [ref=e4]:
+      - paragraph [ref=e5]: Local Model Workstation
+      - heading "Audio Transcribe" [level=1] [ref=e6]
+      - paragraph [ref=e7]: 基于本地模型池的音频转写台。上传文件或粘贴视频链接，选择支持 Audio Input 的模型、语言、格式和时间轴，一次生成可下载文档。
+      - paragraph [ref=e8]: Mock 模式：不会调用真实模型
+    - generic "运行信息" [ref=e9]:
+      - generic [ref=e10]: 本地优先
+      - generic [ref=e11]: 上传 / YouTube / Bilibili
+      - generic [ref=e12]: Word / TXT / Markdown
+      - button "使用教程" [ref=e13] [cursor=pointer]:
+        - img [ref=e14]
+        - text: 使用教程
+  - generic [ref=e16]:
+    - form "创建转写任务" [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]:
+          - heading "新建任务" [level=2] [ref=e20]
+          - paragraph [ref=e21]: 文件和链接二选一；如果同时填写，会优先处理上传文件。
+        - button "清空表单" [ref=e22] [cursor=pointer]:
+          - img [ref=e23]
+      - generic [ref=e25] [cursor=pointer]:
+        - button "选择本地音频或视频 支持 mp3、m4a、wav、flac、mp4、mov、mkv、webm 等" [ref=e26]
+        - img [ref=e28]
+        - strong [ref=e30]: 选择本地音频或视频
+        - generic [ref=e31]: 支持 mp3、m4a、wav、flac、mp4、mov、mkv、webm 等
+      - generic [ref=e32] [cursor=pointer]:
+        - generic [ref=e33]: 视频链接
+        - textbox "视频链接" [ref=e34]:
+          - /placeholder: https://www.youtube.com/watch?v=... 或 Bilibili 链接
+      - generic [ref=e35]:
+        - generic [ref=e36] [cursor=pointer]:
+          - generic [ref=e37]: 转换语言
+          - combobox "转换语言" [ref=e38]:
+            - option "自动识别" [selected]
+            - option "中文"
+            - option "日语"
+            - option "英语"
+            - option "韩语"
+        - generic [ref=e39] [cursor=pointer]:
+          - checkbox "带时间轴" [checked] [ref=e40]
+          - generic [ref=e41]: 带时间轴
+      - group "Audio Model Mode" [ref=e42]:
+        - generic [ref=e43]: Audio Model Mode
+        - generic [ref=e44] [cursor=pointer]:
+          - radio "Whisper（faster-whisper） exists=true · provider=huggingface · capability=Audio" [ref=e45]
+          - generic [ref=e46]:
+            - strong [ref=e47]: Whisper（faster-whisper）
+            - generic [ref=e48]: exists=true · provider=huggingface · capability=Audio
+        - generic [ref=e49] [cursor=pointer]:
+          - radio "MLX Whisper（Apple Silicon） exists=false · provider=MLX · reason=未检测到 mlx-whisper Python 包。" [ref=e50]
+          - generic [ref=e51]:
+            - strong [ref=e52]: MLX Whisper（Apple Silicon）
+            - generic [ref=e53]: exists=false · provider=MLX · reason=未检测到 mlx-whisper Python 包。
+        - generic [ref=e54] [cursor=pointer]:
+          - radio "Local Audio LLM exists=false · 可通过 Add custom model 导入" [ref=e55]
+          - generic [ref=e56]:
+            - strong [ref=e57]: Local Audio LLM
+            - generic [ref=e58]: exists=false · 可通过 Add custom model 导入
+      - region "后处理选项" [ref=e59]:
+        - generic [ref=e60] [cursor=pointer]:
+          - checkbox "使用本地大模型整理转录结果" [ref=e61]
+          - generic [ref=e62]: 使用本地大模型整理转录结果
+      - group "转录文件格式" [ref=e63]:
+        - generic [ref=e64]: 转录文件格式
+        - generic [ref=e65] [cursor=pointer]:
+          - checkbox "TXT" [checked] [ref=e66]
+          - generic [ref=e67]: TXT
+        - generic [ref=e68] [cursor=pointer]:
+          - checkbox "Markdown" [ref=e69]
+          - generic [ref=e70]: Markdown
+        - generic [ref=e71] [cursor=pointer]:
+          - checkbox "JSON" [ref=e72]
+          - generic [ref=e73]: JSON
+        - generic "包含时间戳 segments 时可导出字幕" [ref=e74] [cursor=pointer]:
+          - checkbox "SRT" [ref=e75]
+          - generic [ref=e76]: SRT
+        - generic [ref=e77] [cursor=pointer]:
+          - checkbox "Word" [ref=e78]
+          - generic [ref=e79]: Word
+      - group "导出内容" [ref=e80]:
+        - generic [ref=e81]: 导出内容
+        - generic [ref=e82] [cursor=pointer]:
+          - radio "原始文本" [checked] [ref=e83]
+          - generic [ref=e84]: 原始文本
+        - generic [ref=e85] [cursor=pointer]:
+          - radio "原始 + 整理后" [disabled] [ref=e86]
+          - generic [ref=e87]: 原始 + 整理后
+        - generic [ref=e88] [cursor=pointer]:
+          - radio "整理后文本" [disabled] [ref=e89]
+          - generic [ref=e90]: 整理后文本
+      - group [ref=e91]:
+        - generic "截取时间段" [ref=e92] [cursor=pointer]
+      - button "开始转写" [ref=e93] [cursor=pointer]:
+        - img [ref=e94]
+        - text: 开始转写
+    - complementary [ref=e96]:
+      - generic [ref=e97]:
+        - generic [ref=e98]:
+          - heading "任务列表" [level=2] [ref=e99]
+          - paragraph [ref=e100]: 等待创建任务
+        - generic [ref=e101]:
+          - button "收起任务列表" [ref=e102] [cursor=pointer]:
+            - img [ref=e103]
+          - button "清空最近历史" [ref=e105] [cursor=pointer]:
+            - img [ref=e106]
+          - button "刷新任务列表" [ref=e109] [cursor=pointer]:
+            - img [ref=e110]
+          - button "清理过往任务工作文件" [ref=e112] [cursor=pointer]:
+            - img [ref=e113]
+      - generic [ref=e115]:
+        - paragraph [ref=e116]: 正在检查工作文件占用。
+        - paragraph [ref=e118]: 还没有任务。提交后会在这里显示队列、进度和文件。
+        - generic [ref=e120]:
+          - heading "最近历史" [level=3] [ref=e121]
+          - paragraph [ref=e122]: 最近 5 条结果保存在当前浏览器。
+          - paragraph [ref=e124]: 暂无历史记录。
+      - group [ref=e125]:
+        - generic "模型与环境状态 未选择引擎 · 未选择模型" [ref=e126] [cursor=pointer]:
+          - generic [ref=e127]: 模型与环境状态
+          - generic [ref=e128]: 未选择引擎 · 未选择模型
+        - generic [ref=e129]:
+          - group [ref=e130]:
+            - generic "环境检查" [ref=e131] [cursor=pointer]
+          - group [ref=e132]:
+            - generic "模型检测" [ref=e133] [cursor=pointer]
+            - option "custom" [selected]
+            - option "MLX"
+            - option "HuggingFace local"
+            - option "Ollama"
+            - option "llama.cpp"
+            - option "Audio" [selected]
+            - option "Text"
+            - option "Audio + Text"
+          - group [ref=e134]:
+            - generic "系统状态" [ref=e135] [cursor=pointer]

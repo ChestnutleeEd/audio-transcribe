@@ -8,27 +8,105 @@
     <link rel="stylesheet" href="/styles.css?v=20260624-bugfix-empty-audio-ui" />
   </head>
   <body>
-    <main class="shell">
-      <section class="hero" aria-labelledby="page-title">
-        <div>
+    <!-- Welcome Page -->
+    <div id="welcome-page" class="welcome-container">
+      <nav class="welcome-nav">
+        <div class="logo">
+          <svg viewBox="0 0 64 64" width="24" height="24" class="logo-icon"><rect width="64" height="64" rx="14" fill="#070707"/><path d="M18 40V24M28 48V16M38 42V22M48 36V28" stroke="#d8b15e" stroke-width="5" stroke-linecap="round"/></svg>
+          Audio Transcribe
+        </div>
+        <div class="nav-links">
+          <span>Features</span>
+          <span>Workflow</span>
+          <span>Models</span>
+        </div>
+        <div class="nav-actions">
+          <button class="primary small-button" id="nav-start-button">Start Dashboard</button>
+        </div>
+      </nav>
+      <div class="hero-section" aria-labelledby="page-title">
+        <div class="hero-content">
           <p class="eyebrow">Local Model Workstation</p>
-          <h1 id="page-title">Audio Transcribe</h1>
-          <p class="lede">基于本地模型池的音频转写台。上传文件或粘贴视频链接，选择支持 Audio Input 的模型、语言、格式和时间轴，一次生成可下载文档。</p>
+          <h1 id="page-title">本地 AI 音频与视频转录工作台</h1>
+          <p class="lede">基于本地模型池的高性能转写台。支持长音频智能切片、视频转音频、Whisper/MLX 原生加速，以及 LLM 智能文本整理。全程本地运行，保护隐私数据。</p>
+          <div class="hero-actions">
+            <button class="primary glow-button" id="start-app-button">开始转录</button>
+            <button class="secondary glass-button" id="hero-tutorial-button">了解工作流</button>
+          </div>
           <p class="mock-banner" id="mock-banner" hidden>Mock 模式：不会调用真实模型</p>
         </div>
-        <div class="status-strip" aria-label="运行信息">
-          <span>本地优先</span>
-          <span>上传 / YouTube / Bilibili</span>
-          <span>Word / TXT / Markdown</span>
-          <button class="secondary tutorial-button" type="button" id="tutorial-button">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1 0-4h12"/><path d="M8 7h6"/></svg>
-            使用教程
-          </button>
+        <div class="hero-visual">
+          <img src="/assets/images/hero-product-mockup.webp" alt="Dashboard Mockup" class="floating-mockup" />
         </div>
-      </section>
+      </div>
+      <div class="feature-cards">
+        <div class="glass-card">
+          <h3>Local Models</h3>
+          <p>Seamlessly integrate with Whisper and MLX native models for maximum speed.</p>
+        </div>
+        <div class="glass-card">
+          <h3>Long Audio Chunking</h3>
+          <p>Smart VAD-based slicing ensures even hours of audio are transcribed flawlessly.</p>
+        </div>
+        <div class="glass-card">
+          <h3>Transcript Polish</h3>
+          <p>Use local LLMs to automatically format, punctuate, and correct transcripts.</p>
+        </div>
+      </div>
+    </div>
 
-      <section class="workspace">
-        <form id="job-form" class="panel" aria-label="创建转写任务">
+    <!-- App Dashboard (Hidden initially) -->
+    <div id="app-dashboard" class="dashboard-container" hidden>
+      <!-- Sidebar -->
+      <aside class="dashboard-sidebar">
+        <div class="sidebar-logo">
+          <svg viewBox="0 0 64 64" width="32" height="32" class="logo-icon"><rect width="64" height="64" rx="14" fill="#070707"/><path d="M18 40V24M28 48V16M38 42V22M48 36V28" stroke="#d8b15e" stroke-width="5" stroke-linecap="round"/></svg>
+          Audio Transcribe
+        </div>
+        <nav class="sidebar-nav">
+          <a href="#" class="active" title="转录工作台">
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+            转录工作台
+          </a>
+          <a href="#" title="文件任务">
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            文件任务
+          </a>
+          <a href="#" title="本地模型">
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            本地模型
+          </a>
+          <a href="#" title="输出结果">
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            输出结果
+          </a>
+        </nav>
+        <div class="sidebar-spacer"></div>
+        <div class="sidebar-status">
+          <span class="status-dot"></span> Local Mode / Ready
+        </div>
+      </aside>
+
+      <!-- Main Content Area -->
+      <main class="dashboard-main">
+        <!-- Top Header -->
+        <header class="dashboard-header">
+          <div class="header-title">
+            <span class="breadcrumb">Workspace /</span> 新建任务
+          </div>
+          <div class="header-actions">
+            <button class="icon-button" type="button" id="tutorial-button-dash" aria-label="使用教程" title="使用教程">
+              <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1 0-4h12"/><path d="M8 7h6"/></svg>
+            </button>
+            <button class="icon-button" id="return-home-button" title="返回欢迎页">
+              <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <!-- Dashboard Grid Layout -->
+        <div class="dashboard-grid">
+           <form id="job-form" class="panel" aria-label="创建转写任务">
           <div class="panel-head">
             <div>
               <h2>新建任务</h2>
@@ -264,8 +342,7 @@
             开始转写
           </button>
         </form>
-
-        <aside class="panel monitor" aria-live="polite">
+           <aside class="panel monitor" aria-live="polite">
           <div class="diagnostic-card" id="diagnostic-card" hidden></div>
           <div class="panel-head">
             <div>
@@ -416,8 +493,9 @@
           </details>
 
         </aside>
-      </section>
-    </main>
+        </div>
+      </main>
+    </div>
 
     <dialog id="prompt-modal" class="modal">
       <form method="dialog" class="modal-panel">
@@ -487,6 +565,79 @@
         </ol>
       </form>
     </dialog>
+
+    
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const welcomePage = document.getElementById("welcome-page");
+        const appDashboard = document.getElementById("app-dashboard");
+        const startAppButton = document.getElementById("start-app-button");
+        const navStartButton = document.getElementById("nav-start-button");
+        const returnHomeButton = document.getElementById("return-home-button");
+        
+        // Navigation Logic
+        const showDashboard = () => {
+          welcomePage.setAttribute("hidden", "true");
+          appDashboard.removeAttribute("hidden");
+          // Optionally trigger a resize event for any canvas/charts
+          window.dispatchEvent(new Event('resize'));
+        };
+
+        const showWelcome = () => {
+          appDashboard.setAttribute("hidden", "true");
+          welcomePage.removeAttribute("hidden");
+        };
+
+        if(startAppButton) startAppButton.addEventListener("click", showDashboard);
+        if(navStartButton) navStartButton.addEventListener("click", showDashboard);
+        if(returnHomeButton) returnHomeButton.addEventListener("click", showWelcome);
+        
+        // Empty state for upload
+        const fileInput = document.getElementById("file-input");
+        const dropzone = document.querySelector(".dropzone");
+        if (dropzone) {
+            const emptyImg = document.createElement("img");
+            emptyImg.src = "/assets/images/upload-empty-state.webp";
+            emptyImg.className = "upload-empty-img";
+            emptyImg.alt = "Upload file";
+            emptyImg.loading = "lazy";
+            
+            // Insert before the strong tag
+            const strongTag = dropzone.querySelector("strong");
+            if (strongTag) dropzone.insertBefore(emptyImg, strongTag);
+            
+            if (fileInput) {
+                fileInput.addEventListener("change", (e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                        emptyImg.style.display = "none";
+                    } else {
+                        emptyImg.style.display = "block";
+                    }
+                });
+            }
+        }
+        
+        // Empty state for results
+        const jobsList = document.getElementById("jobs-list");
+        if (jobsList) {
+            const resultEmpty = document.createElement("div");
+            resultEmpty.className = "result-empty-state";
+            resultEmpty.innerHTML = `<img src="/assets/images/result-empty-state.webp" alt="No results" loading="lazy" />
+                                     <p>暂无转录任务</p>`;
+            jobsList.parentNode.insertBefore(resultEmpty, jobsList);
+            
+            // A simple MutationObserver to hide the empty state when jobs are added
+            const observer = new MutationObserver((mutations) => {
+                if (jobsList.children.length > 0) {
+                    resultEmpty.style.display = "none";
+                } else {
+                    resultEmpty.style.display = "flex";
+                }
+            });
+            observer.observe(jobsList, { childList: true });
+        }
+      });
+    </script>
 
     <script src="/app.js?v=20260624-bugfix-empty-audio-ui" type="module"></script>
   </body>

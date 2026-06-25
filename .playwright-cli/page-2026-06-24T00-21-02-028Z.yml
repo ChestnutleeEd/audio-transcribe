@@ -1,0 +1,188 @@
+- main [ref=e2]:
+  - region "Audio Transcribe" [ref=e3]:
+    - generic [ref=e4]:
+      - paragraph [ref=e5]: Local Model Workstation
+      - heading "Audio Transcribe" [level=1] [ref=e6]
+      - paragraph [ref=e7]: 基于本地模型池的音频转写台。上传文件或粘贴视频链接，选择支持 Audio Input 的模型、语言、格式和时间轴，一次生成可下载文档。
+    - generic "运行信息" [ref=e8]:
+      - generic [ref=e9]: 本地优先
+      - generic [ref=e10]: 上传 / YouTube / Bilibili
+      - generic [ref=e11]: Word / TXT / Markdown
+      - button "使用教程" [ref=e12] [cursor=pointer]:
+        - img [ref=e13]
+        - text: 使用教程
+  - generic [ref=e15]:
+    - form "创建转写任务" [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e18]:
+          - heading "新建任务" [level=2] [ref=e19]
+          - paragraph [ref=e20]: 文件和链接二选一；如果同时填写，会优先处理上传文件。
+        - button "清空表单" [ref=e21] [cursor=pointer]:
+          - img [ref=e22]
+      - generic [ref=e24] [cursor=pointer]:
+        - button "选择本地音频或视频 支持 mp3、m4a、wav、flac、mp4、mov、mkv、webm 等" [ref=e25]
+        - img [ref=e27]
+        - strong [ref=e29]: 选择本地音频或视频
+        - generic [ref=e30]: 支持 mp3、m4a、wav、flac、mp4、mov、mkv、webm 等
+      - generic [ref=e31] [cursor=pointer]:
+        - generic [ref=e32]: 视频链接
+        - textbox "视频链接" [ref=e33]:
+          - /placeholder: https://www.youtube.com/watch?v=... 或 Bilibili 链接
+      - generic [ref=e34]:
+        - generic [ref=e35] [cursor=pointer]:
+          - generic [ref=e36]: 转换语言
+          - combobox "转换语言" [ref=e37]:
+            - option "自动识别" [selected]
+            - option "中文"
+            - option "日语"
+            - option "英语"
+            - option "韩语"
+        - generic [ref=e38] [cursor=pointer]:
+          - checkbox "带时间轴" [checked] [ref=e39]
+          - generic [ref=e40]: 带时间轴
+      - group "Audio Model Mode" [ref=e41]:
+        - generic [ref=e42]: Audio Model Mode
+        - generic [ref=e43] [cursor=pointer]:
+          - radio "Whisper（faster-whisper） exists=true · provider=huggingface · capability=Audio" [ref=e44]
+          - generic [ref=e45]:
+            - strong [ref=e46]: Whisper（faster-whisper）
+            - generic [ref=e47]: exists=true · provider=huggingface · capability=Audio
+        - generic [ref=e48] [cursor=pointer]:
+          - radio "MLX Whisper（Apple Silicon） exists=false · provider=MLX · reason=未检测到 mlx-whisper Python 包。" [ref=e49]
+          - generic [ref=e50]:
+            - strong [ref=e51]: MLX Whisper（Apple Silicon）
+            - generic [ref=e52]: exists=false · provider=MLX · reason=未检测到 mlx-whisper Python 包。
+        - generic [ref=e53] [cursor=pointer]:
+          - radio "Local Audio LLM exists=true · 2 个 capabilities.audio=true 模型" [ref=e135]
+          - generic [ref=e55]:
+            - strong [ref=e56]: Local Audio LLM
+            - generic [ref=e57]: exists=true · 2 个 capabilities.audio=true 模型
+      - region "后处理选项" [ref=e58]:
+        - generic [ref=e59] [cursor=pointer]:
+          - checkbox "使用本地大模型整理转录结果" [checked] [active] [ref=e60]
+          - generic [ref=e61]: 使用本地大模型整理转录结果
+        - generic [ref=e136] [cursor=pointer]:
+          - generic [ref=e137]: 文本整理模型
+          - combobox "文本整理模型" [ref=e138]:
+            - option "请选择检测到的 Text 模型" [selected]
+            - option "Qwen2-Audio-7B-Instruct-4bit · MLX · Audio / Text"
+            - option "gemma4-e4b-qat-4bit · MLX · Audio / Text"
+        - generic [ref=e139] [cursor=pointer]:
+          - generic [ref=e140]: 文本整理配置
+          - group "选择文本整理配置" [ref=e141]:
+            - generic [ref=e142]:
+              - checkbox "文本整理配置 选择文本整理配置 只补标点和自然断句，尽量不改原文。 编辑 prompt 标点修复 只补标点和自然断句，尽量不改原文。" [checked] [ref=e143]
+              - generic [ref=e144]:
+                - strong [ref=e145]: 标点修复
+                - generic [ref=e146]: 只补标点和自然断句，尽量不改原文。
+            - generic [ref=e147]:
+              - checkbox "保守清理 去除明显口癖、重复和识别噪声，不改核心语义。" [ref=e148]
+              - generic [ref=e149]:
+                - strong [ref=e150]: 保守清理
+                - generic [ref=e151]: 去除明显口癖、重复和识别噪声，不改核心语义。
+            - generic [ref=e152]:
+              - checkbox "日语自然断句 适合日语新闻、访谈和视频字幕。" [ref=e153]
+              - generic [ref=e154]:
+                - strong [ref=e155]: 日语自然断句
+                - generic [ref=e156]: 适合日语新闻、访谈和视频字幕。
+            - generic [ref=e157]:
+              - checkbox "中文会议纪要 把中文转录整理成结构化纪要。" [ref=e158]
+              - generic [ref=e159]:
+                - strong [ref=e160]: 中文会议纪要
+                - generic [ref=e161]: 把中文转录整理成结构化纪要。
+            - generic [ref=e162]:
+              - checkbox "双语翻译 保留原文，并补充中文或英文翻译。" [ref=e163]
+              - generic [ref=e164]:
+                - strong [ref=e165]: 双语翻译
+                - generic [ref=e166]: 保留原文，并补充中文或英文翻译。
+            - generic [ref=e167]:
+              - checkbox "Repair / 文本修复 自动清理噪声 + 修正错误转录。" [ref=e168]
+              - generic [ref=e169]:
+                - strong [ref=e170]: Repair / 文本修复
+                - generic [ref=e171]: 自动清理噪声 + 修正错误转录。
+            - generic [ref=e172]:
+              - checkbox "说话人识别 根据分段时间、问答关系和语言逻辑，为文本补充统一说话人标签。" [ref=e173]
+              - generic [ref=e174]:
+                - strong [ref=e175]: 说话人识别
+                - generic [ref=e176]: 根据分段时间、问答关系和语言逻辑，为文本补充统一说话人标签。
+          - generic [ref=e177]: 只补标点和自然断句，尽量不改原文。
+          - button "编辑 prompt" [ref=e178]
+        - generic [ref=e179] [cursor=pointer]:
+          - generic [ref=e180]: 追加整理指令
+          - textbox "追加整理指令" [ref=e181]:
+            - /placeholder: 例如：保留语气词；不要翻译；更适合字幕。
+        - group [ref=e182]:
+          - generic "提示词预览" [ref=e183] [cursor=pointer]
+      - group "转录文件格式" [ref=e62]:
+        - generic [ref=e63]: 转录文件格式
+        - generic [ref=e64] [cursor=pointer]:
+          - checkbox "TXT" [checked] [ref=e65]
+          - generic [ref=e66]: TXT
+        - generic [ref=e67] [cursor=pointer]:
+          - checkbox "Markdown" [ref=e68]
+          - generic [ref=e69]: Markdown
+        - generic [ref=e70] [cursor=pointer]:
+          - checkbox "JSON" [ref=e71]
+          - generic [ref=e72]: JSON
+        - generic "包含时间戳 segments 时可导出字幕" [ref=e73] [cursor=pointer]:
+          - checkbox "SRT" [ref=e74]
+          - generic [ref=e75]: SRT
+        - generic [ref=e76] [cursor=pointer]:
+          - checkbox "Word" [ref=e77]
+          - generic [ref=e78]: Word
+      - group "导出内容" [ref=e79]:
+        - generic [ref=e80]: 导出内容
+        - generic [ref=e81] [cursor=pointer]:
+          - radio "原始文本" [checked] [ref=e82]
+          - generic [ref=e83]: 原始文本
+        - generic [ref=e84] [cursor=pointer]:
+          - radio "原始 + 整理后" [ref=e85]
+          - generic [ref=e86]: 原始 + 整理后
+        - generic [ref=e87] [cursor=pointer]:
+          - radio "整理后文本" [ref=e88]
+          - generic [ref=e89]: 整理后文本
+      - group [ref=e90]:
+        - generic "截取时间段" [ref=e91] [cursor=pointer]
+      - button "开始转写" [ref=e92] [cursor=pointer]:
+        - img [ref=e93]
+        - text: 开始转写
+    - complementary [ref=e95]:
+      - generic [ref=e96]:
+        - generic [ref=e97]:
+          - heading "任务列表" [level=2] [ref=e98]
+          - paragraph [ref=e99]: 等待创建任务
+        - generic [ref=e100]:
+          - button "收起任务列表" [ref=e101] [cursor=pointer]:
+            - img [ref=e102]
+          - button "清空最近历史" [ref=e104] [cursor=pointer]:
+            - img [ref=e105]
+          - button "刷新任务列表" [ref=e108] [cursor=pointer]:
+            - img [ref=e109]
+          - button "清理过往任务工作文件" [disabled] [ref=e111]:
+            - img [ref=e112]
+      - generic [ref=e114]:
+        - paragraph [ref=e115]: 没有可清理的过往任务工作文件。
+        - paragraph [ref=e184]: 还没有任务。提交后会在这里显示队列、进度和文件。
+        - generic [ref=e119]:
+          - heading "最近历史" [level=3] [ref=e120]
+          - paragraph [ref=e121]: 最近 5 条结果保存在当前浏览器。
+          - paragraph [ref=e123]: 暂无历史记录。
+      - group [ref=e124]:
+        - generic "模型与环境状态 未选择引擎 · 未选择模型" [ref=e125] [cursor=pointer]:
+          - generic [ref=e126]: 模型与环境状态
+          - generic [ref=e127]: 未选择引擎 · 未选择模型
+        - generic [ref=e128]:
+          - group [ref=e129]:
+            - generic "环境检查" [ref=e130] [cursor=pointer]
+          - group [ref=e131]:
+            - generic "模型检测" [ref=e132] [cursor=pointer]
+            - option "custom" [selected]
+            - option "MLX"
+            - option "HuggingFace local"
+            - option "Ollama"
+            - option "llama.cpp"
+            - option "Audio" [selected]
+            - option "Text"
+            - option "Audio + Text"
+          - group [ref=e133]:
+            - generic "系统状态" [ref=e134] [cursor=pointer]

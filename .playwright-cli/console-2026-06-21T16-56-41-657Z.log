@@ -1,0 +1,6 @@
+[   43263ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8766/api/jobs:0
+[   43265ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8766/app.js?v=20260621-local-model-fix:1246:26)
+[   45063ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8766/api/jobs:0
+[   45063ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8766/app.js?v=20260621-local-model-fix:1246:26)

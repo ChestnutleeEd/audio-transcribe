@@ -1,0 +1,22 @@
+[
+  {
+    "name": null,
+    "provider": "mlx",
+    "path_or_id": "/Users/chestnut/models/mlx-community/Qwen2-Audio-7B-Instruct-4bit",
+    "capabilities": {
+      "audio": true,
+      "text": true,
+      "vision": null
+    }
+  },
+  {
+    "name": null,
+    "provider": "mlx",
+    "path_or_id": "/Users/chestnut/models/mlx-community/gemma4-e4b-qat-4bit",
+    "capabilities": {
+      "audio": true,
+      "text": true,
+      "vision": null
+    }
+  }
+]
