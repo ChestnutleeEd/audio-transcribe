@@ -43,6 +43,34 @@ summary:focus-visible {
   outline-offset: 2px;
 }
 
+.dashboard-container,
+.dashboard-container button,
+.dashboard-container input,
+.dashboard-container select,
+.dashboard-container textarea {
+  font-size: 14px;
+  letter-spacing: 0;
+}
+
+.dashboard-container p,
+.dashboard-container small,
+.dashboard-container span,
+.dashboard-container label,
+.dashboard-container summary,
+.dashboard-container legend {
+  color: var(--text-secondary);
+}
+
+.dashboard-container h2,
+.dashboard-container h3,
+.dashboard-container strong,
+.dashboard-container b,
+.dashboard-container .header-title,
+.dashboard-container .sidebar-logo,
+.dashboard-container .sidebar-nav button.active {
+  color: var(--text-main);
+}
+
 .welcome-container {
   min-height: 100vh;
   height: auto;
@@ -163,17 +191,47 @@ summary:focus-visible {
   margin-bottom: 30px;
 }
 
-.sidebar-nav a {
+.sidebar-nav a,
+.sidebar-nav button {
   min-height: 44px;
   border: 1px solid transparent;
   color: #9aa9c0;
 }
 
+.sidebar-nav button {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 10px 14px;
+  background: transparent;
+  font-weight: 600;
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-nav button::before {
+  content: "";
+  position: absolute;
+  inset: 9px auto 9px 0;
+  width: 3px;
+  border-radius: 0 999px 999px 0;
+  background: transparent;
+}
+
 .sidebar-nav a:hover,
-.sidebar-nav a.active {
+.sidebar-nav a.active,
+.sidebar-nav button:hover,
+.sidebar-nav button.active {
   background: linear-gradient(90deg, rgba(47, 140, 255, 0.18), rgba(124, 92, 255, 0.08));
   border-color: rgba(126, 169, 255, 0.16);
   color: #f4f8ff;
+}
+
+.sidebar-nav button.active::before {
+  background: linear-gradient(180deg, #2f8cff, #7c5cff);
+}
+
+.sidebar-nav button svg {
+  flex: 0 0 20px;
 }
 
 .sidebar-modules {
@@ -373,6 +431,99 @@ textarea {
 
 .dashboard-right-panel .panel-head {
   min-height: 98px;
+}
+
+.side-panel {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.side-panel[hidden] {
+  display: none;
+}
+
+.side-panel-body {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 18px;
+}
+
+.history-side-panel .history-card {
+  min-height: 260px;
+  border-radius: 999px 12px 12px 999px;
+  padding: 28px 22px 28px 34px;
+  background:
+    radial-gradient(circle at 20% 50%, rgba(47, 140, 255, 0.16), transparent 46%),
+    rgba(8, 16, 28, 0.76);
+}
+
+.history-side-panel .history-card h3 {
+  display: none;
+}
+
+.panel-head-shaped {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+  background: linear-gradient(135deg, rgba(47, 140, 255, 0.1), rgba(124, 92, 255, 0.08));
+}
+
+.environment-side-panel .environment-card,
+.models-side-panel .model-details {
+  display: block;
+  min-height: 100%;
+}
+
+.environment-side-panel .environment-card > summary,
+.models-side-panel .model-details > summary {
+  min-height: 58px;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(126, 169, 255, 0.14);
+}
+
+.environment-side-panel .environment-sections,
+.models-side-panel .ollama-card {
+  padding: 16px;
+}
+
+.environment-side-panel .environment-module {
+  border: 1px solid rgba(126, 169, 255, 0.13);
+  border-radius: 12px 28px 12px 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.models-side-panel .ollama-card {
+  border-radius: 28px 12px 28px 12px;
+  background:
+    linear-gradient(160deg, rgba(47, 140, 255, 0.08), rgba(124, 92, 255, 0.04)),
+    rgba(8, 16, 28, 0.76);
+}
+
+.side-panel h2,
+.side-panel h3,
+.side-panel summary,
+.side-panel .model-selector span,
+.side-panel .field > span,
+.side-panel legend {
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.side-panel h2 {
+  font-size: 1.05rem;
+}
+
+.side-panel p,
+.side-panel small,
+.side-panel .history-list,
+.side-panel .health-list,
+.side-panel .model-detection-list,
+.side-panel .status-advice {
+  font-size: 0.82rem;
+  line-height: 1.55;
 }
 
 .jobs-region-flex {
