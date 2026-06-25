@@ -4,8 +4,9 @@
   width: 100vw;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: hidden; /* Fixes bottom white line */
   position: relative;
+  background-color: var(--bg-color); /* Base dark */
 }
 
 .welcome-nav {
@@ -17,7 +18,7 @@
 }
 
 .welcome-nav .logo {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -40,22 +41,23 @@
   z-index: 1;
 }
 
-/* Background image handling via CSS pseudo-element for gradient */
+/* Background image handling with pulse effect */
 .welcome-container::before {
   content: '';
   position: absolute;
   top: 0; right: 0; bottom: 0; left: 0;
   background-image: url('../assets/images/hero-audio-bg.webp');
   background-size: cover;
-  background-position: center right;
+  background-position: center;
   z-index: 0;
+  animation: bgPulse 10s ease-in-out infinite alternate;
 }
 
 .welcome-container::after {
   content: '';
   position: absolute;
   top: 0; right: 0; bottom: 0; left: 0;
-  background: linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.1) 100%);
+  background: linear-gradient(to right, rgba(10,10,12,1) 0%, rgba(10,10,12,0.7) 50%, rgba(10,10,12,0.2) 100%);
   z-index: 0;
 }
 
@@ -78,13 +80,13 @@
   font-weight: 800;
   line-height: 1.1;
   margin: 0 0 var(--space-4) 0;
-  background: linear-gradient(to right, #fff, #a1a1aa);
+  background: linear-gradient(135deg, #FFF, #94A3B8);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .hero-content .lede {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   color: var(--text-secondary);
   margin-bottom: var(--space-5);
   line-height: 1.6;
@@ -107,7 +109,7 @@
   max-width: 90%;
   height: auto;
   border-radius: var(--radius-lg);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
   border: 1px solid var(--glass-border);
 }
 
@@ -117,9 +119,10 @@
   gap: var(--space-4);
   padding: var(--space-6) var(--space-8);
   z-index: 2;
+  background: linear-gradient(to top, rgba(10,10,12,1) 0%, rgba(10,10,12,0) 100%);
 }
 
-/* --- DASHBOARD --- */
+/* --- DASHBOARD 3-COLUMN LAYOUT --- */
 .dashboard-container {
   display: flex;
   height: 100vh;
@@ -128,19 +131,21 @@
   background-color: var(--bg-color);
 }
 
+/* 1. Left Sidebar */
 .dashboard-sidebar {
-  width: 260px;
+  width: 280px;
   background: var(--panel-bg);
   border-right: 1px solid var(--panel-border);
   display: flex;
   flex-direction: column;
   padding: var(--space-4);
+  overflow-y: auto;
 }
 
 .sidebar-logo {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-5);
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -150,22 +155,30 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  margin-bottom: var(--space-5);
 }
 
 .sidebar-nav a {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
   color: var(--text-secondary);
   text-decoration: none;
   border-radius: var(--radius-sm);
   transition: var(--transition-fast);
+  font-weight: 500;
 }
 
 .sidebar-nav a:hover, .sidebar-nav a.active {
   background: rgba(255,255,255,0.05);
   color: var(--text-main);
+}
+
+.sidebar-modules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
 .sidebar-spacer {
@@ -178,6 +191,9 @@
   gap: var(--space-2);
   font-size: 0.85rem;
   color: var(--text-tertiary);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--panel-border);
 }
 .status-dot {
   width: 8px; height: 8px;
@@ -186,6 +202,7 @@
   box-shadow: 0 0 8px var(--success-color);
 }
 
+/* 2. Center Main Area */
 .dashboard-main {
   flex: 1;
   display: flex;
@@ -201,39 +218,74 @@
   justify-content: space-between;
   align-items: center;
   padding: 0 var(--space-4);
-  background: rgba(0,0,0,0.5);
+  background: rgba(10,10,12,0.5);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  z-index: 10;
 }
 
 .header-title {
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 1.1rem;
 }
 .breadcrumb {
   color: var(--text-tertiary);
   font-weight: 400;
 }
 
-.dashboard-grid {
+.dashboard-center {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#job-form {
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding-bottom: var(--space-8);
+}
+
+/* 3. Right Panel */
+.dashboard-right-panel {
+  width: 360px;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--panel-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.jobs-region-flex {
   flex: 1;
   overflow-y: auto;
   padding: var(--space-4);
-  display: grid;
-  grid-template-columns: minmax(600px, 1fr) 400px;
-  gap: var(--space-4);
-  align-items: start;
-}
-
-/* Ensure original form and aside take the correct layout */
-#job-form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
 }
 
-.panel.monitor {
+.panel-head {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--panel-border);
+}
+.panel-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.panel-head p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.head-actions {
+  display: flex;
+  gap: var(--space-1);
 }

@@ -1,29 +1,31 @@
 :root {
-  /* Core Apple HIG / Dark Futuristic Palette */
-  --bg-color: #000000;
-  --panel-bg: rgba(28, 28, 30, 0.65);
-  --panel-border: rgba(255, 255, 255, 0.1);
-  --primary-color: #0A84FF; /* Apple Blue */
-  --primary-hover: #0060d1;
-  --accent-color: #5E5CE6; /* Apple Indigo */
-  --text-main: #FFFFFF;
-  --text-secondary: #EBEBF5; /* Secondary Label */
-  --text-tertiary: rgba(235, 235, 245, 0.6);
+  /* Core Apple HIG / Dark Futuristic Palette - UI UX Pro Max */
+  --bg-color: #0A0A0C; /* Deep black background */
+  --panel-bg: rgba(20, 20, 23, 0.7); /* Translucent dark for glass */
+  --panel-border: rgba(255, 255, 255, 0.08); /* Subtle light border */
+  --primary-color: #2F80ED; /* Clean vibrant blue */
+  --primary-hover: #1E66CC;
+  --primary-glow: rgba(47, 128, 237, 0.4);
+  --accent-color: #6366F1; /* Indigo */
   
-  --success-color: #30D158;
-  --warning-color: #FF9F0A;
-  --error-color: #FF453A;
+  --text-main: #F8FAFC; /* Slate 50 */
+  --text-secondary: #94A3B8; /* Slate 400 */
+  --text-tertiary: #475569; /* Slate 600 */
+  
+  --success-color: #10B981;
+  --warning-color: #F59E0B;
+  --error-color: #EF4444;
   
   /* Glassmorphism */
-  --glass-bg: rgba(20, 20, 22, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  --glass-bg: rgba(25, 25, 30, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
   
   /* Typography */
   --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "SF Mono", ui-monospace, Menlo, Monaco, monospace;
+  --font-mono: "Fira Code", "SF Mono", ui-monospace, monospace;
   
-  /* Spacing (Base 8) */
+  /* Spacing */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 16px;
@@ -35,31 +37,12 @@
   /* Radii */
   --radius-sm: 8px;
   --radius-md: 12px;
-  --radius-lg: 20px;
-  --radius-xl: 28px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
   
   /* Transitions */
   --transition-fast: 0.15s cubic-bezier(0.2, 0, 0, 1);
   --transition-normal: 0.3s cubic-bezier(0.2, 0, 0, 1);
-  --transition-bounce: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* Light Mode Fallback (optional but good practice) */
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg-color: #F2F2F7;
-    --panel-bg: rgba(255, 255, 255, 0.85);
-    --panel-border: rgba(0, 0, 0, 0.1);
-    --primary-color: #007AFF;
-    --primary-hover: #005bb5;
-    --accent-color: #5856D6;
-    --text-main: #000000;
-    --text-secondary: #3C3C43;
-    --text-tertiary: rgba(60, 60, 67, 0.6);
-    --glass-bg: rgba(255, 255, 255, 0.7);
-    --glass-border: rgba(0, 0, 0, 0.08);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
-  }
 }
 
 body {
@@ -69,4 +52,5 @@ body {
   margin: 0;
   -webkit-font-smoothing: antialiased;
   line-height: 1.5;
+  accent-color: var(--primary-color);
 }

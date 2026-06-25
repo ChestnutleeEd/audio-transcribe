@@ -25801,3 +25801,513 @@
 [85960431ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
 [85960431ms] TypeError: Failed to fetch
     at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85962231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85962232ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85964031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85964031ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85965831ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85965832ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85967632ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85967632ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85969431ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85969432ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85971231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85971231ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85973031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85973031ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85974831ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85974831ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85976631ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85976631ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85978432ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85978432ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85980231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85980232ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85982031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85982032ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85983832ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85983832ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85985632ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85985632ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85987432ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85987432ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85989231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85989232ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85991031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85991032ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85992831ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85992831ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85994630ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85994630ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85996431ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85996432ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[85998232ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[85998232ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86000031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86000031ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86001831ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86001831ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86003631ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86003632ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86005431ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86005431ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86007231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86007232ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86009031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86009032ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86010831ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86010831ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86012631ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86012632ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86014432ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86014432ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86016231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86016232ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86018032ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86018033ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86019831ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86019831ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86021631ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86021632ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86023432ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86023432ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86025232ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86025234ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86027031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86027032ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86028831ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86028832ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86030631ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86030632ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86032431ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86032432ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86034231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86034231ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86036031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86036031ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86037831ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86037832ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86039631ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86039632ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86041431ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86041431ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86043231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86043232ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86045031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86045032ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86046831ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86046832ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86048631ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86048632ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86050431ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86050431ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86052231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86052232ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86054031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86054031ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86055831ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86055831ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86057631ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86057631ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86059431ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86059431ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86061231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86061232ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86063031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86063031ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86064831ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86064831ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86066631ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86066631ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86068431ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86068432ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86070231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86070231ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86072031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86072031ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86073831ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86073831ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86075631ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86075631ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86077431ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86077432ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86079231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86079231ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86081030ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86081030ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86082831ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86082831ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86084631ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86084632ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86086432ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86086432ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86088231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86088231ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86090031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86090031ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86091830ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86091830ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86093631ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86093631ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86095431ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86095431ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86097231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86097231ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86099031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86099031ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86100831ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86100831ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86102631ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86102631ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86104430ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86104430ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86106231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86106231ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86108030ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86108031ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86109830ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86109830ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86111631ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86111631ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86113430ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86113432ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86115231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86115231ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86117031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86117031ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86118831ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86118831ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86120631ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86120632ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86122431ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86122431ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86124231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86124232ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86126030ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86126030ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86127830ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86127830ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86129630ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86129631ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86131432ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86131433ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86133230ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86133230ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86135030ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86135030ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86136830ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86136830ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86138629ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86138629ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86140430ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86140431ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86142230ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86142230ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86144030ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86144030ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86145830ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86145831ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86147629ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86147629ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86149430ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86149431ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86151231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86151231ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86153030ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86153030ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86154831ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86154831ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86156630ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86156630ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86158430ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86158430ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86160230ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86160230ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86162030ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86162031ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86163830ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86163831ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86165630ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86165631ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86167430ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86167431ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86169230ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86169231ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86171029ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86171030ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86995427ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86995428ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86997227ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86997227ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[86999026ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[86999027ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87000826ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87000826ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87002627ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87002627ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87004426ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87004426ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87006226ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87006226ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87008026ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87008026ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87009826ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87009827ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87011625ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87011626ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87013425ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87013426ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87015226ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87015226ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87017025ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87017025ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87018826ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87018827ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87020625ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87020625ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87022426ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87022427ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87024226ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87024227ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87026025ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87026026ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87027826ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87027826ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87029625ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87029625ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87031425ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87031426ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87033226ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87033226ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87035025ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87035025ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87036825ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87036826ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87038625ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87038625ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87040425ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87040426ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87042224ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87042224ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87044025ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87044025ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87045825ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87045826ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87047626ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87047626ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87049426ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87049426ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87051226ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87051226ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87053024ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87053024ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87054826ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87054826ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87056626ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87056626ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87058426ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87058427ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87060224ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87060225ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87062024ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87062025ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87063825ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87063825ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87065625ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87065625ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87067425ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87067426ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87069226ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87069226ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87071024ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87071024ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87072824ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87072825ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87074626ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87074626ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87076425ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87076425ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87078225ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87078226ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87080025ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87080027ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87081825ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87081826ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87083625ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87083626ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87085425ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87085426ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87087224ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87087224ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)
+[87089026ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8000/api/jobs:0
+[87089026ms] TypeError: Failed to fetch
+    at refreshJobs (http://127.0.0.1:8000/app.js?v=20260624-feature-polish-multi:1278:26)

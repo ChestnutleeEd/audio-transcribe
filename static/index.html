@@ -40,15 +40,15 @@
         </div>
       </div>
       <div class="feature-cards">
-        <div class="glass-card">
+        <div class="glass-card stagger-1">
           <h3>Local Models</h3>
           <p>Seamlessly integrate with Whisper and MLX native models for maximum speed.</p>
         </div>
-        <div class="glass-card">
+        <div class="glass-card stagger-2">
           <h3>Long Audio Chunking</h3>
           <p>Smart VAD-based slicing ensures even hours of audio are transcribed flawlessly.</p>
         </div>
-        <div class="glass-card">
+        <div class="glass-card stagger-3">
           <h3>Transcript Polish</h3>
           <p>Use local LLMs to automatically format, punctuate, and correct transcripts.</p>
         </div>
@@ -57,7 +57,7 @@
 
     <!-- App Dashboard (Hidden initially) -->
     <div id="app-dashboard" class="dashboard-container" hidden>
-      <!-- Sidebar -->
+      <!-- Left Sidebar (approx 280px) -->
       <aside class="dashboard-sidebar">
         <div class="sidebar-logo">
           <svg viewBox="0 0 64 64" width="32" height="32" class="logo-icon"><rect width="64" height="64" rx="14" fill="#070707"/><path d="M18 40V24M28 48V16M38 42V22M48 36V28" stroke="#d8b15e" stroke-width="5" stroke-linecap="round"/></svg>
@@ -72,15 +72,85 @@
             <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             文件任务
           </a>
-          <a href="#" title="本地模型">
-            <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-            本地模型
-          </a>
-          <a href="#" title="输出结果">
-            <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            输出结果
-          </a>
         </nav>
+        
+        <div class="sidebar-modules">
+          <div class="model-card history-card">
+              <div>
+                <h3>最近历史</h3>
+                <p id="history-message">最近 5 条结果保存在当前浏览器。</p>
+                <div id="history-list" class="history-list"></div>
+              </div>
+          <details class="model-card environment-card" id="environment-panel" open aria-live="polite">
+            <summary>
+              <span>模型与环境状态</span>
+              <small id="environment-summary">正在检测模型和运行环境。</small>
+            </summary>
+            <div class="environment-sections">
+              <details class="environment-module">
+                <summary>环境检查</summary>
+                <p id="health-message">检查 FFmpeg、Python runtime、MLX runtime、Whisper backend 和 API server status。</p>
+                <div id="environment-status-grid" class="status-grid"></div>
+                <div class="model-actions model-actions-two">
+                  <button class="secondary" type="button" id="health-refresh-button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
+                    <span id="health-refresh-label">重新检查</span>
+                  </button>
+                  <button class="secondary" type="button" id="fix-all-button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v6m0 8v6M4.93 4.93l4.24 4.24m5.66 5.66 4.24 4.24M2 12h6m8 0h6M4.93 19.07l4.24-4.24m5.66-5.66 4.24-4.24"/></svg>
+                    Fix All
+                  </button>
+                </div>
+                <div id="health-list" class="health-list"></div>
+              </details>
+          <div class="legacy-status-panels" hidden>
+            <div>
+              <h3>模型与环境状态</h3>
+              <p>正在检测模型和运行环境。</p>
+            </div>
+          </div>
+
+          <details class="model-details" hidden>
+            <summary>本地大模型详情</summary>
+          <div class="model-card ollama-card" aria-live="polite">
+            <div>
+              <h3>Ollama 状态</h3>
+              <p id="ollama-message">正在检测 Ollama 服务</p>
+              <label class="model-selector">
+                <span>音频直转模型</span>
+                <select id="ollama-transcription-model-select" aria-label="选择 Ollama 直转模型">
+                </select>
+              </label>
+              <label class="model-selector">
+                <span>模型下载状态</span>
+                <select id="ollama-managed-model-select" aria-label="选择要检查或下载的 Ollama 模型">
+                </select>
+              </label>
+              <div class="model-progress" id="ollama-progress" aria-hidden="true">
+                <div class="model-progress-track"><span id="ollama-progress-fill"></span></div>
+                <small id="ollama-progress-label"></small>
+              </div>
+              <span class="device-pill" id="ollama-service-pill">服务：检测中</span>
+              <small id="ollama-model-path">Ollama 模型由 Ollama 管理，不下载到项目目录。</small>
+            </div>
+            <div class="model-actions">
+              <button class="secondary" type="button" id="ollama-refresh-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
+                <span id="ollama-refresh-label">重新检测</span>
+              </button>
+              <button class="secondary" type="button" id="ollama-download-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>
+                <span id="ollama-download-label">下载模型</span>
+              </button>
+              <button class="secondary model-cancel" type="button" id="ollama-cancel-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                <span id="ollama-cancel-label">取消下载</span>
+              </button>
+            </div>
+          </div>
+          </details>
+        </div>
+
         <div class="sidebar-spacer"></div>
         <div class="sidebar-status">
           <span class="status-dot"></span> Local Mode / Ready
@@ -104,8 +174,8 @@
           </div>
         </header>
 
-        <!-- Dashboard Grid Layout -->
-        <div class="dashboard-grid">
+        <!-- Main Form Area -->
+        <div class="dashboard-center">
            <form id="job-form" class="panel" aria-label="创建转写任务">
           <div class="panel-head">
             <div>
@@ -342,9 +412,13 @@
             开始转写
           </button>
         </form>
-           <aside class="panel monitor" aria-live="polite">
-          <div class="diagnostic-card" id="diagnostic-card" hidden></div>
-          <div class="panel-head">
+        </div>
+      </main>
+      
+      <!-- Right Panel (approx 360px) -->
+      <aside class="dashboard-right-panel" aria-live="polite">
+         <div class="diagnostic-card" id="diagnostic-card" hidden></div>
+         <div class="panel-head">
             <div>
               <h2>任务列表</h2>
               <p id="job-summary">等待创建任务</p>
@@ -365,136 +439,12 @@
             </div>
           </div>
 
-          <div id="jobs-region">
-            <p class="cleanup-status" id="jobs-cleanup-status">正在检查工作文件占用。</p>
+          
+         <div id="jobs-region" class="jobs-region-flex">
+           <p class="cleanup-status" id="jobs-cleanup-status">正在检查工作文件占用。</p>
             <div id="jobs-list" class="jobs-list"></div>
-
-            <div class="model-card history-card">
-              <div>
-                <h3>最近历史</h3>
-                <p id="history-message">最近 5 条结果保存在当前浏览器。</p>
-                <div id="history-list" class="history-list"></div>
-              </div>
-            </div>
-          </div>
-
-          <details class="model-card environment-card" id="environment-panel" open aria-live="polite">
-            <summary>
-              <span>模型与环境状态</span>
-              <small id="environment-summary">正在检测模型和运行环境。</small>
-            </summary>
-            <div class="environment-sections">
-              <details class="environment-module">
-                <summary>环境检查</summary>
-                <p id="health-message">检查 FFmpeg、Python runtime、MLX runtime、Whisper backend 和 API server status。</p>
-                <div id="environment-status-grid" class="status-grid"></div>
-                <div class="model-actions model-actions-two">
-                  <button class="secondary" type="button" id="health-refresh-button">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
-                    <span id="health-refresh-label">重新检查</span>
-                  </button>
-                  <button class="secondary" type="button" id="fix-all-button">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v6m0 8v6M4.93 4.93l4.24 4.24m5.66 5.66 4.24 4.24M2 12h6m8 0h6M4.93 19.07l4.24-4.24m5.66-5.66 4.24-4.24"/></svg>
-                    Fix All
-                  </button>
-                </div>
-                <div id="health-list" class="health-list"></div>
-              </details>
-              <details class="environment-module">
-                <summary>模型检测</summary>
-                <div class="custom-model-form" aria-label="手动导入模型">
-                  <label class="field">
-                    <span>LLM 模型目录地址</span>
-                    <div class="path-picker-row">
-                      <input id="custom-model-path" type="text" placeholder="/完整/模型/目录" autocomplete="off" />
-                      <button class="secondary icon-text-button" type="button" id="pick-custom-model-folder-button" title="选择模型文件夹">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v7A2.5 2.5 0 0 1 18.5 18h-13A2.5 2.5 0 0 1 3 15.5z"/></svg>
-                        选择文件夹
-                      </button>
-                    </div>
-                  </label>
-                  <div class="custom-model-grid">
-                    <label class="field">
-                      <span>provider</span>
-                      <select id="custom-model-provider">
-                        <option value="custom">custom</option>
-                        <option value="mlx">MLX</option>
-                        <option value="huggingface">HuggingFace local</option>
-                        <option value="ollama">Ollama</option>
-                        <option value="llama.cpp">llama.cpp</option>
-                      </select>
-                    </label>
-                    <label class="field">
-                      <span>capability</span>
-                      <select id="custom-model-capability">
-                        <option value="audio">Audio</option>
-                        <option value="text">Text</option>
-                        <option value="audio_text">Audio + Text</option>
-                      </select>
-                    </label>
-                  </div>
-                  <button class="secondary" type="button" id="add-custom-model-button">绑定 LLM 模型</button>
-                  <small id="custom-model-message">请填写本地模型目录；系统只记录绑定，不自动下载。</small>
-                </div>
-                <div id="model-detection-list" class="model-detection-list"></div>
-              </details>
-              <details class="environment-module">
-                <summary>系统状态</summary>
-                <div id="environment-advice" class="status-advice"></div>
-              </details>
-            </div>
-          </details>
-
-          <div class="legacy-status-panels" hidden>
-            <div>
-              <h3>模型与环境状态</h3>
-              <p>正在检测模型和运行环境。</p>
-            </div>
-          </div>
-
-          <details class="model-details" hidden>
-            <summary>本地大模型详情</summary>
-          <div class="model-card ollama-card" aria-live="polite">
-            <div>
-              <h3>Ollama 状态</h3>
-              <p id="ollama-message">正在检测 Ollama 服务</p>
-              <label class="model-selector">
-                <span>音频直转模型</span>
-                <select id="ollama-transcription-model-select" aria-label="选择 Ollama 直转模型">
-                </select>
-              </label>
-              <label class="model-selector">
-                <span>模型下载状态</span>
-                <select id="ollama-managed-model-select" aria-label="选择要检查或下载的 Ollama 模型">
-                </select>
-              </label>
-              <div class="model-progress" id="ollama-progress" aria-hidden="true">
-                <div class="model-progress-track"><span id="ollama-progress-fill"></span></div>
-                <small id="ollama-progress-label"></small>
-              </div>
-              <span class="device-pill" id="ollama-service-pill">服务：检测中</span>
-              <small id="ollama-model-path">Ollama 模型由 Ollama 管理，不下载到项目目录。</small>
-            </div>
-            <div class="model-actions">
-              <button class="secondary" type="button" id="ollama-refresh-button">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
-                <span id="ollama-refresh-label">重新检测</span>
-              </button>
-              <button class="secondary" type="button" id="ollama-download-button">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>
-                <span id="ollama-download-label">下载模型</span>
-              </button>
-              <button class="secondary model-cancel" type="button" id="ollama-cancel-button">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                <span id="ollama-cancel-label">取消下载</span>
-              </button>
-            </div>
-          </div>
-          </details>
-
-        </aside>
-        </div>
-      </main>
+         </div>
+      </aside>
     </div>
 
     <dialog id="prompt-modal" class="modal">
