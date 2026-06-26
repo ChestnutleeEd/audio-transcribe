@@ -459,12 +459,10 @@ textarea {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: rgba(5, 11, 20, 0.82);
-  border: 1px solid rgba(126, 169, 255, 0.15);
-  border-radius: 12px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.045);
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
+  background: #FFFFFF;
+  border: 1px solid var(--panel-border);
+  border-radius: 24px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
 }
 
 .workbench-jobs .panel-head {
@@ -516,9 +514,13 @@ textarea {
 
 .status-workspace-card {
   min-height: 0;
+  min-width: 0;
   padding: 22px;
   display: grid;
   gap: 16px;
+  background: #FFFFFF;
+  border-radius: 24px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
 }
 
 .workspace-card-head {
@@ -557,9 +559,9 @@ textarea {
   display: grid;
   gap: 14px;
   padding: 16px;
-  border: 1px solid rgba(126, 169, 255, 0.12);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--panel-border);
+  border-radius: 24px;
+  background: #F8FAFC;
 }
 
 .status-page-grid .model-detection-list,
@@ -571,11 +573,10 @@ textarea {
 
 .history-side-panel .history-card {
   min-height: 260px;
-  border-radius: 12px;
+  border-radius: 24px;
   padding: 24px;
-  background:
-    linear-gradient(135deg, rgba(47, 140, 255, 0.1), rgba(124, 92, 255, 0.045)),
-    rgba(8, 16, 28, 0.76);
+  background: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
 }
 
 .history-side-panel .history-card h3 {
@@ -584,7 +585,7 @@ textarea {
 
 .panel-head-shaped {
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
-  background: linear-gradient(135deg, rgba(47, 140, 255, 0.1), rgba(124, 92, 255, 0.08));
+  background: #F4F6F8;
 }
 
 .health-side-panel .environment-card,
@@ -614,10 +615,10 @@ textarea {
 }
 
 .models-side-panel .ollama-card {
-  border-radius: 28px 12px 28px 12px;
-  background:
-    linear-gradient(160deg, rgba(47, 140, 255, 0.08), rgba(124, 92, 255, 0.04)),
-    rgba(8, 16, 28, 0.76);
+  border-radius: 24px;
+  background: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+  padding: 24px;
 }
 
 .side-panel h2,
@@ -640,8 +641,18 @@ textarea {
 .side-panel .health-list,
 .side-panel .model-detection-list,
 .side-panel .status-advice {
-  font-size: 0.82rem;
-  line-height: 1.55;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  text-wrap: balance;
+  color: var(--text-main);
 }
 
 .jobs-region-flex {
@@ -650,20 +661,23 @@ textarea {
 
 .jobs-list > div,
 .job-item {
-  background: rgba(8, 16, 28, 0.78);
-  border: 1px solid rgba(126, 169, 255, 0.14);
-  border-radius: 12px;
+  background: #FFFFFF;
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
 }
 
 .result-empty-state {
   min-height: 280px;
-  border: 1px dashed rgba(126, 169, 255, 0.16);
-  border-radius: 12px;
-  background: rgba(255,255,255,0.018);
+  border: 1px dashed rgba(0, 0, 0, 0.1);
+  border-radius: 24px;
+  background: #F8FAFC;
 }
 
 .modal-panel {
-  background: rgba(8, 16, 28, 0.96);
+  background: #FFFFFF;
+  border-radius: 24px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
 }
 
 @media (max-width: 1280px) {
@@ -777,6 +791,48 @@ textarea {
     margin-left: 16px;
     margin-right: 16px;
   }
+}
+
+.status-row, .health-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  background: #FFFFFF;
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.status-row > span, .health-item > strong {
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 0.95rem;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: fit-content;
+}
+
+.status-success { background: #E6F4EA; color: #1E8E3E; }
+.status-warning { background: #FFF3E0; color: #E65100; }
+.status-error { background: #FCE8E6; color: #D93025; }
+.status-neutral { background: #F1F3F4; color: #5F6368; }
+
+.status-row > small, .health-item > span, .health-item > small {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-top: 2px;
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 @media (prefers-reduced-motion: reduce) {
