@@ -638,6 +638,18 @@ function metaPill(kind, text) {
   return span;
 }
 
+function displayModelPath(path) {
+  const value = String(path || "").trim();
+  if (!value || value === "未配置" || value === "未检测到") return value || "未记录位置";
+  if (!value.includes("/") && !value.includes("\\")) return value;
+  const normalized = value.replace(/\\/g, "/");
+  const parts = normalized.split("/").filter(Boolean);
+  const tail = parts.slice(-2).join("/");
+  if (normalized.includes("/audio-transcribe/")) return `项目/${tail}`;
+  if (normalized.includes("/models/")) return `models/${tail}`;
+  return `.../${tail}`;
+}
+
 function renderModelDetection(errors = []) {
   modelDetectionList?.replaceChildren();
   const models = lastModelRegistry?.models || [];
@@ -727,15 +739,22 @@ function renderModelDetectionGroup(label, models) {
   for (const model of models.slice(0, 8)) {
     const row = document.createElement("div");
     row.className = `detected-model-row ${model.exists ? "is-available" : "is-missing"}`;
+    row.title = [model.name, model.exists ? "已找到" : "未就绪", providerLabel(model.provider), model.capability, model.path, model.reason].filter(Boolean).join(" · ");
     const name = document.createElement("strong");
     name.textContent = model.name;
+    name.title = model.name;
+    const state = document.createElement("b");
+    state.className = "detected-model-state";
+    state.textContent = model.exists ? "已找到" : "未就绪";
     const meta = document.createElement("span");
-    meta.textContent = `${model.exists ? "已找到" : "未就绪"} · ${providerLabel(model.provider)} · ${model.capability}`;
+    meta.textContent = `${providerLabel(model.provider)} · ${model.capability}`;
     const path = document.createElement("small");
-    path.textContent = `位置：${model.path}`;
+    path.textContent = displayModelPath(model.path);
+    path.title = model.path || "";
     const reason = document.createElement("small");
-    reason.textContent = `状态：${model.reason || "可用"}`;
-    row.append(name, meta, path, reason);
+    reason.className = "detected-model-reason";
+    reason.textContent = model.reason || "可用";
+    row.append(name, state, meta, path, reason);
     if (model.canDelete) {
       const removeButton = document.createElement("button");
       removeButton.className = "secondary model-cancel detected-model-delete";
@@ -2549,9 +2568,26 @@ function statusRow(label, value, kind, detail) {
   badge.className = `status-badge status-${kind || "neutral"}`;
   badge.textContent = value || "未知";
   const note = document.createElement("small");
-  note.textContent = detail || "";
+  note.textContent = compactStatusDetail(label, detail);
+  note.title = detail || "";
   row.append(title, badge, note);
   return row;
+}
+
+function compactStatusDetail(label, detail) {
+  const text = String(detail || "").trim();
+  if (!text) return "";
+  if (label === "后端服务") return "API 服务已连接";
+  if (label === "Python 环境") return text.match(/Python\s*[\d.]+/)?.[0] || "Python 可用";
+  if (label === "FFmpeg") return text.includes("/") ? `路径：${text.split("/").pop()}` : text;
+  if (label === "MLX 运行库" && text.includes("未检测到")) return "未检测到 mlx-whisper";
+  if (label === "Whisper 后端") return text.includes("导入") ? "faster-whisper 可导入" : text;
+  if (label === "统一模型池") return text.includes("T") ? text.replace(/\.\d+/, "") : text;
+  if (label === "当前引擎") return text.replace(/\s+·\s+/g, " · ");
+  if (label === "MLX Whisper" && text.includes("未检测到")) return "未检测到 mlx-whisper";
+  if (label === "MLX VLM Audio" && text.includes("未配置")) return "未配置模型路径";
+  if (label === "本地大模型" && text.length > 36) return "支持 Ollama、MLX 和本地目录";
+  return text.length > 48 ? `${text.slice(0, 45)}...` : text;
 }
 
 function platformSummary() {

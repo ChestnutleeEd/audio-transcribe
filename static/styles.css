@@ -528,51 +528,55 @@ textarea {
 }
 
 .side-panel-body {
+  box-sizing: border-box;
+  width: 100%;
   min-height: 0;
   flex: 1;
   overflow: auto;
-  padding: 24px;
+  padding: 16px clamp(16px, 2vw, 28px);
 }
 
 .status-page-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-content: start;
-  gap: 18px;
+  gap: 12px;
 }
 
 .status-page-grid > .environment-card,
 .status-page-grid > .model-details,
 .status-page-grid > .history-card {
-  width: min(100%, 1120px);
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
 .status-workspace-card {
+  box-sizing: border-box;
   min-height: 0;
   min-width: 0;
-  padding: 22px;
+  padding: 16px;
   display: grid;
-  gap: 16px;
+  gap: 10px;
   overflow: hidden;
   background: #FFFFFF;
-  border-radius: 24px;
+  border-radius: 20px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.02);
 }
 
 .workspace-card-head {
   display: flex;
   justify-content: space-between;
-  gap: 18px;
+  gap: 14px;
   align-items: flex-start;
   min-width: 0;
-  padding-bottom: 16px;
+  padding-bottom: 10px;
   border-bottom: 1px solid rgba(126, 169, 255, 0.12);
 }
 
 .workspace-card-head > span {
   color: var(--text-main);
-  font-size: 1.08rem;
+  font-size: 1rem;
   font-weight: 700;
 }
 
@@ -583,8 +587,8 @@ textarea {
 }
 
 .status-page-grid .status-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .status-page-grid .health-list,
@@ -597,10 +601,10 @@ textarea {
 .status-page-grid .custom-model-form {
   min-width: 0;
   display: grid;
-  gap: 14px;
-  padding: 16px;
+  gap: 9px;
+  padding: 12px;
   border: 1px solid var(--panel-border);
-  border-radius: 24px;
+  border-radius: 16px;
   background: #F8FAFC;
 }
 
@@ -608,7 +612,74 @@ textarea {
 .status-page-grid .status-advice,
 .status-page-grid .health-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
+}
+
+.health-side-panel .side-panel-body,
+.model-detection-side-panel .side-panel-body {
+  overflow: hidden;
+}
+
+.health-side-panel .status-workspace-card,
+.model-detection-side-panel .status-workspace-card {
+  height: 100%;
+}
+
+.model-detection-side-panel .status-workspace-card {
+  grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+  grid-template-areas:
+    "head head"
+    "form results";
+  align-content: stretch;
+}
+
+.model-detection-side-panel .workspace-card-head {
+  grid-area: head;
+}
+
+.health-side-panel .workspace-card-head,
+.model-detection-side-panel .workspace-card-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+
+.health-side-panel .workspace-card-head > small,
+.model-detection-side-panel .workspace-card-head > small {
+  max-width: none;
+  text-align: left;
+}
+
+.model-detection-side-panel .custom-model-form {
+  grid-area: form;
+  align-self: start;
+}
+
+.model-detection-side-panel .model-detection-list {
+  grid-area: results;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
+}
+
+.health-side-panel .health-list {
+  display: none !important;
+}
+
+.model-detection-side-panel .field {
+  margin: 0;
+}
+
+.model-detection-side-panel .field > span {
+  margin-bottom: 4px;
+}
+
+.model-detection-side-panel .path-picker-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.model-detection-side-panel .custom-model-grid,
+.model-detection-side-panel .model-actions-two {
+  grid-template-columns: 1fr;
 }
 
 .history-side-panel .history-card {
@@ -624,15 +695,25 @@ textarea {
 }
 
 .panel-head-shaped {
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+  min-height: 72px;
+  padding: 14px 22px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
   background: #F4F6F8;
+}
+
+.panel-head-shaped h2 {
+  margin: 0 0 2px;
+}
+
+.panel-head-shaped p {
+  margin: 0;
 }
 
 .health-side-panel .environment-card,
 .model-detection-side-panel .environment-card,
 .system-status-side-panel .environment-card,
 .models-side-panel .model-details {
-  display: block;
+  display: grid;
   min-height: 100%;
 }
 
@@ -764,10 +845,10 @@ textarea {
 .local-provider-result {
   min-width: 0;
   display: grid;
-  gap: 10px;
-  padding: 14px;
+  gap: 7px;
+  padding: 10px;
   border: 1px solid var(--panel-border);
-  border-radius: 18px;
+  border-radius: 14px;
   background: #FFFFFF;
   overflow: hidden;
 }
@@ -775,17 +856,22 @@ textarea {
 .detection-group h4 {
   margin: 0;
   color: var(--text-main);
-  font-size: 0.92rem;
-  line-height: 1.35;
+  font-size: 0.84rem;
+  line-height: 1.25;
 }
 
 .detected-model-row,
 .local-model-row {
   min-width: 0;
   display: grid;
-  gap: 5px;
-  padding: 12px;
-  border-radius: 14px;
+  grid-template-columns: minmax(120px, 1.2fr) auto minmax(110px, 0.9fr);
+  grid-template-areas:
+    "name state meta"
+    "path path reason";
+  align-items: center;
+  gap: 3px 8px;
+  padding: 7px 9px;
+  border-radius: 10px;
   background: #F8FAFC;
   border: 1px solid rgba(0, 0, 0, 0.06);
   overflow: hidden;
@@ -809,6 +895,30 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.detected-model-row > strong {
+  grid-area: name;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.detected-model-state {
+  grid-area: state;
+  justify-self: start;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #FFF3E0;
+  color: #A44900;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.detected-model-row.is-available .detected-model-state {
+  background: #E6F4EA;
+  color: #1E8E3E;
+}
+
 .detected-model-row span,
 .detected-model-row small,
 .local-model-row span,
@@ -820,6 +930,38 @@ textarea {
   min-width: 0;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.detected-model-row > span {
+  grid-area: meta;
+  justify-self: end;
+  max-width: 100%;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  text-align: right;
+}
+
+.detected-model-row > small {
+  font-size: 0.7rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.detected-model-row > small:not(.detected-model-reason) {
+  grid-area: path;
+  color: var(--text-secondary);
+}
+
+.detected-model-reason {
+  grid-area: reason;
+  justify-self: end;
+  max-width: 100%;
+  color: var(--text-secondary);
+}
+
+.detected-model-delete {
+  grid-column: 1 / -1;
+  min-height: 28px;
 }
 
 .local-provider-head {
@@ -1135,6 +1277,76 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 0.8rem;
     line-height: 1.35;
   }
+
+  .status-page-grid .status-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .model-detection-side-panel .status-workspace-card {
+    grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  }
+
+  .model-detection-side-panel .model-detection-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .model-detection-side-panel .detected-model-row {
+    display: inline-flex;
+    width: auto;
+    max-width: 100%;
+    align-items: center;
+    gap: 3px 6px;
+    padding: 5px 7px;
+    overflow: visible;
+  }
+
+  .model-detection-side-panel .detection-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 6px;
+    overflow: visible;
+  }
+
+  .model-detection-side-panel .detection-group h4 {
+    flex: 0 0 100%;
+  }
+
+  .model-detection-side-panel .detected-model-row > strong {
+    max-width: 100%;
+    white-space: normal;
+    overflow: visible;
+  }
+
+  .model-detection-side-panel .detected-model-row > span,
+  .model-detection-side-panel .detected-model-row > small,
+  .model-detection-side-panel .detected-model-delete {
+    display: none;
+  }
+
+  .health-side-panel .status-workspace-card {
+    padding: 10px;
+    gap: 7px;
+    overflow: visible;
+  }
+
+  .health-side-panel .workspace-card-head {
+    padding-bottom: 6px;
+  }
+
+  .status-row {
+    padding: 7px 8px;
+    gap: 3px 6px;
+  }
+
+  .status-row > span {
+    font-size: 0.74rem;
+  }
+
+  .status-row > small {
+    font-size: 0.68rem;
+    line-height: 1.2;
+  }
 }
 
 @media (max-width: 1080px) {
@@ -1157,8 +1369,8 @@ h1, h2, h3, h4, h5, h6 {
   .dashboard-sidebar {
     order: 1;
     margin: 10px 10px 0;
-    padding: 12px;
-    max-height: 148px;
+    padding: 10px 12px;
+    max-height: 74px;
     overflow: hidden;
   }
 
@@ -1172,7 +1384,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .sidebar-logo {
-    margin-bottom: 10px;
+    display: none;
   }
 
   .sidebar-nav {
@@ -1214,7 +1426,18 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .status-page-grid .status-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .model-detection-side-panel .status-workspace-card {
+    grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+    grid-template-areas:
+      "head head"
+      "form results";
+  }
+
+  .model-detection-side-panel .model-detection-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1278,34 +1501,43 @@ h1, h2, h3, h4, h5, h6 {
 .status-row, .health-item {
   min-width: 0;
   display: grid;
-  gap: 6px;
-  padding: 16px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "title badge"
+    "note note"
+    "extra extra";
+  align-items: start;
+  gap: 5px 8px;
+  padding: 10px 12px;
   background: #FFFFFF;
   border: 1px solid var(--panel-border);
-  border-radius: 16px;
+  border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.02);
   overflow: hidden;
 }
 
 .status-row > span, .health-item > strong {
   min-width: 0;
+  grid-area: title;
   font-weight: 600;
   color: var(--text-main);
-  font-size: 0.95rem;
+  font-size: 0.82rem;
+  line-height: 1.25;
   overflow-wrap: anywhere;
 }
 
 .status-badge {
+  grid-area: badge;
   display: inline-flex;
   align-items: center;
   max-width: 100%;
   width: fit-content;
-  padding: 4px 10px;
-  border-radius: 8px;
-  font-size: 0.75rem;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0;
-  line-height: 1.35;
+  line-height: 1.25;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -1320,11 +1552,21 @@ h1, h2, h3, h4, h5, h6 {
 .status-row > small, .health-item > span, .health-item > small {
   min-width: 0;
   color: var(--text-secondary);
-  font-size: 0.85rem;
-  margin-top: 2px;
+  font-size: 0.74rem;
+  line-height: 1.32;
+  margin-top: 0;
   word-wrap: break-word;
   word-break: break-word;
   overflow-wrap: anywhere;
+}
+
+.status-row > small,
+.health-item > span {
+  grid-area: note;
+}
+
+.health-item > small {
+  grid-area: extra;
 }
 
 @media (prefers-reduced-motion: reduce) {
