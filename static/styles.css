@@ -179,52 +179,75 @@ summary:focus-visible {
   margin-bottom: 30px;
 }
 
-.sidebar-nav a,
-.sidebar-nav button {
-  min-height: 44px;
-  border: 1px solid transparent;
-  color: #4B5563;
-  border-radius: 9999px; /* Pill shapes */
+.sidebar-nav {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
+.sidebar-nav a,
 .sidebar-nav button {
+  min-height: 48px;
+  border: 1px solid transparent;
+  color: #6B7280;
+  border-radius: 9999px;
   width: 100%;
   justify-content: flex-start;
-  padding: 10px 14px;
+  padding: 12px 18px;
   background: transparent;
   font-weight: 600;
   position: relative;
   overflow: hidden;
-}
-
-.sidebar-nav button::before {
-  content: "";
-  position: absolute;
-  inset: 9px auto 9px 0;
-  width: 3px;
-  border-radius: 0 999px 999px 0;
-  background: transparent;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  z-index: 1;
 }
 
 .sidebar-nav a:hover,
-.sidebar-nav a.active,
-.sidebar-nav button:hover,
-.sidebar-nav button.active {
-  background: #FFFFFF;
-  border-color: transparent;
-  color: #1F2937;
+.sidebar-nav button:hover {
+  background: rgba(255, 255, 255, 0.5);
+  color: #374151;
+  transform: translateX(6px);
 }
 
-.sidebar-nav button.active::before {
-  background: #2D3748;
+.sidebar-nav a.active,
+.sidebar-nav button.active {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1F2937;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04), inset 0 0 0 1px rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transform: translateX(8px) scale(1.02);
 }
 
 .sidebar-nav button svg {
   flex: 0 0 20px;
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), color 0.4s ease;
+}
+
+.sidebar-nav button.active svg {
+  transform: scale(1.15);
+  color: #8B9DFF; /* Soft pastel accent */
 }
 
 .sidebar-modules {
   gap: 16px;
+}
+
+.glass-decorative-blob {
+  width: 100%;
+  max-width: 200px;
+  margin: auto auto 0 auto;
+  opacity: 0.85;
+  filter: drop-shadow(0 10px 20px rgba(0,0,0,0.05));
+  animation: float 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-15px) rotate(2deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
 }
 
 .model-card,
