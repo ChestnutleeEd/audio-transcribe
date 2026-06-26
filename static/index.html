@@ -20,17 +20,17 @@
           Audio Transcribe
         </div>
         <div class="nav-links">
-          <span>Features</span>
-          <span>Workflow</span>
-          <span>Models</span>
+          <span>能力</span>
+          <span>流程</span>
+          <span>模型</span>
         </div>
         <div class="nav-actions">
-          <button class="primary small-button" id="nav-start-button">Start Dashboard</button>
+          <button class="primary small-button" id="nav-start-button">进入工作台</button>
         </div>
       </nav>
       <div class="hero-section" aria-labelledby="page-title">
         <div class="hero-content">
-          <p class="eyebrow">Local Model Workstation</p>
+          <p class="eyebrow">本地模型工作台</p>
           <h1 id="page-title">本地 AI 音频与视频转录工作台</h1>
           <p class="lede">基于本地模型池的高性能转写台。支持长音频智能切片、视频转音频、Whisper/MLX 原生加速，以及 LLM 智能文本整理。全程本地运行，保护隐私数据。</p>
           <div class="hero-actions">
@@ -40,7 +40,7 @@
           <p class="mock-banner" id="mock-banner" hidden>Mock 模式：不会调用真实模型</p>
         </div>
         <div class="hero-visual">
-          <img src="/assets/images/hero-creamy-mockup.png" alt="Dashboard Mockup" class="floating-mockup" />
+          <img src="/assets/images/hero-creamy-mockup.png" alt="Audio Transcribe 工作台预览" class="floating-mockup" />
         </div>
       </div>
     </div>
@@ -96,7 +96,7 @@
               <span>环境检查</span>
               <small id="environment-summary">正在检测模型和运行环境。</small>
             </div>
-            <p id="health-message">检查 FFmpeg、Python runtime、MLX runtime、Whisper backend 和 API server status。</p>
+            <p id="health-message">检查转录所需的运行环境和后端服务。</p>
             <div id="environment-status-grid" class="status-grid"></div>
             <div class="model-actions model-actions-two">
               <button class="secondary" type="button" id="health-refresh-button">
@@ -105,7 +105,7 @@
               </button>
               <button class="secondary" type="button" id="fix-all-button">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v6m0 8v6M4.93 4.93l4.24 4.24m5.66 5.66 4.24 4.24M2 12h6m8 0h6M4.93 19.07l4.24-4.24m5.66-5.66 4.24-4.24"/></svg>
-                Fix All
+                查看修复建议
               </button>
             </div>
             <div id="health-list" class="health-list"></div>
@@ -129,21 +129,21 @@
               </label>
               <div class="custom-model-grid">
                 <label class="field">
-                  <span>provider</span>
+                  <span>模型来源</span>
                   <select id="custom-model-provider">
-                    <option value="custom">custom</option>
+                    <option value="custom">自定义目录</option>
                     <option value="mlx">MLX</option>
-                    <option value="huggingface">HuggingFace local</option>
+                    <option value="huggingface">HuggingFace 本地</option>
                     <option value="ollama">Ollama</option>
                     <option value="llama.cpp">llama.cpp</option>
                   </select>
                 </label>
                 <label class="field">
-                  <span>capability</span>
+                  <span>模型能力</span>
                   <select id="custom-model-capability">
-                    <option value="audio">Audio</option>
-                    <option value="text">Text</option>
-                    <option value="audio_text">Audio + Text</option>
+                    <option value="audio">音频转录</option>
+                    <option value="text">文本整理</option>
+                    <option value="audio_text">音频 + 文本</option>
                   </select>
                 </label>
               </div>
@@ -213,7 +213,7 @@
           <img src="/assets/images/liquid-glass-blob.png" class="glass-decorative-blob" alt="" aria-hidden="true" />
         </div>
         <div class="sidebar-status">
-          <span class="status-dot"></span> Local Mode / Ready
+          <span class="status-dot"></span> 本地模式 · 就绪
         </div>
       </aside>
 
@@ -222,7 +222,7 @@
         <!-- Top Header -->
         <header class="dashboard-header">
           <div class="header-greeting" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">
-            Good Morning, <span style="color: var(--text-secondary);">User</span>
+            本地转录工作台
           </div>
           <div class="header-actions">
             <button class="icon-button" type="button" id="tutorial-button" aria-label="使用教程" title="使用教程">
@@ -238,84 +238,91 @@
           <section class="side-panel workspace-view is-active tasks-workspace" data-side-panel="tasks">
             <div class="workbench-grid">
               <div class="dashboard-center">
-                <!-- Summary Widgets (Creamy Aesthetic) -->
-                <div class="summary-widgets" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-4);">
-                  <!-- Row 1 -->
-                  <div class="widget-card" style="background: var(--accent-peach); padding: var(--space-4); border-radius: 32px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
-                      <p style="margin: 0; color: rgba(0,0,0,0.7); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                        Total Transcriptions
-                      </p>
-                      <button style="background: rgba(255,255,255,0.4); border: none; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
+                <div class="summary-widgets" aria-label="工作台能力概览">
+                  <article class="widget-card feature-widget feature-widget-peach">
+                    <div class="feature-widget-head">
+                      <span class="feature-widget-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M6 8v8M18 7v10"/></svg>
+                      </span>
+                      <strong>本地转录</strong>
                     </div>
-                    <h2 style="margin: 0 0 var(--space-1) 0; font-size: 2.2rem; color: #1F2937; font-weight: 800;">592</h2>
-                    <span style="font-size: 0.85rem; color: rgba(0,0,0,0.6); font-weight: 500;"><strong style="color: #000;">+25%</strong> compared to last month</span>
-                  </div>
-                  
-                  <div class="widget-card" style="background: var(--accent-blue); padding: var(--space-4); border-radius: 32px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
-                      <p style="margin: 0; color: rgba(0,0,0,0.7); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                        Processing Time
-                      </p>
-                      <button style="background: rgba(255,255,255,0.4); border: none; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
-                    </div>
-                    <h2 style="margin: 0 0 var(--space-1) 0; font-size: 2.2rem; color: #1F2937; font-weight: 800;">142<small style="font-size:1rem; color: rgba(0,0,0,0.6);">hrs</small></h2>
-                    <span style="font-size: 0.85rem; color: rgba(0,0,0,0.6); font-weight: 500;"><strong style="color: #000;">-10%</strong> includes local models</span>
-                  </div>
+                    <p>音频、视频和链接由本机后端处理，优先使用已检测到的本地模型。</p>
+                  </article>
 
-                  <div class="widget-card" style="background: var(--accent-lavender); padding: var(--space-4); border-radius: 32px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
-                      <p style="margin: 0; color: rgba(0,0,0,0.7); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                        Words Generated
-                      </p>
-                      <button style="background: rgba(255,255,255,0.4); border: none; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
+                  <article class="widget-card feature-widget feature-widget-blue">
+                    <div class="feature-widget-head">
+                      <span class="feature-widget-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h16"/><path d="M16 12l4-4m0 0v4h-4"/></svg>
+                      </span>
+                      <strong>长音频切片</strong>
                     </div>
-                    <h2 style="margin: 0 0 var(--space-1) 0; font-size: 2.2rem; color: #1F2937; font-weight: 800;">48K</h2>
-                    <span style="font-size: 0.85rem; color: rgba(0,0,0,0.6); font-weight: 500;"><strong style="color: #000;">+30%</strong> since yesterday</span>
-                  </div>
+                    <p>长文件进入切片处理链路，降低单次推理压力，并保留时间轴结果。</p>
+                  </article>
 
-                  <!-- Row 2 -->
-                  <div class="widget-card" style="background: var(--accent-yellow); padding: var(--space-4); border-radius: 32px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
-                      <p style="margin: 0; color: rgba(0,0,0,0.7); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-                        Models Downloaded
-                      </p>
-                      <button style="background: rgba(255,255,255,0.4); border: none; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
+                  <article class="widget-card feature-widget feature-widget-lavender">
+                    <div class="feature-widget-head">
+                      <span class="feature-widget-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 7l8 4 8-4-8-4Z"/><path d="m4 12 8 4 8-4"/><path d="m4 17 8 4 8-4"/></svg>
+                      </span>
+                      <strong>多模型路线</strong>
                     </div>
-                    <h2 style="margin: 0 0 var(--space-1) 0; font-size: 2.2rem; color: #1F2937; font-weight: 800;">3</h2>
-                    <span style="font-size: 0.85rem; color: rgba(0,0,0,0.6); font-weight: 500;"><strong style="color: #000;">1</strong> pending download</span>
-                  </div>
+                    <p>支持 faster-whisper、MLX Whisper 和具备音频能力的本地大模型。</p>
+                  </article>
 
-                  <div class="widget-card" style="background: var(--accent-pink); padding: var(--space-4); border-radius: 32px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
-                      <p style="margin: 0; color: rgba(0,0,0,0.7); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-                        Files in Queue
-                      </p>
-                      <button style="background: rgba(255,255,255,0.4); border: none; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
+                  <article class="widget-card feature-widget feature-widget-yellow">
+                    <div class="feature-widget-head">
+                      <span class="feature-widget-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+                      </span>
+                      <strong>多格式导出</strong>
                     </div>
-                    <h2 style="margin: 0 0 var(--space-1) 0; font-size: 2.2rem; color: #1F2937; font-weight: 800;">14</h2>
-                    <span style="font-size: 0.85rem; color: rgba(0,0,0,0.6); font-weight: 500;"><strong style="color: #000;">+2</strong> from previous week</span>
-                  </div>
+                    <p>导出 TXT、Markdown、JSON、SRT、Word，可选择原文或整理后文本。</p>
+                  </article>
 
-                  <div class="widget-card" style="background: var(--accent-teal); padding: var(--space-4); border-radius: 32px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
-                      <p style="margin: 0; color: rgba(0,0,0,0.7); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        Active Tasks
-                      </p>
-                      <button style="background: rgba(255,255,255,0.4); border: none; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
+                  <article class="widget-card feature-widget feature-widget-pink">
+                    <div class="feature-widget-head">
+                      <span class="feature-widget-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M6 16l4-10 4 10"/><path d="M8 12h4"/><path d="M16 7h3M17.5 7v9"/></svg>
+                      </span>
+                      <strong>文本整理</strong>
                     </div>
-                    <h2 style="margin: 0 0 var(--space-1) 0; font-size: 2.2rem; color: #1F2937; font-weight: 800;">2</h2>
-                    <span style="font-size: 0.85rem; color: rgba(0,0,0,0.6); font-weight: 500;"><strong style="color: #000;">Processing</strong>...</span>
-                  </div>
+                    <p>调用本地 Text 模型做错字修复、摘要、章节整理和追加指令。</p>
+                  </article>
+
+                  <article class="widget-card feature-widget feature-widget-teal">
+                    <div class="feature-widget-head">
+                      <span class="feature-widget-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/><path d="M12 7v5l3 2"/></svg>
+                      </span>
+                      <strong>任务追踪</strong>
+                    </div>
+                    <p>任务队列、诊断信息、最近历史和结果下载集中在“文件任务”。</p>
+                  </article>
                 </div>
 
-                <form id="job-form" class="panel glass-card" aria-label="创建转写任务">
+                <section class="workflow-strip" aria-label="推荐工作流">
+                  <h2>推荐工作流</h2>
+                  <ol>
+                    <li>选择本地文件或粘贴视频链接。</li>
+                    <li>确认转录模型、语言、时间轴和导出格式。</li>
+                    <li>需要整理时启用本地大模型，并选择整理配置。</li>
+                    <li>提交后进入“文件任务”查看进度、诊断和导出文件。</li>
+                  </ol>
+                </section>
+
+                <section class="task-launch-card" aria-label="任务列表入口">
+                  <div>
+                    <h2>任务列表</h2>
+                    <p id="workbench-job-summary">等待创建任务</p>
+                  </div>
+                  <button class="secondary" type="button" id="open-jobs-button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+                    打开任务
+                  </button>
+                </section>
+              </div>
+
+                <form id="job-form" class="workbench-control-panel panel glass-card" aria-label="创建转写任务">
           <div class="panel-head">
             <div>
               <h2>新建任务</h2>
@@ -359,37 +366,37 @@
           </div>
 
           <fieldset class="choice-group audio-mode-group">
-            <legend>Audio Model Mode</legend>
+            <legend>转录引擎</legend>
             <label>
               <input type="radio" name="transcription_engine" value="whisper" />
               <span>
                 <strong>Whisper（faster-whisper）</strong>
-                <small id="whisper-mode-status">独立 Whisper pipeline；检测失败也不会隐藏。</small>
+                <small id="whisper-mode-status">本地 Whisper 转录，适合通用音频。</small>
               </span>
             </label>
             <label>
               <input type="radio" name="transcription_engine" value="mlx-whisper" />
               <span>
                 <strong>MLX Whisper（Apple Silicon）</strong>
-                <small id="mlx-mode-status">独立 MLX Whisper pipeline；可手动输入模型路径或 repo id。</small>
+                <small id="mlx-mode-status">Apple Silicon 上优先使用，可填写本地模型路径。</small>
               </span>
             </label>
             <label>
               <input type="radio" name="transcription_engine" value="local_audio_llm" />
               <span>
-                <strong>Local Audio LLM</strong>
-                <small id="local-audio-mode-status">只显示 capabilities.audio=true 的本地大模型。</small>
+                <strong>本地音频大模型</strong>
+                <small id="local-audio-mode-status">仅显示已检测到的音频模型。</small>
               </span>
             </label>
           </fieldset>
 
-          <section class="model-pool-picker" id="local-audio-llm-field" aria-label="Local Audio LLM 模型" hidden>
+          <section class="model-pool-picker" id="local-audio-llm-field" aria-label="本地音频大模型" hidden>
             <label class="field">
-              <span>Local Audio LLM 模型</span>
-              <select id="audio-model-select" aria-label="选择支持 Audio Input 的模型">
-                <option value="">请选择支持 Audio Input 的模型</option>
+              <span>本地音频大模型</span>
+              <select id="audio-model-select" aria-label="选择支持音频输入的模型">
+                <option value="">请选择支持音频输入的模型</option>
               </select>
-              <small id="audio-model-help">请选择支持 Audio Input 的模型（系统已自动筛选）。</small>
+              <small id="audio-model-help">请选择支持音频输入的模型（系统已自动筛选）。</small>
             </label>
             <div id="audio-model-meta" class="model-meta-row"></div>
             <div class="model-actions model-actions-two">
@@ -457,14 +464,14 @@
           </section>
 
           <label class="field" id="mlx-model-field" hidden>
-            <span>MLX Whisper 模型路径或 repo id</span>
-            <input id="mlx-model-path-or-repo" name="mlx_model_path_or_repo" type="text" placeholder="/path/to/whisper-large-v3-mlx 或 mlx-community/..." autocomplete="off" />
+            <span>MLX Whisper 模型路径</span>
+            <input id="mlx-model-path-or-repo" name="mlx_model_path_or_repo" type="text" placeholder="/完整/模型/目录 或 mlx-community/..." autocomplete="off" />
             <small id="mlx-model-help">请先自行安装 mlx-whisper，并准备 MLX 格式 Whisper 模型。本项目不会自动下载模型。</small>
           </label>
 
           <label class="field" id="qwen-model-field" hidden>
-            <span>MLX Audio 模型路径或 repo id</span>
-            <input id="qwen-model-path-or-repo" name="qwen_model_path_or_repo" type="text" placeholder="/path/to/mlx-audio-model 或 provider/model-id" autocomplete="off" />
+            <span>MLX Audio 模型路径</span>
+            <input id="qwen-model-path-or-repo" name="qwen_model_path_or_repo" type="text" placeholder="/完整/模型/目录 或 模型标识" autocomplete="off" />
             <small id="qwen-model-help">请先自行安装 mlx-audio，并准备本地 MLX Audio 模型。本项目不会自动调用云服务。</small>
           </label>
 
@@ -551,7 +558,11 @@
             开始转写
           </button>
                 </form>
-              </div>
+            </div>
+          </section>
+
+          <section class="side-panel workspace-view jobs-side-panel" data-side-panel="jobs" hidden>
+            <div class="side-panel-body jobs-page-body" data-panel-body="jobs">
               <aside class="workbench-jobs" aria-live="polite">
                 <div class="diagnostic-card" id="diagnostic-card" hidden></div>
                 <div class="panel-head">
@@ -582,10 +593,6 @@
                 </div>
               </aside>
             </div>
-          </section>
-
-          <section class="side-panel workspace-view jobs-side-panel" data-side-panel="jobs" hidden>
-            <div class="side-panel-body jobs-page-body" data-panel-body="jobs"></div>
           </section>
 
           <section class="side-panel workspace-view history-side-panel" data-side-panel="history" hidden>
@@ -658,7 +665,7 @@
           <textarea id="prompt-editor" rows="10"></textarea>
         </label>
         <div class="model-actions model-actions-two">
-          <button class="secondary" type="button" id="restore-prompt-button">restore default</button>
+          <button class="secondary" type="button" id="restore-prompt-button">恢复默认</button>
           <button class="primary modal-primary" type="button" id="save-prompt-button">保存</button>
         </div>
       </form>
@@ -700,12 +707,12 @@
           </button>
         </div>
         <ol class="tutorial-steps">
-          <li><strong>检查环境。</strong>从左侧进入“环境检查”和“模型检测”；缺少依赖时点 Fix All 查看处理步骤。</li>
+          <li><strong>检查环境。</strong>从左侧进入“环境检查”和“模型检测”；缺少依赖时点“查看修复建议”查看处理步骤。</li>
           <li><strong>选择来源。</strong>上传本地音频/视频，或填写 YouTube、Bilibili 链接；同时填写时优先处理上传文件。</li>
-          <li><strong>选择转录模型。</strong>Whisper 用本地 Whisper 模型；MLX Whisper 需要 MLX 格式模型；Local Audio LLM 只显示支持 Audio Input 的本地大模型。</li>
+          <li><strong>选择转录模型。</strong>Whisper 用本地 Whisper 模型；MLX Whisper 需要 MLX 格式模型；本地音频大模型只显示已检测到的音频模型。</li>
           <li><strong>配置输出。</strong>选择语言、时间轴、导出格式和导出内容；SRT 需要开启时间轴。</li>
           <li><strong>整理文本。</strong>开启“使用本地大模型整理转录结果”，选择 Text 模型，并勾选一个或多个文本整理配置；可以追加指令或编辑 prompt。</li>
-          <li><strong>查看结果。</strong>任务完成后在右侧复制、下载、对比原文和整理后文本；最近历史与任务列表一起收起。</li>
+          <li><strong>查看结果。</strong>任务完成后进入“文件任务”复制、下载、对比原文和整理后文本；最近历史可单独查看。</li>
           <li><strong>强制刷新。</strong>如果页面资源没有更新，按 Command + Shift + R 强制刷新浏览器缓存。</li>
         </ol>
       </form>
@@ -739,7 +746,6 @@
 
         const sideButtons = Array.from(document.querySelectorAll("[data-side-view]"));
         const sidePanels = Array.from(document.querySelectorAll("[data-side-panel]"));
-        const workbenchGrid = document.querySelector(".workbench-grid");
         const workbenchJobs = document.querySelector(".workbench-jobs");
         const jobsPanelBody = document.querySelector('[data-panel-body="jobs"]');
         const moveIntoPanel = (selector, panelName) => {
@@ -759,12 +765,8 @@
         if (historyActions && historyClearButton) historyActions.appendChild(historyClearButton);
 
         const showSidePanel = (panelName, activeButton = null) => {
-          if (workbenchJobs && workbenchGrid && jobsPanelBody) {
-            if (panelName === "jobs") {
-              jobsPanelBody.appendChild(workbenchJobs);
-            } else if (panelName === "tasks") {
-              workbenchGrid.appendChild(workbenchJobs);
-            }
+          if (workbenchJobs && jobsPanelBody) {
+            jobsPanelBody.appendChild(workbenchJobs);
           }
           sidePanels.forEach((panel) => {
             const isActive = panel.dataset.sidePanel === panelName;
@@ -784,6 +786,12 @@
         sideButtons.forEach((button) => {
           button.addEventListener("click", () => showSidePanel(button.dataset.sideView, button));
         });
+
+        const openJobsButton = document.getElementById("open-jobs-button");
+        const jobsNavButton = document.querySelector('[data-side-view="jobs"]');
+        if (openJobsButton && jobsNavButton) {
+          openJobsButton.addEventListener("click", () => showSidePanel("jobs", jobsNavButton));
+        }
 
         // Hero tutorial button opens tutorial modal
         const heroTutorialButton = document.getElementById("hero-tutorial-button");
