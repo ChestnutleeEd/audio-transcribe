@@ -326,7 +326,7 @@
 
 /* --- SIDEBAR CARDS --- */
 .model-card {
-  background: rgba(0, 0, 0, 0.3);
+  background: #FFFFFF;
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-md);
   padding: var(--space-3);

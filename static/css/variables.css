@@ -8,10 +8,12 @@
   --primary-hover: #1A202C;
   --primary-glow: rgba(45, 55, 72, 0.15);
   
-  /* Pastel Widget Colors */
+  /* Pastel Widget Colors (from reference image) */
+  --accent-peach: #FFD7BA;
+  --accent-blue: #A0C4FF;
+  --accent-lavender: #BDB2FF;
   --accent-yellow: #FFEBA4;
-  --accent-pink: #FFB3B8;
-  --accent-orange: #FFBFA4;
+  --accent-pink: #FFADAD;
   --accent-teal: #A7E4D5;
   
   --text-main: #2D3748;

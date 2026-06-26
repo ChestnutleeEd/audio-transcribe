@@ -237,27 +237,79 @@
             <div class="workbench-grid">
               <div class="dashboard-center">
                 <!-- Summary Widgets (Creamy Aesthetic) -->
-                <div class="summary-widgets" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-4);">
-                  <div class="widget-card" style="background: var(--accent-yellow); padding: var(--space-4); border-radius: var(--radius-xl); box-shadow: var(--glass-shadow); display: flex; flex-direction: column; justify-content: space-between;">
-                    <p style="margin: 0; color: rgba(0,0,0,0.6); font-weight: 600;">Total Transcriptions</p>
-                    <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: var(--space-2);">
-                      <h2 style="margin: 0; font-size: 2rem; color: #000; font-weight: 800;">592</h2>
-                      <span style="background: rgba(255,255,255,0.4); padding: 4px 12px; border-radius: var(--radius-full); font-size: 0.85rem; font-weight: 600;">↑ 25%</span>
+                <div class="summary-widgets" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-4);">
+                  <!-- Row 1 -->
+                  <div class="widget-card" style="background: var(--accent-peach); padding: var(--space-4); border-radius: 32px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                      <p style="margin: 0; color: rgba(0,0,0,0.7); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        Total Transcriptions
+                      </p>
+                      <button style="background: rgba(255,255,255,0.4); border: none; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
                     </div>
+                    <h2 style="margin: 0 0 var(--space-1) 0; font-size: 2.2rem; color: #1F2937; font-weight: 800;">592</h2>
+                    <span style="font-size: 0.85rem; color: rgba(0,0,0,0.6); font-weight: 500;"><strong style="color: #000;">+25%</strong> compared to last month</span>
                   </div>
-                  <div class="widget-card" style="background: var(--accent-pink); padding: var(--space-4); border-radius: var(--radius-xl); box-shadow: var(--glass-shadow); display: flex; flex-direction: column; justify-content: space-between;">
-                    <p style="margin: 0; color: rgba(0,0,0,0.6); font-weight: 600;">Processing Time (hrs)</p>
-                    <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: var(--space-2);">
-                      <h2 style="margin: 0; font-size: 2rem; color: #000; font-weight: 800;">142</h2>
-                      <span style="background: rgba(255,255,255,0.4); padding: 4px 12px; border-radius: var(--radius-full); font-size: 0.85rem; font-weight: 600;">↓ 10%</span>
+                  
+                  <div class="widget-card" style="background: var(--accent-blue); padding: var(--space-4); border-radius: 32px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                      <p style="margin: 0; color: rgba(0,0,0,0.7); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        Processing Time
+                      </p>
+                      <button style="background: rgba(255,255,255,0.4); border: none; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
                     </div>
+                    <h2 style="margin: 0 0 var(--space-1) 0; font-size: 2.2rem; color: #1F2937; font-weight: 800;">142<small style="font-size:1rem; color: rgba(0,0,0,0.6);">hrs</small></h2>
+                    <span style="font-size: 0.85rem; color: rgba(0,0,0,0.6); font-weight: 500;"><strong style="color: #000;">-10%</strong> includes local models</span>
                   </div>
-                  <div class="widget-card" style="background: var(--accent-orange); padding: var(--space-4); border-radius: var(--radius-xl); box-shadow: var(--glass-shadow); display: flex; flex-direction: column; justify-content: space-between;">
-                    <p style="margin: 0; color: rgba(0,0,0,0.6); font-weight: 600;">Words Generated</p>
-                    <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: var(--space-2);">
-                      <h2 style="margin: 0; font-size: 2rem; color: #000; font-weight: 800;">48K</h2>
-                      <span style="background: rgba(255,255,255,0.4); padding: 4px 12px; border-radius: var(--radius-full); font-size: 0.85rem; font-weight: 600;">↑ 30%</span>
+
+                  <div class="widget-card" style="background: var(--accent-lavender); padding: var(--space-4); border-radius: 32px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                      <p style="margin: 0; color: rgba(0,0,0,0.7); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        Words Generated
+                      </p>
+                      <button style="background: rgba(255,255,255,0.4); border: none; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
                     </div>
+                    <h2 style="margin: 0 0 var(--space-1) 0; font-size: 2.2rem; color: #1F2937; font-weight: 800;">48K</h2>
+                    <span style="font-size: 0.85rem; color: rgba(0,0,0,0.6); font-weight: 500;"><strong style="color: #000;">+30%</strong> since yesterday</span>
+                  </div>
+
+                  <!-- Row 2 -->
+                  <div class="widget-card" style="background: var(--accent-yellow); padding: var(--space-4); border-radius: 32px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                      <p style="margin: 0; color: rgba(0,0,0,0.7); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                        Models Downloaded
+                      </p>
+                      <button style="background: rgba(255,255,255,0.4); border: none; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
+                    </div>
+                    <h2 style="margin: 0 0 var(--space-1) 0; font-size: 2.2rem; color: #1F2937; font-weight: 800;">3</h2>
+                    <span style="font-size: 0.85rem; color: rgba(0,0,0,0.6); font-weight: 500;"><strong style="color: #000;">1</strong> pending download</span>
+                  </div>
+
+                  <div class="widget-card" style="background: var(--accent-pink); padding: var(--space-4); border-radius: 32px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                      <p style="margin: 0; color: rgba(0,0,0,0.7); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                        Files in Queue
+                      </p>
+                      <button style="background: rgba(255,255,255,0.4); border: none; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
+                    </div>
+                    <h2 style="margin: 0 0 var(--space-1) 0; font-size: 2.2rem; color: #1F2937; font-weight: 800;">14</h2>
+                    <span style="font-size: 0.85rem; color: rgba(0,0,0,0.6); font-weight: 500;"><strong style="color: #000;">+2</strong> from previous week</span>
+                  </div>
+
+                  <div class="widget-card" style="background: var(--accent-teal); padding: var(--space-4); border-radius: 32px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                      <p style="margin: 0; color: rgba(0,0,0,0.7); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        Active Tasks
+                      </p>
+                      <button style="background: rgba(255,255,255,0.4); border: none; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
+                    </div>
+                    <h2 style="margin: 0 0 var(--space-1) 0; font-size: 2.2rem; color: #1F2937; font-weight: 800;">2</h2>
+                    <span style="font-size: 0.85rem; color: rgba(0,0,0,0.6); font-weight: 500;"><strong style="color: #000;">Processing</strong>...</span>
                   </div>
                 </div>
 
