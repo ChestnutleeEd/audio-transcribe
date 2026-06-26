@@ -4,6 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Audio Transcribe</title>
+    <!-- Add Google Fonts: Outfit and Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070707'/%3E%3Cpath d='M18 40V24M28 48V16M38 42V22M48 36V28' stroke='%23d8b15e' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="/styles.css?v=20260626-dashboard-workspace" />
   </head>
@@ -215,8 +219,8 @@
       <main class="dashboard-main">
         <!-- Top Header -->
         <header class="dashboard-header">
-          <div class="header-title">
-            <span class="breadcrumb">Workspace /</span> 新建任务
+          <div class="header-greeting" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">
+            Good Morning, <span style="color: var(--text-secondary);">User</span>
           </div>
           <div class="header-actions">
             <button class="icon-button" type="button" id="tutorial-button" aria-label="使用教程" title="使用教程">
@@ -232,7 +236,32 @@
           <section class="side-panel workspace-view is-active tasks-workspace" data-side-panel="tasks">
             <div class="workbench-grid">
               <div class="dashboard-center">
-                <form id="job-form" class="panel" aria-label="创建转写任务">
+                <!-- Summary Widgets (Creamy Aesthetic) -->
+                <div class="summary-widgets" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-4);">
+                  <div class="widget-card" style="background: var(--accent-yellow); padding: var(--space-4); border-radius: var(--radius-xl); box-shadow: var(--glass-shadow); display: flex; flex-direction: column; justify-content: space-between;">
+                    <p style="margin: 0; color: rgba(0,0,0,0.6); font-weight: 600;">Total Transcriptions</p>
+                    <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: var(--space-2);">
+                      <h2 style="margin: 0; font-size: 2rem; color: #000; font-weight: 800;">592</h2>
+                      <span style="background: rgba(255,255,255,0.4); padding: 4px 12px; border-radius: var(--radius-full); font-size: 0.85rem; font-weight: 600;">↑ 25%</span>
+                    </div>
+                  </div>
+                  <div class="widget-card" style="background: var(--accent-pink); padding: var(--space-4); border-radius: var(--radius-xl); box-shadow: var(--glass-shadow); display: flex; flex-direction: column; justify-content: space-between;">
+                    <p style="margin: 0; color: rgba(0,0,0,0.6); font-weight: 600;">Processing Time (hrs)</p>
+                    <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: var(--space-2);">
+                      <h2 style="margin: 0; font-size: 2rem; color: #000; font-weight: 800;">142</h2>
+                      <span style="background: rgba(255,255,255,0.4); padding: 4px 12px; border-radius: var(--radius-full); font-size: 0.85rem; font-weight: 600;">↓ 10%</span>
+                    </div>
+                  </div>
+                  <div class="widget-card" style="background: var(--accent-orange); padding: var(--space-4); border-radius: var(--radius-xl); box-shadow: var(--glass-shadow); display: flex; flex-direction: column; justify-content: space-between;">
+                    <p style="margin: 0; color: rgba(0,0,0,0.6); font-weight: 600;">Words Generated</p>
+                    <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: var(--space-2);">
+                      <h2 style="margin: 0; font-size: 2rem; color: #000; font-weight: 800;">48K</h2>
+                      <span style="background: rgba(255,255,255,0.4); padding: 4px 12px; border-radius: var(--radius-full); font-size: 0.85rem; font-weight: 600;">↑ 30%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <form id="job-form" class="panel glass-card" aria-label="创建转写任务">
           <div class="panel-head">
             <div>
               <h2>新建任务</h2>

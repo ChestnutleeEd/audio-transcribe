@@ -66,3 +66,13 @@
 .status-dot {
   animation: pulse 2s infinite;
 }
+
+/* Widget Card Hover Lift */
+.widget-card {
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.widget-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 40px rgba(0,0,0,0.08);
+}

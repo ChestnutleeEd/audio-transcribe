@@ -13,16 +13,13 @@
  * with existing <link> tags in index.html.
  */
 
-/* 2026-06-26 Dark dashboard visual pass */
+/* 2026-06-26 Creamy dashboard visual pass */
 * {
-  scrollbar-color: rgba(126, 169, 255, 0.32) rgba(255,255,255,0.03);
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
 }
 
 body {
-  background:
-    radial-gradient(circle at 72% 18%, rgba(47, 140, 255, 0.16), transparent 34vw),
-    radial-gradient(circle at 92% 72%, rgba(124, 92, 255, 0.18), transparent 28vw),
-    #030711;
+  background: var(--bg-color);
 }
 
 button,
@@ -74,22 +71,20 @@ summary:focus-visible {
 .welcome-container {
   min-height: 100vh;
   height: auto;
-  background:
-    linear-gradient(180deg, rgba(3, 7, 17, 0.24) 0%, rgba(3, 7, 17, 0.68) 58%, #071222 100%),
-    var(--bg-color);
+  background: var(--bg-color);
 }
 
 .welcome-container::before {
   inset: 0;
   background-image: url('./assets/images/hero-audio-bg.webp');
   background-position: center bottom;
-  opacity: 0.95;
+  opacity: 0.3; /* Lighter opacity for light mode */
 }
 
 .welcome-container::after {
   background:
-    linear-gradient(90deg, rgba(3, 7, 17, 0.96) 0%, rgba(3, 7, 17, 0.72) 34%, rgba(3, 7, 17, 0.18) 72%),
-    linear-gradient(180deg, rgba(3, 7, 17, 0) 0%, rgba(7, 18, 34, 0.82) 84%, #071222 100%);
+    linear-gradient(90deg, rgba(244, 246, 248, 0.96) 0%, rgba(244, 246, 248, 0.72) 34%, rgba(244, 246, 248, 0.18) 72%),
+    linear-gradient(180deg, rgba(244, 246, 248, 0) 0%, rgba(244, 246, 248, 0.82) 84%, #F4F6F8 100%);
 }
 
 .welcome-nav {
