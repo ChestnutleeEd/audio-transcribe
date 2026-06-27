@@ -82,7 +82,7 @@ summary:focus-visible {
   background-image: url('./assets/images/welcome-audio-bg.png');
   background-size: cover;
   background-position: center;
-  opacity: 0.15; /* Lighter opacity for light mode so it doesn't distract from text */
+  opacity: 0.8; /* Increased opacity so the background is more visible */
 }
 
 .welcome-container::after {
@@ -143,11 +143,17 @@ summary:focus-visible {
 
 .hero-visual {
   min-width: min(46vw, 760px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .hero-visual img {
-  width: min(48vw, 860px);
-  max-width: 100%;
+  max-width: min(48vw, 860px);
+  max-height: 65vh;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
   border-radius: 14px;
   border-color: rgba(126, 169, 255, 0.18);
   box-shadow:
