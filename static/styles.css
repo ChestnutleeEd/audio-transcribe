@@ -70,15 +70,19 @@ summary:focus-visible {
 
 .welcome-container {
   min-height: 100vh;
-  height: auto;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-color);
 }
 
 .welcome-container::before {
   inset: 0;
-  background-image: url('./assets/images/hero-creamy-bg.png');
-  background-position: center bottom;
-  opacity: 0.3; /* Lighter opacity for light mode */
+  background-image: url('./assets/images/welcome-audio-bg.png');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.15; /* Lighter opacity for light mode so it doesn't distract from text */
 }
 
 .welcome-container::after {
@@ -100,8 +104,13 @@ summary:focus-visible {
 }
 
 .hero-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: min(8vh, 80px) clamp(24px, 4vw, 72px) 44px;
   gap: clamp(28px, 5vw, 84px);
+  overflow: hidden;
 }
 
 .hero-content {
