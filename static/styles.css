@@ -151,9 +151,8 @@ summary:focus-visible {
 .hero-visual img {
   max-width: min(48vw, 860px);
   max-height: 65vh;
-  width: 100%;
+  width: auto;
   height: auto;
-  object-fit: contain;
   border-radius: 14px;
   border-color: rgba(126, 169, 255, 0.18);
   box-shadow:
