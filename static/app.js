@@ -7,7 +7,10 @@ const startTimeInput = form.querySelector('input[name="start_time"]');
 const endTimeInput = form.querySelector('input[name="end_time"]');
 const jobsList = document.querySelector("#jobs-list");
 const jobSummary = document.querySelector("#job-summary");
-const workbenchJobSummary = document.querySelector("#workbench-job-summary");
+const jobCountTotal = document.querySelector("#job-count-total");
+const jobCountActive = document.querySelector("#job-count-active");
+const jobCountCompleted = document.querySelector("#job-count-completed");
+const jobCountFailed = document.querySelector("#job-count-failed");
 const jobsRefreshButton = document.querySelector("#jobs-refresh-button");
 const jobsCleanupButton = document.querySelector("#jobs-cleanup-button");
 const jobsCleanupStatus = document.querySelector("#jobs-cleanup-status");
@@ -1361,10 +1364,8 @@ function renderJobs(jobs) {
   lastJobs = jobs;
   storeCompletedJobs(jobs);
   const activeCount = jobs.filter((job) => isActiveState(job.state)).length;
+  updateWorkbenchJobStats(jobs, activeCount);
   jobSummary.textContent = jobs.length ? `${jobs.length} 个任务，${activeCount} 个进行中或排队` : "等待创建任务";
-  if (workbenchJobSummary) {
-    workbenchJobSummary.textContent = jobs.length ? `${jobs.length} 个任务，${activeCount} 个进行中或排队` : "等待创建任务";
-  }
   submitButton.disabled = submittingJob || activeCount > 0;
   const seen = new Set();
   const nodes = jobs.map((job) => {
@@ -1398,6 +1399,15 @@ function renderJobs(jobs) {
     empty.textContent = "还没有任务。提交后会在这里显示队列、进度和文件。";
     jobsList.append(empty);
   }
+}
+
+function updateWorkbenchJobStats(jobs, activeCount = jobs.filter((job) => isActiveState(job.state)).length) {
+  const completedCount = jobs.filter((job) => job.state === "completed").length;
+  const failedCount = jobs.filter((job) => job.state === "failed").length;
+  if (jobCountTotal) jobCountTotal.textContent = String(jobs.length);
+  if (jobCountActive) jobCountActive.textContent = String(activeCount);
+  if (jobCountCompleted) jobCountCompleted.textContent = String(completedCount);
+  if (jobCountFailed) jobCountFailed.textContent = String(failedCount);
 }
 
 function captureTranscriptScrollPositions() {

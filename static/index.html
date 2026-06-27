@@ -221,8 +221,32 @@
       <main class="dashboard-main">
         <!-- Top Header -->
         <header class="dashboard-header">
-          <div class="header-greeting" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">
-            本地转录工作台
+          <div class="header-workbench">
+            <div class="header-greeting">
+              本地转录工作台
+            </div>
+            <div class="job-status-strip" aria-label="任务状态概览">
+              <span class="job-status-card">
+                <b id="job-count-total">0</b>
+                <small>全部任务</small>
+              </span>
+              <span class="job-status-card is-active">
+                <b id="job-count-active">0</b>
+                <small>正在处理</small>
+              </span>
+              <span class="job-status-card is-complete">
+                <b id="job-count-completed">0</b>
+                <small>已完成</small>
+              </span>
+              <span class="job-status-card is-error">
+                <b id="job-count-failed">0</b>
+                <small>出错</small>
+              </span>
+              <button class="secondary job-status-open" type="button" id="header-open-jobs-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+                文件任务
+              </button>
+            </div>
           </div>
           <div class="header-actions">
             <button class="icon-button" type="button" id="tutorial-button" aria-label="使用教程" title="使用教程">
@@ -545,16 +569,6 @@
                   </div>
                 </section>
 
-                <section class="task-launch-card" aria-label="任务列表入口">
-                  <div>
-                    <h2>任务列表</h2>
-                    <p id="workbench-job-summary">等待创建任务</p>
-                  </div>
-                  <button class="secondary" type="button" id="open-jobs-button">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
-                    打开任务
-                  </button>
-                </section>
                 </div>
               </form>
             </div>
@@ -786,10 +800,10 @@
           button.addEventListener("click", () => showSidePanel(button.dataset.sideView, button));
         });
 
-        const openJobsButton = document.getElementById("open-jobs-button");
+        const headerOpenJobsButton = document.getElementById("header-open-jobs-button");
         const jobsNavButton = document.querySelector('[data-side-view="jobs"]');
-        if (openJobsButton && jobsNavButton) {
-          openJobsButton.addEventListener("click", () => showSidePanel("jobs", jobsNavButton));
+        if (headerOpenJobsButton && jobsNavButton) {
+          headerOpenJobsButton.addEventListener("click", () => showSidePanel("jobs", jobsNavButton));
         }
 
         // Hero tutorial button opens tutorial modal
