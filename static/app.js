@@ -213,6 +213,33 @@ polishProfileSelect.addEventListener("change", () => {
 settingsTemplateSelect?.addEventListener("change", applySelectedSettingsTemplate);
 saveSettingsTemplateButton?.addEventListener("click", saveCurrentSettingsTemplate);
 deleteSettingsTemplateButton?.addEventListener("click", deleteSelectedSettingsTemplate);
+
+/* Template popover toggle */
+const templatePopoverBtn = document.querySelector("#header-open-template-button");
+const templatePopoverPanel = document.querySelector("#template-popover-panel");
+if (templatePopoverBtn && templatePopoverPanel) {
+  templatePopoverBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isHidden = templatePopoverPanel.hidden;
+    templatePopoverPanel.hidden = !isHidden;
+    templatePopoverBtn.classList.toggle("active", isHidden);
+  });
+  document.addEventListener("click", (e) => {
+    if (!templatePopoverPanel.hidden &&
+        !templatePopoverPanel.contains(e.target) &&
+        !templatePopoverBtn.contains(e.target)) {
+      templatePopoverPanel.hidden = true;
+      templatePopoverBtn.classList.remove("active");
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !templatePopoverPanel.hidden) {
+      templatePopoverPanel.hidden = true;
+      templatePopoverBtn.classList.remove("active");
+    }
+  });
+}
+
 tutorialButton.addEventListener("click", () => tutorialModal.showModal());
 polishCustomInstruction.addEventListener("input", () => {
   localStorage.setItem(CUSTOM_INSTRUCTION_KEY, polishCustomInstruction.value);

@@ -247,20 +247,30 @@
                 文件任务
               </button>
             </div>
-            <section class="task-memory-panel header-task-memory-panel" aria-label="任务设置模板">
-              <label class="field">
-                <span>设置模板</span>
-                <select id="settings-template-select" aria-label="选择任务设置模板">
-                  <option value="">自动沿用上次任务</option>
-                </select>
-                <input id="settings-template-name" type="text" placeholder="模板名称，可留空自动命名" autocomplete="off" />
-              </label>
-              <div class="task-memory-actions">
-                <button class="secondary" type="button" id="save-settings-template-button">保存当前设置</button>
-                <button class="secondary model-cancel" type="button" id="delete-settings-template-button" disabled>删除模板</button>
+              <div class="template-popover-anchor" id="template-popover-anchor">
+                <button class="secondary job-status-open" type="button" id="header-open-template-button" aria-label="设置模板" title="设置模板">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                  模板
+                </button>
+                <section class="task-memory-panel template-popover-panel" id="template-popover-panel" aria-label="任务设置模板" hidden>
+                  <h3>设置模板</h3>
+                  <label class="field">
+                    <span>选择模板</span>
+                    <select id="settings-template-select" aria-label="选择任务设置模板">
+                      <option value="">自动沿用上次任务</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>模板名称</span>
+                    <input id="settings-template-name" type="text" placeholder="可留空自动命名" autocomplete="off" />
+                  </label>
+                  <div class="task-memory-actions">
+                    <button class="secondary" type="button" id="save-settings-template-button">保存当前设置</button>
+                    <button class="secondary model-cancel" type="button" id="delete-settings-template-button" disabled>删除模板</button>
+                  </div>
+                  <small id="settings-memory-message">提交任务后会记住本次模型和参数设置。</small>
+                </section>
               </div>
-              <small id="settings-memory-message">提交任务后会记住本次模型和参数设置。</small>
-            </section>
           </div>
           <div class="header-actions">
             <button class="icon-button" type="button" id="tutorial-button" aria-label="使用教程" title="使用教程">
