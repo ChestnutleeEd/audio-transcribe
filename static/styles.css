@@ -351,10 +351,11 @@ summary:focus-visible {
 
 .workbench-grid {
   width: 100%;
-  height: auto;
+  height: 100%;
   min-height: 0;
-  padding: 18px 18px 0 18px;
-  overflow: auto;
+  padding: 18px;
+  overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
 }
 
@@ -368,22 +369,25 @@ summary:focus-visible {
   grid-template-areas: "controls overview";
   gap: 14px;
   align-items: start;
+  padding-bottom: 24px;
 }
 
 .dashboard-header {
-  height: 64px;
-  min-height: 64px;
-  padding: 0 28px;
-  gap: 18px;
+  height: auto;
+  min-height: 56px;
+  padding: 12px 28px;
+  gap: 12px 18px;
   overflow: visible;
+  flex-wrap: wrap;
 }
 
 .header-workbench {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 12px 18px;
   flex: 1;
+  flex-wrap: wrap;
 }
 
 .header-greeting {
@@ -475,13 +479,12 @@ summary:focus-visible {
   min-height: 0;
   height: auto;
   display: grid;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto minmax(0, 1fr);
   align-content: start;
-  overflow: auto;
+  overflow: visible;
   padding: 0;
   align-items: start;
   gap: 12px;
-  overscroll-behavior: contain;
 }
 
 #job-form {
@@ -506,13 +509,11 @@ summary:focus-visible {
   min-width: 0;
   min-height: 0;
   height: auto;
-  max-height: calc(100vh - 112px);
   display: flex;
   flex-direction: column;
   gap: 12px;
-  overflow: auto;
+  overflow: visible;
   padding: 0 0 14px;
-  overscroll-behavior: contain;
 }
 
 .workbench-control-panel > .dropzone,
@@ -533,9 +534,9 @@ summary:focus-visible {
 }
 
 .header-task-memory-panel {
-  flex: 1 1 520px;
+  flex: 1 1 400px;
   max-width: 720px;
-  min-width: 440px;
+  min-width: 280px;
   padding: 8px 10px;
   border-radius: 16px;
   background: #FFFFFF;
@@ -1382,9 +1383,9 @@ h1, h2, h3, h4, h5, h6 {
   min-height: 0;
   height: auto;
   display: grid;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto minmax(0, 1fr);
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .transcription-settings-panel .panel-head {
@@ -1410,7 +1411,6 @@ h1, h2, h3, h4, h5, h6 {
   min-height: 0;
   overflow: visible;
   padding: 16px 18px 22px;
-  overscroll-behavior: contain;
 }
 
 .settings-grid > [hidden] {
