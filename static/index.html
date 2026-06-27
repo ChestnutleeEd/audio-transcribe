@@ -247,6 +247,20 @@
                 文件任务
               </button>
             </div>
+            <section class="task-memory-panel header-task-memory-panel" aria-label="任务设置模板">
+              <label class="field">
+                <span>设置模板</span>
+                <select id="settings-template-select" aria-label="选择任务设置模板">
+                  <option value="">自动沿用上次任务</option>
+                </select>
+                <input id="settings-template-name" type="text" placeholder="模板名称，可留空自动命名" autocomplete="off" />
+              </label>
+              <div class="task-memory-actions">
+                <button class="secondary" type="button" id="save-settings-template-button">保存当前设置</button>
+                <button class="secondary model-cancel" type="button" id="delete-settings-template-button" disabled>删除模板</button>
+              </div>
+              <small id="settings-memory-message">提交任务后会记住本次模型和参数设置。</small>
+            </section>
           </div>
           <div class="header-actions">
             <button class="icon-button" type="button" id="tutorial-button" aria-label="使用教程" title="使用教程">
@@ -272,21 +286,6 @@
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
                     </button>
                   </div>
-
-                  <section class="task-memory-panel" aria-label="任务设置模板">
-                    <label class="field">
-                      <span>设置模板</span>
-                      <select id="settings-template-select" aria-label="选择任务设置模板">
-                        <option value="">自动沿用上次任务</option>
-                      </select>
-                      <input id="settings-template-name" type="text" placeholder="模板名称，可留空自动命名" autocomplete="off" />
-                    </label>
-                    <div class="task-memory-actions">
-                      <button class="secondary" type="button" id="save-settings-template-button">保存当前设置</button>
-                      <button class="secondary model-cancel" type="button" id="delete-settings-template-button" disabled>删除模板</button>
-                    </div>
-                    <small id="settings-memory-message">提交任务后会记住本次模型和参数设置。</small>
-                  </section>
 
                   <label class="dropzone" for="file-input">
                     <input id="file-input" name="file" type="file" accept=".mp3,.m4a,.wav,.flac,.aac,.ogg,.mp4,.mov,.mkv,.webm,.avi" />
@@ -841,8 +840,6 @@
             emptyImg.style.filter = "contrast(1.1) brightness(1.05)";
             emptyImg.style.maskImage = "radial-gradient(ellipse at center, black 65%, transparent 95%)";
             emptyImg.style.webkitMaskImage = "radial-gradient(ellipse at center, black 65%, transparent 95%)";
-            emptyImg.style.maxWidth = "160px";
-            emptyImg.style.margin = "0 auto 12px auto";
             
             // Insert before the strong tag
             const strongTag = dropzone.querySelector("strong");
