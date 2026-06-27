@@ -251,9 +251,6 @@
 
                   <label class="dropzone" for="file-input">
                     <input id="file-input" name="file" type="file" accept=".mp3,.m4a,.wav,.flac,.aac,.ogg,.mp4,.mov,.mkv,.webm,.avi" />
-                    <span class="drop-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0 4 4m-4-4-4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-                    </span>
                     <strong id="file-label">选择本地音频或视频</strong>
                     <small>支持 mp3、m4a、wav、flac、mp4、mov、mkv、webm 等</small>
                   </label>
@@ -807,10 +804,16 @@
         const dropzone = document.querySelector(".dropzone");
         if (dropzone) {
             const emptyImg = document.createElement("img");
-            emptyImg.src = "/assets/images/upload-empty-state.webp";
+            emptyImg.src = "/assets/images/upload-artwork.jpg";
             emptyImg.className = "upload-empty-img";
             emptyImg.alt = "Upload file";
             emptyImg.loading = "lazy";
+            emptyImg.style.mixBlendMode = "multiply";
+            emptyImg.style.filter = "contrast(1.1) brightness(1.05)";
+            emptyImg.style.maskImage = "radial-gradient(ellipse at center, black 65%, transparent 95%)";
+            emptyImg.style.webkitMaskImage = "radial-gradient(ellipse at center, black 65%, transparent 95%)";
+            emptyImg.style.maxWidth = "160px";
+            emptyImg.style.margin = "0 auto 12px auto";
             
             // Insert before the strong tag
             const strongTag = dropzone.querySelector("strong");
