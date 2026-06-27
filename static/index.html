@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070707'/%3E%3Cpath d='M18 40V24M28 48V16M38 42V22M48 36V28' stroke='%23d8b15e' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="/styles.css?v=20260626-dashboard-workspace" />
+    <link rel="stylesheet" href="/styles.css?v=20260627-feature-memory-notice" />
   </head>
   <body>
     <!-- Welcome Page -->
@@ -272,6 +272,21 @@
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
                     </button>
                   </div>
+
+                  <section class="task-memory-panel" aria-label="任务设置模板">
+                    <label class="field">
+                      <span>设置模板</span>
+                      <select id="settings-template-select" aria-label="选择任务设置模板">
+                        <option value="">自动沿用上次任务</option>
+                      </select>
+                      <input id="settings-template-name" type="text" placeholder="模板名称，可留空自动命名" autocomplete="off" />
+                    </label>
+                    <div class="task-memory-actions">
+                      <button class="secondary" type="button" id="save-settings-template-button">保存当前设置</button>
+                      <button class="secondary model-cancel" type="button" id="delete-settings-template-button" disabled>删除模板</button>
+                    </div>
+                    <small id="settings-memory-message">提交任务后会记住本次模型和参数设置。</small>
+                  </section>
 
                   <label class="dropzone" for="file-input">
                     <input id="file-input" name="file" type="file" accept=".mp3,.m4a,.wav,.flac,.aac,.ogg,.mp4,.mov,.mkv,.webm,.avi" />
@@ -866,6 +881,7 @@
       });
     </script>
 
-    <script src="/app.js?v=20260626-dashboard-workspace" type="module"></script>
+    <div id="completion-toast" class="completion-toast" role="status" aria-live="polite" hidden></div>
+    <script src="/app.js?v=20260627-feature-memory-notice" type="module"></script>
   </body>
 </html>

@@ -14,6 +14,8 @@ const jobCountFailed = document.querySelector("#job-count-failed");
 const jobsRefreshButton = document.querySelector("#jobs-refresh-button");
 const jobsCleanupButton = document.querySelector("#jobs-cleanup-button");
 const jobsCleanupStatus = document.querySelector("#jobs-cleanup-status");
+const jobsNavButton = document.querySelector('[data-side-view="jobs"]');
+const headerOpenJobsButton = document.querySelector("#header-open-jobs-button");
 const modelSelect = document.querySelector("#model-select");
 const modelMessage = document.querySelector("#model-message");
 const modelDevice = document.querySelector("#model-device");
@@ -118,6 +120,12 @@ const addCustomModelButton = document.querySelector("#add-custom-model-button");
 const customModelMessage = document.querySelector("#custom-model-message");
 const tutorialButton = document.querySelector("#tutorial-button");
 const tutorialModal = document.querySelector("#tutorial-modal");
+const settingsTemplateSelect = document.querySelector("#settings-template-select");
+const settingsTemplateNameInput = document.querySelector("#settings-template-name");
+const saveSettingsTemplateButton = document.querySelector("#save-settings-template-button");
+const deleteSettingsTemplateButton = document.querySelector("#delete-settings-template-button");
+const settingsMemoryMessage = document.querySelector("#settings-memory-message");
+const completionToast = document.querySelector("#completion-toast");
 
 const HISTORY_KEY = "audio-transcribe:recent-jobs:v1";
 const CUSTOM_INSTRUCTION_KEY = "audio-transcribe:polish-custom-instruction:v1";
@@ -126,6 +134,8 @@ const JOBS_COLLAPSED_KEY = "audio-transcribe:jobs-collapsed:v1";
 const JOB_DETAIL_COLLAPSED_KEY = "audio-transcribe:job-detail-collapsed:v1";
 const JOB_DIAGNOSTIC_DETAIL_OPEN_KEY = "audio-transcribe:job-diagnostic-detail-open:v1";
 const JOB_COMPARE_EXPANDED_KEY = "audio-transcribe:job-compare-expanded:v1";
+const TASK_SETTINGS_KEY = "audio-transcribe:task-settings:last:v1";
+const TASK_PRESETS_KEY = "audio-transcribe:task-settings-presets:v1";
 const HISTORY_LIMIT = 5;
 const HISTORY_TEXT_LIMIT = 12000;
 
@@ -150,9 +160,18 @@ let customModelProbeTimer = null;
 let collapsedJobIds = loadStoredIdSet(JOB_DETAIL_COLLAPSED_KEY);
 let openDiagnosticDetailJobIds = loadStoredIdSet(JOB_DIAGNOSTIC_DETAIL_OPEN_KEY);
 let compareExpandedJobIds = loadStoredIdSet(JOB_COMPARE_EXPANDED_KEY);
+let jobStateSnapshot = new Map();
+let jobCompletionTrackerReady = false;
+let watchedCompletionJobIds = new Set();
+let notifiedCompletionJobIds = new Set();
+let unreadCompletedJobs = 0;
+let completionToastTimer = null;
+let pendingDeletePresetId = "";
 
 refreshPolishProfiles();
 loadSavedCustomInstruction();
+renderSettingsTemplates();
+applyStoredTaskSettings(loadLastTaskSettings(), { silent: true });
 restoreJobsCollapsedState();
 renderHistory(loadHistory());
 refreshModelRegistry();
@@ -167,10 +186,13 @@ startJobsPolling();
 updateEngineControls();
 updatePolishControls();
 updateFormatControls();
+initCompletionNotificationBadges();
 
 jobsRefreshButton.addEventListener("click", refreshJobs);
 jobsCleanupButton.addEventListener("click", cleanupJobWorkFiles);
 jobsCollapseButton.addEventListener("click", toggleJobsCollapsed);
+jobsNavButton?.addEventListener("click", clearCompletionNotifications);
+headerOpenJobsButton?.addEventListener("click", clearCompletionNotifications);
 registryRefreshButton.addEventListener("click", refreshModelRegistry);
 audioModelSelect.addEventListener("change", () => {
   applySelectedAudioModelToForm();
@@ -188,6 +210,9 @@ polishProfileSelect.addEventListener("change", () => {
   updatePolishProfileDescription();
   updatePromptPreview();
 });
+settingsTemplateSelect?.addEventListener("change", applySelectedSettingsTemplate);
+saveSettingsTemplateButton?.addEventListener("click", saveCurrentSettingsTemplate);
+deleteSettingsTemplateButton?.addEventListener("click", deleteSelectedSettingsTemplate);
 tutorialButton.addEventListener("click", () => tutorialModal.showModal());
 polishCustomInstruction.addEventListener("input", () => {
   localStorage.setItem(CUSTOM_INSTRUCTION_KEY, polishCustomInstruction.value);
@@ -373,6 +398,7 @@ fileInput.addEventListener("change", () => {
 resetButton.addEventListener("click", () => {
   form.reset();
   loadSavedCustomInstruction();
+  applyStoredTaskSettings(loadLastTaskSettings(), { silent: true });
   updatePolishControls();
   updateFormatControls();
   updatePromptPreview();
@@ -480,16 +506,21 @@ form.addEventListener("submit", async (event) => {
   submittingJob = true;
   submitButton.disabled = true;
   try {
+    const submittedSettings = collectTaskSettings();
     const response = await fetch("/api/jobs", { method: "POST", body: data });
     const payload = await response.json();
     if (!response.ok) {
       throw new Error(payload.detail || "任务创建失败");
     }
+    if (payload.id) watchedCompletionJobIds.add(payload.id);
+    saveLastTaskSettings(submittedSettings);
     form.reset();
     loadSavedCustomInstruction();
+    applyStoredTaskSettings(submittedSettings, { silent: true });
     updatePolishControls();
     updateFormatControls();
     updatePromptPreview();
+    renderSettingsTemplates();
     fileLabel.textContent = "选择本地音频或视频";
     clipDefaultsReady = false;
     clipRangeTouched = false;
@@ -502,6 +533,214 @@ form.addEventListener("submit", async (event) => {
     submitButton.disabled = false;
   }
 });
+
+function collectTaskSettings() {
+  return {
+    version: 1,
+    updated_at: new Date().toISOString(),
+    language: form.querySelector('[name="language"]')?.value || "auto",
+    transcription_engine: selectedAudioMode(),
+    audio_model_id: audioModelSelect.value || "",
+    whisper_model_id: modelSelect.value || "",
+    ollama_transcription_model_id: ollamaTranscriptionModelSelect.value || "",
+    mlx_model_path_or_repo: mlxModelPathOrRepo.value.trim(),
+    qwen_model_path_or_repo: qwenModelPathOrRepo.value.trim(),
+    enable_polish: enablePolishInput.checked,
+    polish_model_id: polishModelSelect.value || "",
+    polish_profile_ids: selectedPolishProfileIds(),
+    polish_custom_instruction: polishCustomInstruction.value,
+    include_timestamps: includeTimestampsInput.checked,
+    formats: [...form.querySelectorAll('input[name="formats"]:checked')].map((input) => input.value),
+    export_scope: form.querySelector('input[name="export_scope"]:checked')?.value || "raw",
+  };
+}
+
+function applyStoredTaskSettings(settings, options = {}) {
+  if (!settings || typeof settings !== "object") return false;
+  setSelectValue(form.querySelector('[name="language"]'), settings.language || "auto");
+  if (settings.transcription_engine) {
+    selectAudioMode(settings.transcription_engine);
+  }
+  setSelectValue(audioModelSelect, settings.audio_model_id, "已保存的音频模型");
+  setSelectValue(modelSelect, settings.whisper_model_id, settings.whisper_model_id);
+  setSelectValue(ollamaTranscriptionModelSelect, settings.ollama_transcription_model_id, settings.ollama_transcription_model_id);
+  mlxModelPathOrRepo.value = settings.mlx_model_path_or_repo || "";
+  qwenModelPathOrRepo.value = settings.qwen_model_path_or_repo || "";
+  enablePolishInput.checked = Boolean(settings.enable_polish);
+  setSelectValue(polishModelSelect, settings.polish_model_id, settings.polish_model_id);
+  setSelectedPolishProfileIds(settings.polish_profile_ids || settings.polish_profile_id || []);
+  polishCustomInstruction.value = settings.polish_custom_instruction || "";
+  includeTimestampsInput.checked = settings.include_timestamps !== false;
+  setCheckedValues('input[name="formats"]', settings.formats?.length ? settings.formats : ["txt"]);
+  setCheckedValue('input[name="export_scope"]', settings.export_scope || "raw");
+  if (settings.polish_custom_instruction) {
+    localStorage.setItem(CUSTOM_INSTRUCTION_KEY, settings.polish_custom_instruction);
+  }
+  applySelectedAudioModelToForm();
+  updatePolishControls();
+  updateFormatControls();
+  updatePromptPreview();
+  renderSelectedAudioModel();
+  updateEngineControls();
+  if (!options.silent) {
+    updateSettingsMemoryMessage(options.message || "已应用任务设置。");
+  }
+  return true;
+}
+
+function setSelectValue(select, value, fallbackLabel = "") {
+  if (!select || value === undefined || value === null) return;
+  const normalized = String(value);
+  if (!normalized) {
+    select.value = "";
+    return;
+  }
+  ensureSelectOption(select, normalized, fallbackLabel || normalized);
+  select.value = normalized;
+}
+
+function setCheckedValues(selector, values) {
+  const selected = new Set((Array.isArray(values) ? values : String(values || "").split(",")).map((value) => String(value)));
+  const inputs = [...form.querySelectorAll(selector)];
+  inputs.forEach((input) => {
+    input.checked = selected.has(input.value);
+  });
+  if (!inputs.some((input) => input.checked) && inputs[0]) {
+    inputs[0].checked = true;
+  }
+}
+
+function setCheckedValue(selector, value) {
+  const input = form.querySelector(`${selector}[value="${cssEscape(String(value || ""))}"]`);
+  if (input) input.checked = true;
+}
+
+function setSelectedPolishProfileIds(value) {
+  const ids = Array.isArray(value)
+    ? value
+    : String(value || "")
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+  polishProfileSelect.value = ids.join(",");
+  const selected = new Set(ids);
+  const inputs = [...polishProfileList.querySelectorAll('input[type="checkbox"]')];
+  inputs.forEach((input) => {
+    input.checked = selected.has(input.value);
+  });
+  if (inputs.length && !inputs.some((input) => input.checked)) {
+    inputs[0].checked = true;
+  }
+  syncPolishProfileValue();
+}
+
+function cssEscape(value) {
+  if (window.CSS?.escape) return window.CSS.escape(value);
+  return value.replace(/["\\]/g, "\\$&");
+}
+
+function readStoredJson(key, fallback) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "null");
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function loadLastTaskSettings() {
+  return readStoredJson(TASK_SETTINGS_KEY, null);
+}
+
+function saveLastTaskSettings(settings) {
+  localStorage.setItem(TASK_SETTINGS_KEY, JSON.stringify(settings));
+  updateSettingsMemoryMessage("已记住本次模型和参数设置。");
+}
+
+function loadTaskPresets() {
+  const presets = readStoredJson(TASK_PRESETS_KEY, []);
+  return Array.isArray(presets) ? presets.filter((preset) => preset?.id && preset?.settings) : [];
+}
+
+function saveTaskPresets(presets) {
+  localStorage.setItem(TASK_PRESETS_KEY, JSON.stringify(presets.slice(0, 20)));
+}
+
+function renderSettingsTemplates(selectedValue = settingsTemplateSelect?.value || "") {
+  if (!settingsTemplateSelect) return;
+  const presets = loadTaskPresets();
+  const options = [
+    new Option(loadLastTaskSettings() ? "自动沿用上次任务" : "自动沿用上次任务（提交后生效）", ""),
+    ...presets.map((preset) => new Option(preset.name, `preset:${preset.id}`)),
+  ];
+  settingsTemplateSelect.replaceChildren(...options);
+  settingsTemplateSelect.value = options.some((option) => option.value === selectedValue) ? selectedValue : "";
+  updateTemplateDeleteState();
+}
+
+function applySelectedSettingsTemplate() {
+  const value = settingsTemplateSelect?.value || "";
+  pendingDeletePresetId = "";
+  updateTemplateDeleteState();
+  if (!value) {
+    const applied = applyStoredTaskSettings(loadLastTaskSettings(), {
+      message: "已应用上次任务配置。",
+    });
+    if (!applied) updateSettingsMemoryMessage("还没有上次任务配置；提交一次任务后会自动记住。");
+    return;
+  }
+  const presetId = value.replace(/^preset:/, "");
+  const preset = loadTaskPresets().find((item) => item.id === presetId);
+  if (!preset) return;
+  applyStoredTaskSettings(preset.settings, { message: `已应用模板：${preset.name}` });
+}
+
+function saveCurrentSettingsTemplate() {
+  const name = settingsTemplateNameInput?.value.trim() || `设置模板 ${loadTaskPresets().length + 1}`;
+  const presets = loadTaskPresets().filter((preset) => preset.name !== name);
+  const preset = {
+    id: `preset-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    name,
+    created_at: new Date().toISOString(),
+    settings: collectTaskSettings(),
+  };
+  presets.unshift(preset);
+  saveTaskPresets(presets);
+  renderSettingsTemplates(`preset:${preset.id}`);
+  if (settingsTemplateNameInput) settingsTemplateNameInput.value = "";
+  updateSettingsMemoryMessage(`已保存模板：${name}`);
+}
+
+function deleteSelectedSettingsTemplate() {
+  const value = settingsTemplateSelect?.value || "";
+  if (!value.startsWith("preset:")) return;
+  const presetId = value.replace(/^preset:/, "");
+  const preset = loadTaskPresets().find((item) => item.id === presetId);
+  if (!preset) return;
+  if (pendingDeletePresetId !== presetId) {
+    pendingDeletePresetId = presetId;
+    updateTemplateDeleteState();
+    updateSettingsMemoryMessage(`再次点击“确认删除”会删除模板：${preset.name}`);
+    return;
+  }
+  saveTaskPresets(loadTaskPresets().filter((item) => item.id !== presetId));
+  pendingDeletePresetId = "";
+  renderSettingsTemplates("");
+  updateSettingsMemoryMessage("已删除模板，当前将自动沿用上次任务配置。");
+}
+
+function updateTemplateDeleteState() {
+  if (deleteSettingsTemplateButton && settingsTemplateSelect) {
+    const presetId = settingsTemplateSelect.value.replace(/^preset:/, "");
+    const canDelete = settingsTemplateSelect.value.startsWith("preset:");
+    deleteSettingsTemplateButton.disabled = !canDelete;
+    deleteSettingsTemplateButton.textContent = canDelete && pendingDeletePresetId === presetId ? "确认删除" : "删除模板";
+  }
+}
+
+function updateSettingsMemoryMessage(message) {
+  if (settingsMemoryMessage) settingsMemoryMessage.textContent = message;
+}
 
 async function refreshModelRegistry(preferred = {}) {
   registryRefreshButton.disabled = true;
@@ -532,7 +771,9 @@ function renderModelRegistry(payload, preferred = {}) {
   renderAudioModelOptions(audioModels, preferred.audioModelId);
   renderPolishModelOptions(textModels, preferred.polishModelPath);
   renderModelDetection(payload.errors || []);
+  applySelectedAudioModelToForm();
   renderSelectedAudioModel();
+  updateEngineControls();
   renderModeStatus();
   renderEnvironmentStatus();
 }
@@ -1361,6 +1602,7 @@ async function cleanupJobWorkFiles() {
 
 function renderJobs(jobs) {
   const transcriptScrollPositions = captureTranscriptScrollPositions();
+  handleJobCompletionNotifications(jobs);
   lastJobs = jobs;
   storeCompletedJobs(jobs);
   const activeCount = jobs.filter((job) => isActiveState(job.state)).length;
@@ -1408,6 +1650,84 @@ function updateWorkbenchJobStats(jobs, activeCount = jobs.filter((job) => isActi
   if (jobCountActive) jobCountActive.textContent = String(activeCount);
   if (jobCountCompleted) jobCountCompleted.textContent = String(completedCount);
   if (jobCountFailed) jobCountFailed.textContent = String(failedCount);
+}
+
+function initCompletionNotificationBadges() {
+  for (const target of completionNotificationTargets()) {
+    if (!target || target.querySelector(".completion-dot")) continue;
+    const dot = document.createElement("span");
+    dot.className = "completion-dot";
+    dot.hidden = true;
+    target.append(dot);
+  }
+  renderCompletionBadges();
+}
+
+function completionNotificationTargets() {
+  return [jobsNavButton, headerOpenJobsButton].filter(Boolean);
+}
+
+function handleJobCompletionNotifications(jobs) {
+  const nextSnapshot = new Map(jobs.map((job) => [job.id, job.state]));
+  if (!jobCompletionTrackerReady) {
+    for (const job of jobs) {
+      if (isActiveState(job.state)) watchedCompletionJobIds.add(job.id);
+    }
+    jobStateSnapshot = nextSnapshot;
+    jobCompletionTrackerReady = true;
+    return;
+  }
+
+  const completedNow = jobs.filter((job) => {
+    const previousState = jobStateSnapshot.get(job.id);
+    if (isActiveState(job.state)) watchedCompletionJobIds.add(job.id);
+    if (job.state !== "completed" || notifiedCompletionJobIds.has(job.id)) return false;
+    return (
+      watchedCompletionJobIds.has(job.id) ||
+      (previousState && previousState !== "completed" && !terminalJobState(previousState))
+    );
+  });
+  jobStateSnapshot = nextSnapshot;
+  if (!completedNow.length) return;
+  completedNow.forEach((job) => {
+    notifiedCompletionJobIds.add(job.id);
+    watchedCompletionJobIds.delete(job.id);
+  });
+  unreadCompletedJobs += completedNow.length;
+  renderCompletionBadges();
+  showCompletionToast(completedNow);
+}
+
+function renderCompletionBadges() {
+  for (const target of completionNotificationTargets()) {
+    const dot = target.querySelector(".completion-dot");
+    if (!dot) continue;
+    dot.hidden = unreadCompletedJobs <= 0;
+    dot.textContent = unreadCompletedJobs > 9 ? "9+" : String(unreadCompletedJobs);
+    const baseLabel = target.dataset.baseAriaLabel || target.getAttribute("aria-label") || target.textContent.trim() || "文件任务";
+    target.dataset.baseAriaLabel = baseLabel;
+    target.setAttribute(
+      "aria-label",
+      unreadCompletedJobs > 0 ? `${baseLabel}，${unreadCompletedJobs} 个任务已完成` : baseLabel,
+    );
+  }
+}
+
+function clearCompletionNotifications() {
+  unreadCompletedJobs = 0;
+  renderCompletionBadges();
+}
+
+function showCompletionToast(jobs) {
+  if (!completionToast) return;
+  const first = jobs[0];
+  const suffix = jobs.length > 1 ? `等 ${jobs.length} 个任务` : first.source_label || `任务 ${shortId(first.id)}`;
+  completionToast.textContent = `${suffix} 已完成，可在文件任务中查看结果。`;
+  completionToast.hidden = false;
+  window.clearTimeout(completionToastTimer);
+  completionToastTimer = window.setTimeout(() => {
+    completionToast.hidden = true;
+  }, 5200);
 }
 
 function captureTranscriptScrollPositions() {
