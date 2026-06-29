@@ -361,9 +361,9 @@ summary:focus-visible {
 
 #job-form.workbench-grid-form {
   width: 100%;
-  height: auto;
+  height: 100%;
   min-width: 0;
-  min-height: 0;
+  min-height: 560px;
   display: grid;
   grid-template-columns: minmax(320px, 380px) minmax(520px, 1fr);
   grid-template-areas: "controls overview";
@@ -483,13 +483,13 @@ summary:focus-visible {
 .dashboard-center {
   grid-area: overview;
   min-height: 0;
-  height: auto;
+  height: 100%;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  align-content: start;
+  grid-template-rows: minmax(0, 1fr);
+  align-content: stretch;
   overflow: visible;
   padding: 0;
-  align-items: start;
+  align-items: stretch;
   gap: 12px;
 }
 
@@ -1380,7 +1380,7 @@ h1, h2, h3, h4, h5, h6 {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  height: auto;
+  height: 100%;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   padding: 0;
@@ -1410,6 +1410,119 @@ h1, h2, h3, h4, h5, h6 {
   min-height: 0;
   overflow: visible;
   padding: 16px 18px 22px;
+}
+
+.config-summary-grid {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(132px, 1fr);
+  gap: 14px;
+  padding: 18px;
+}
+
+.config-summary-card {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  background: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.025);
+  overflow: hidden;
+}
+
+.config-summary-card > div {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.config-summary-card span {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.config-summary-card strong {
+  min-width: 0;
+  color: var(--text-main);
+  font-size: 1.08rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.config-summary-card small {
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.config-summary-card button {
+  justify-self: start;
+  min-height: 38px;
+  padding: 8px 14px;
+}
+
+.config-summary-primary {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F7FAFF 100%);
+  border-color: rgba(94, 164, 255, 0.24);
+}
+
+.settings-modal {
+  width: min(1080px, calc(100vw - 48px));
+  max-width: none;
+}
+
+.settings-modal-small {
+  width: min(620px, calc(100vw - 48px));
+}
+
+.settings-modal-panel {
+  max-height: min(82vh, 780px);
+  padding: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.settings-modal-panel-wide {
+  max-height: min(86vh, 820px);
+}
+
+.settings-modal-panel > .panel-head {
+  min-height: 64px;
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.settings-modal-grid {
+  overflow: auto;
+  padding: 18px;
+}
+
+.settings-modal-grid .post-processing,
+.settings-modal-grid .advanced {
+  grid-column: 1 / -1;
+}
+
+.settings-modal-grid.export-settings-grid {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.settings-modal-grid.export-settings-grid > .switch {
+  grid-column: 1 / 5;
 }
 
 .settings-grid > [hidden] {
@@ -2008,6 +2121,15 @@ h1, h2, h3, h4, h5, h6 {
 
   .settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .config-summary-grid {
+    grid-template-columns: 1fr;
+    grid-auto-rows: minmax(128px, auto);
+  }
+
+  .settings-modal {
+    width: min(94vw, 720px);
   }
 
   .settings-grid > .switch,

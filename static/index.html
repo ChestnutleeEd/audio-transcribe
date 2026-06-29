@@ -326,77 +326,62 @@
                 </section>
 
                 <div class="dashboard-center">
-                <div class="summary-widgets" aria-label="工作台能力概览">
-                  <article class="widget-card feature-widget feature-widget-peach">
-                    <div class="feature-widget-head">
-                      <span class="feature-widget-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M6 8v8M18 7v10"/></svg>
-                      </span>
-                      <strong>本地转录</strong>
-                    </div>
-                    <p>音频、视频和链接由本机后端处理，优先使用已检测到的本地模型。</p>
-                  </article>
-
-                  <article class="widget-card feature-widget feature-widget-blue">
-                    <div class="feature-widget-head">
-                      <span class="feature-widget-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h16"/><path d="M16 12l4-4m0 0v4h-4"/></svg>
-                      </span>
-                      <strong>长音频切片</strong>
-                    </div>
-                    <p>长文件进入切片处理链路，降低单次推理压力，并保留时间轴结果。</p>
-                  </article>
-
-                  <article class="widget-card feature-widget feature-widget-lavender">
-                    <div class="feature-widget-head">
-                      <span class="feature-widget-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 7l8 4 8-4-8-4Z"/><path d="m4 12 8 4 8-4"/><path d="m4 17 8 4 8-4"/></svg>
-                      </span>
-                      <strong>多模型路线</strong>
-                    </div>
-                    <p>支持 faster-whisper、MLX Whisper 和具备音频能力的本地大模型。</p>
-                  </article>
-
-                  <article class="widget-card feature-widget feature-widget-yellow">
-                    <div class="feature-widget-head">
-                      <span class="feature-widget-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
-                      </span>
-                      <strong>多格式导出</strong>
-                    </div>
-                    <p>导出 TXT、Markdown、JSON、SRT、Word，可选择原文或整理后文本。</p>
-                  </article>
-
-                  <article class="widget-card feature-widget feature-widget-pink">
-                    <div class="feature-widget-head">
-                      <span class="feature-widget-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M6 16l4-10 4 10"/><path d="M8 12h4"/><path d="M16 7h3M17.5 7v9"/></svg>
-                      </span>
-                      <strong>文本整理</strong>
-                    </div>
-                    <p>调用本地 Text 模型做错字修复、摘要、章节整理和追加指令。</p>
-                  </article>
-
-                  <article class="widget-card feature-widget feature-widget-teal">
-                    <div class="feature-widget-head">
-                      <span class="feature-widget-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/><path d="M12 7v5l3 2"/></svg>
-                      </span>
-                      <strong>任务追踪</strong>
-                    </div>
-                    <p>任务队列、诊断信息、最近历史和结果下载集中在“文件任务”。</p>
-                  </article>
-                </div>
 
                 <section class="transcription-settings-panel panel glass-card" aria-label="转录参数">
                   <div class="panel-head">
                     <div>
                       <h2>转录参数</h2>
-                      <p>引擎、时间轴、模型、整理和导出设置。</p>
+                      <p>主页面只显示当前配置摘要，详细参数在弹窗中编辑。</p>
                     </div>
                   </div>
 
-                  <div class="settings-grid">
+                  <div class="config-summary-grid" aria-label="当前转录配置">
+                    <article class="config-summary-card config-summary-primary">
+                      <div>
+                        <span>转录引擎</span>
+                        <strong id="engine-summary-title">未选择</strong>
+                        <small id="engine-summary-detail">选择 Whisper、MLX Whisper 或本地音频大模型。</small>
+                      </div>
+                      <button class="secondary" type="button" id="open-engine-settings-button">配置</button>
+                    </article>
+                    <article class="config-summary-card">
+                      <div>
+                        <span>文本整理</span>
+                        <strong id="polish-summary-title">未启用</strong>
+                        <small id="polish-summary-detail">可使用本地 Text 模型整理转录结果。</small>
+                      </div>
+                      <button class="secondary" type="button" id="open-polish-settings-button">配置</button>
+                    </article>
+                    <article class="config-summary-card">
+                      <div>
+                        <span>导出设置</span>
+                        <strong id="export-summary-title">TXT · 原始文本</strong>
+                        <small id="export-summary-detail">带时间轴，导出原始转录文本。</small>
+                      </div>
+                      <button class="secondary" type="button" id="open-export-settings-button">配置</button>
+                    </article>
+                    <article class="config-summary-card">
+                      <div>
+                        <span>截取时间段</span>
+                        <strong id="clip-summary-title">未截取</strong>
+                        <small id="clip-summary-detail">默认处理完整音视频。</small>
+                      </div>
+                      <button class="secondary" type="button" id="open-clip-settings-button">配置</button>
+                    </article>
+                  </div>
+
+                  <dialog id="engine-settings-modal" class="modal settings-modal">
+                    <div class="modal-panel settings-modal-panel">
+                      <div class="panel-head">
+                        <div>
+                          <h2>配置转录引擎</h2>
+                          <p>选择转录路线，并按需配置本地模型。</p>
+                        </div>
+                        <button class="icon-button" type="button" data-close-config-modal aria-label="关闭" title="关闭">
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                        </button>
+                      </div>
+                      <div class="settings-grid settings-modal-grid">
                     <fieldset class="choice-group audio-mode-group">
                       <legend>转录引擎</legend>
                       <label>
@@ -506,7 +491,22 @@
                       <input id="qwen-model-path-or-repo" name="qwen_model_path_or_repo" type="text" placeholder="/完整/模型/目录 或 模型标识" autocomplete="off" />
                       <small id="qwen-model-help">请先自行安装 mlx-audio，并准备本地 MLX Audio 模型。本项目不会自动调用云服务。</small>
                     </label>
+                      </div>
+                    </div>
+                  </dialog>
 
+                  <dialog id="polish-settings-modal" class="modal settings-modal">
+                    <div class="modal-panel settings-modal-panel settings-modal-panel-wide">
+                      <div class="panel-head">
+                        <div>
+                          <h2>配置文本整理</h2>
+                          <p>选择本地 Text 模型、整理配置和追加指令。</p>
+                        </div>
+                        <button class="icon-button" type="button" data-close-config-modal aria-label="关闭" title="关闭">
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                        </button>
+                      </div>
+                      <div class="settings-grid settings-modal-grid">
                     <section class="post-processing" aria-label="后处理选项">
                       <label class="switch post-switch">
                         <input type="checkbox" name="enable_polish" id="enable-polish" />
@@ -554,7 +554,22 @@
                         <button class="secondary" type="button" id="clear-polish-custom-button">清空追加指令</button>
                       </details>
                     </section>
+                      </div>
+                    </div>
+                  </dialog>
 
+                  <dialog id="export-settings-modal" class="modal settings-modal">
+                    <div class="modal-panel settings-modal-panel">
+                      <div class="panel-head">
+                        <div>
+                          <h2>配置导出</h2>
+                          <p>选择时间轴、文件格式和导出内容。</p>
+                        </div>
+                        <button class="icon-button" type="button" data-close-config-modal aria-label="关闭" title="关闭">
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                        </button>
+                      </div>
+                      <div class="settings-grid settings-modal-grid export-settings-grid">
                     <label class="switch">
                       <input type="checkbox" name="include_timestamps" checked />
                       <span></span>
@@ -576,9 +591,23 @@
                       <label><input type="radio" name="export_scope" value="both" /> <span>原始 + 整理后</span></label>
                       <label><input type="radio" name="export_scope" value="polished" /> <span>整理后文本</span></label>
                     </fieldset>
+                      </div>
+                    </div>
+                  </dialog>
 
-                    <details class="advanced">
-                      <summary>截取时间段</summary>
+                  <dialog id="clip-settings-modal" class="modal settings-modal settings-modal-small">
+                    <div class="modal-panel settings-modal-panel">
+                      <div class="panel-head">
+                        <div>
+                          <h2>配置截取时间段</h2>
+                          <p>留空或保持 00:00:00 时处理完整音视频。</p>
+                        </div>
+                        <button class="icon-button" type="button" data-close-config-modal aria-label="关闭" title="关闭">
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                        </button>
+                      </div>
+                      <section class="settings-grid settings-modal-grid">
+                    <section class="advanced">
                       <div class="grid two">
                         <label class="field">
                           <span>开始时间</span>
@@ -589,8 +618,10 @@
                           <input name="end_time" type="time" step="1" value="00:00:00" aria-label="选择结束时间" />
                         </label>
                       </div>
-                    </details>
-                  </div>
+                    </section>
+                      </section>
+                    </div>
+                  </dialog>
                 </section>
 
                 </div>

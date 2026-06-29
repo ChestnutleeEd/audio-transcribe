@@ -126,6 +126,22 @@ const saveSettingsTemplateButton = document.querySelector("#save-settings-templa
 const deleteSettingsTemplateButton = document.querySelector("#delete-settings-template-button");
 const settingsMemoryMessage = document.querySelector("#settings-memory-message");
 const completionToast = document.querySelector("#completion-toast");
+const configModals = {
+  engine: document.querySelector("#engine-settings-modal"),
+  polish: document.querySelector("#polish-settings-modal"),
+  export: document.querySelector("#export-settings-modal"),
+  clip: document.querySelector("#clip-settings-modal"),
+};
+const configSummary = {
+  engineTitle: document.querySelector("#engine-summary-title"),
+  engineDetail: document.querySelector("#engine-summary-detail"),
+  polishTitle: document.querySelector("#polish-summary-title"),
+  polishDetail: document.querySelector("#polish-summary-detail"),
+  exportTitle: document.querySelector("#export-summary-title"),
+  exportDetail: document.querySelector("#export-summary-detail"),
+  clipTitle: document.querySelector("#clip-summary-title"),
+  clipDetail: document.querySelector("#clip-summary-detail"),
+};
 
 const HISTORY_KEY = "audio-transcribe:recent-jobs:v1";
 const CUSTOM_INSTRUCTION_KEY = "audio-transcribe:polish-custom-instruction:v1";
@@ -187,6 +203,7 @@ updateEngineControls();
 updatePolishControls();
 updateFormatControls();
 initCompletionNotificationBadges();
+updateWorkbenchSummaries();
 
 jobsRefreshButton.addEventListener("click", refreshJobs);
 jobsCleanupButton.addEventListener("click", cleanupJobWorkFiles);
@@ -213,6 +230,20 @@ polishProfileSelect.addEventListener("change", () => {
 settingsTemplateSelect?.addEventListener("change", applySelectedSettingsTemplate);
 saveSettingsTemplateButton?.addEventListener("click", saveCurrentSettingsTemplate);
 deleteSettingsTemplateButton?.addEventListener("click", deleteSelectedSettingsTemplate);
+document.querySelector("#open-engine-settings-button")?.addEventListener("click", () => openConfigModal("engine"));
+document.querySelector("#open-polish-settings-button")?.addEventListener("click", () => openConfigModal("polish"));
+document.querySelector("#open-export-settings-button")?.addEventListener("click", () => openConfigModal("export"));
+document.querySelector("#open-clip-settings-button")?.addEventListener("click", () => openConfigModal("clip"));
+document.querySelectorAll("[data-close-config-modal]").forEach((button) => {
+  button.addEventListener("click", () => button.closest("dialog")?.close());
+});
+Object.values(configModals).forEach((modal) => {
+  modal?.addEventListener("click", (event) => {
+    if (event.target === modal) modal.close();
+  });
+});
+form.addEventListener("change", updateWorkbenchSummaries);
+form.addEventListener("input", updateWorkbenchSummaries);
 
 /* Template popover toggle */
 const templatePopoverBtn = document.querySelector("#header-open-template-button");
@@ -769,6 +800,107 @@ function updateSettingsMemoryMessage(message) {
   if (settingsMemoryMessage) settingsMemoryMessage.textContent = message;
 }
 
+function openConfigModal(name) {
+  const modal = configModals[name];
+  if (!modal) return;
+  if (modal.open) {
+    modal.close();
+    return;
+  }
+  updateWorkbenchSummaries();
+  modal.showModal();
+}
+
+function updateWorkbenchSummaries() {
+  updateEngineSummary();
+  updatePolishSummary();
+  updateExportSummary();
+  updateClipSummary();
+}
+
+function updateEngineSummary() {
+  const mode = selectedAudioMode();
+  const engine = selectedTranscriptionEngine();
+  if (!mode) {
+    setSummary(configSummary.engineTitle, configSummary.engineDetail, "未选择", "选择 Whisper、MLX Whisper 或本地音频大模型。");
+    return;
+  }
+  if (mode === "whisper") {
+    const label = selectedOptionLabel(modelSelect) || "未选择模型";
+    const state = lastModelStatus?.download_state === "downloading"
+      ? "模型下载中"
+      : lastModelStatus?.available
+        ? "模型已就绪"
+        : "等待模型配置";
+    setSummary(configSummary.engineTitle, configSummary.engineDetail, "Whisper（faster-whisper）", `${label} · ${state}`);
+    return;
+  }
+  if (mode === "mlx-whisper") {
+    const modelPath = mlxModelPathOrRepo.value.trim();
+    const status = lastMlxStatus?.available ? "已配置" : "未配置";
+    setSummary(configSummary.engineTitle, configSummary.engineDetail, "MLX Whisper", `${status}${modelPath ? ` · ${displayModelPath(modelPath)}` : ""}`);
+    return;
+  }
+  const model = selectedAudioModel();
+  if (model) {
+    setSummary(configSummary.engineTitle, configSummary.engineDetail, transcriptionEngineLabel(engine), `${model.name} · ${providerLabel(model.provider)}`);
+    return;
+  }
+  setSummary(configSummary.engineTitle, configSummary.engineDetail, "本地音频大模型", "未选择模型，可在弹窗中检测或选择。");
+}
+
+function updatePolishSummary() {
+  if (!enablePolishInput.checked) {
+    setSummary(configSummary.polishTitle, configSummary.polishDetail, "未启用", "当前只输出原始转录文本。");
+    return;
+  }
+  const modelLabel = selectedOptionLabel(polishModelSelect) || "未选择 Text 模型";
+  const profiles = selectedPolishProfiles();
+  const profileLabel = profiles.length ? profiles.map((profile) => profile.label).join(" + ") : "未选择整理配置";
+  const custom = polishCustomInstruction.value.trim() ? "含追加指令" : "无追加指令";
+  setSummary(configSummary.polishTitle, configSummary.polishDetail, polishModelSelect.value ? "已启用" : "未完成配置", `${modelLabel} · ${profileLabel} · ${custom}`);
+}
+
+function updateExportSummary() {
+  const formats = checkedInputLabels('input[name="formats"]');
+  const scope = checkedInputLabel('input[name="export_scope"]') || "原始文本";
+  const timestamp = includeTimestampsInput.checked ? "带时间轴" : "纯文本";
+  const title = formats.length ? `${formats.join(" / ")} · ${scope}` : "未选择格式";
+  const detail = includeTimestampsInput.checked ? "时间轴已开启，可导出 SRT。" : "时间轴已关闭，SRT 会自动禁用。";
+  setSummary(configSummary.exportTitle, configSummary.exportDetail, title, `${timestamp} · ${detail}`);
+}
+
+function updateClipSummary() {
+  const start = startTimeInput.value || "00:00:00";
+  const end = endTimeInput.value || "00:00:00";
+  const hasStart = start !== "00:00:00";
+  const hasEnd = end !== "00:00:00";
+  if (!hasStart && !hasEnd) {
+    setSummary(configSummary.clipTitle, configSummary.clipDetail, "未截取", "默认处理完整音视频。");
+    return;
+  }
+  setSummary(configSummary.clipTitle, configSummary.clipDetail, `${hasStart ? start : "开始"} → ${hasEnd ? end : "结束"}`, "只处理指定时间范围。");
+}
+
+function setSummary(titleNode, detailNode, title, detail) {
+  if (titleNode) titleNode.textContent = title;
+  if (detailNode) detailNode.textContent = detail;
+}
+
+function selectedOptionLabel(select) {
+  const option = select?.selectedOptions?.[0];
+  if (!option || !option.value) return "";
+  return option.textContent.replace(/（已存在）/g, "").trim();
+}
+
+function checkedInputLabels(selector) {
+  return [...form.querySelectorAll(`${selector}:checked`)].map((input) => input.closest("label")?.querySelector("span")?.textContent?.trim() || input.value);
+}
+
+function checkedInputLabel(selector) {
+  return checkedInputLabels(selector)[0] || "";
+}
+
 async function refreshModelRegistry(preferred = {}) {
   registryRefreshButton.disabled = true;
   registryRefreshLabel.textContent = "检测中";
@@ -803,6 +935,7 @@ function renderModelRegistry(payload, preferred = {}) {
   updateEngineControls();
   renderModeStatus();
   renderEnvironmentStatus();
+  updateWorkbenchSummaries();
 }
 
 function renderAudioModelOptions(models, preferredId = "") {
@@ -892,6 +1025,7 @@ function renderSelectedAudioModel() {
   audioModelMeta.replaceChildren();
   if (!model) {
     audioModelMeta.append(metaPill("provider", "未选择"), metaPill("capability", "音频转录"));
+    updateWorkbenchSummaries();
     return;
   }
   audioModelMeta.append(
@@ -899,6 +1033,7 @@ function renderSelectedAudioModel() {
     metaPill("path", model.path_or_id),
     metaPill("capability", capabilityLabel(model.capabilities)),
   );
+  updateWorkbenchSummaries();
 }
 
 function metaPill(kind, text) {
@@ -2677,6 +2812,7 @@ function updateEngineControls() {
   ollamaTranscriptionModelSelect.disabled = !usingOllamaAudio;
   renderModeStatus();
   renderEnvironmentStatus();
+  updateWorkbenchSummaries();
 }
 
 function renderModeStatus() {
@@ -2707,6 +2843,7 @@ function updatePolishControls() {
   polishCustomInstruction.disabled = !enablePolishInput.checked;
   updatePromptPreview();
   updateExportScopeControls();
+  updateWorkbenchSummaries();
 }
 
 function updateExportScopeControls() {
@@ -2734,6 +2871,7 @@ function updateFormatControls() {
     label.title = enabled ? "包含时间戳 segments 时可导出字幕" : "SRT 需要开启时间轴";
     label.classList.toggle("is-disabled", !enabled);
   }
+  updateWorkbenchSummaries();
 }
 
 async function refreshPolishProfiles() {
@@ -2753,11 +2891,13 @@ function updatePolishProfileDescription() {
   const selected = selectedPolishProfiles();
   if (!selected.length) {
     polishProfileDescription.textContent = "至少选择一个文本整理配置。";
+    updateWorkbenchSummaries();
     return;
   }
   const names = selected.map((profile) => profile.label).join(" + ");
   polishProfileDescription.textContent =
     selected.length === 1 ? selected[0].description : `已选择 ${selected.length} 个配置：${names}。系统会按顺序合并指令。`;
+  updateWorkbenchSummaries();
 }
 
 function updatePromptPreview() {
@@ -3215,6 +3355,7 @@ function renderMlxStatus(status) {
   renderModeStatus();
   renderModelDetection(lastModelRegistry?.errors || []);
   renderEnvironmentStatus();
+  updateWorkbenchSummaries();
 }
 
 async function refreshQwenStatus() {
@@ -3245,6 +3386,7 @@ function renderQwenStatus(status) {
     : status.hint || "MLX Audio 可用。chunk 级结果会随任务状态逐步更新。";
   qwenModelHelp.classList.toggle("warning-text", !status.available);
   renderEnvironmentStatus();
+  updateWorkbenchSummaries();
 }
 
 async function refreshMlxVlmStatus() {
@@ -3275,6 +3417,7 @@ function renderMlxVlmStatus(status) {
     : status.hint || `MLX VLM Audio 可用。Python：${status.python_executable || "未记录"}`;
   qwenModelHelp.classList.toggle("warning-text", !status.available);
   renderEnvironmentStatus();
+  updateWorkbenchSummaries();
 }
 
 async function preflightOllamaModel(modelId, task) {
@@ -3686,6 +3829,7 @@ function renderModelStatus(status) {
   renderModeStatus();
   renderModelDetection(lastModelRegistry?.errors || []);
   renderEnvironmentStatus();
+  updateWorkbenchSummaries();
 }
 
 function renderModelDownloadProgress(status, downloading) {
