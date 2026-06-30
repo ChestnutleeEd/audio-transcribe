@@ -2227,6 +2227,476 @@ h1, h2, h3, h4, h5, h6 {
   grid-area: extra;
 }
 
+/* --- DARK MODE --- */
+html[data-theme="dark"] {
+  --bg-color: #000000;
+  --panel-bg: rgba(12, 12, 14, 0.92);
+  --panel-border: rgba(255, 255, 255, 0.14);
+  --primary-color: #FFFFFF;
+  --primary-hover: #E5E7EB;
+  --primary-glow: rgba(255, 255, 255, 0.2);
+  --accent-peach: #5A3424;
+  --accent-blue: #173B68;
+  --accent-lavender: #352B6D;
+  --accent-yellow: #57440F;
+  --accent-pink: #5A2630;
+  --accent-teal: #17453E;
+  --text-main: #FFFFFF;
+  --text-secondary: #D1D5DB;
+  --text-tertiary: #9CA3AF;
+  --success-color: #34D399;
+  --warning-color: #FBBF24;
+  --error-color: #F87171;
+  --glass-bg: rgba(12, 12, 14, 0.88);
+  --glass-border: rgba(255, 255, 255, 0.16);
+  --glass-shadow: 0 14px 40px rgba(0, 0, 0, 0.48), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+  background: #000000;
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] * {
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.theme-toggle {
+  min-height: 36px;
+  white-space: nowrap;
+}
+
+.theme-toggle svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.theme-toggle-compact {
+  padding: 7px 12px;
+}
+
+html[data-theme="dark"] .welcome-container,
+html[data-theme="dark"] .dashboard-container,
+html[data-theme="dark"] .dashboard-main,
+html[data-theme="dark"] .dashboard-center {
+  background: #000000;
+}
+
+html[data-theme="dark"] .welcome-container::after {
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.96) 0%, rgba(0, 0, 0, 0.78) 52%, rgba(0, 0, 0, 0.36) 100%);
+}
+
+html[data-theme="dark"] .welcome-container::before {
+  opacity: 0.48;
+  filter: saturate(0.85) brightness(0.6);
+}
+
+html[data-theme="dark"] .logo,
+html[data-theme="dark"] .welcome-nav .nav-links span,
+html[data-theme="dark"] .hero-content h1,
+html[data-theme="dark"] .hero-content .lede,
+html[data-theme="dark"] .hero-content .eyebrow {
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .hero-content h1 {
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+
+html[data-theme="dark"] .hero-content .lede,
+html[data-theme="dark"] .welcome-nav .nav-links span {
+  color: #D1D5DB;
+}
+
+html[data-theme="dark"] .dashboard-sidebar,
+html[data-theme="dark"] .dashboard-right-panel,
+html[data-theme="dark"] .dashboard-header,
+html[data-theme="dark"] .glass-card,
+html[data-theme="dark"] .model-card,
+html[data-theme="dark"] .environment-card,
+html[data-theme="dark"] .model-details,
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] .post-processing,
+html[data-theme="dark"] .model-pool-picker,
+html[data-theme="dark"] .advanced,
+html[data-theme="dark"] .modal-panel,
+html[data-theme="dark"] .workbench-jobs,
+html[data-theme="dark"] .status-workspace-card,
+html[data-theme="dark"] .history-side-panel .history-card,
+html[data-theme="dark"] .models-side-panel .ollama-card,
+html[data-theme="dark"] .config-summary-card,
+html[data-theme="dark"] .detection-group,
+html[data-theme="dark"] .local-provider-result,
+html[data-theme="dark"] .jobs-list > div,
+html[data-theme="dark"] .job-item,
+html[data-theme="dark"] .status-row,
+html[data-theme="dark"] .health-item {
+  background: #0B0B0D;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+html[data-theme="dark"] .dashboard-sidebar,
+html[data-theme="dark"] .dashboard-right-panel,
+html[data-theme="dark"] .dashboard-header {
+  background: rgba(10, 10, 12, 0.86);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-theme="dark"] .panel-head,
+html[data-theme="dark"] .panel-head-shaped,
+html[data-theme="dark"] .workbench-control-panel .panel-head,
+html[data-theme="dark"] .settings-modal-panel > .panel-head,
+html[data-theme="dark"] .workspace-card-head,
+html[data-theme="dark"] .models-side-panel .model-details > summary {
+  background: rgba(12, 12, 14, 0.94);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .dashboard-container p,
+html[data-theme="dark"] .dashboard-container small,
+html[data-theme="dark"] .dashboard-container span,
+html[data-theme="dark"] .dashboard-container label,
+html[data-theme="dark"] .dashboard-container summary,
+html[data-theme="dark"] .dashboard-container legend,
+html[data-theme="dark"] .side-panel p,
+html[data-theme="dark"] .side-panel small,
+html[data-theme="dark"] .side-panel .history-list,
+html[data-theme="dark"] .side-panel .health-list,
+html[data-theme="dark"] .side-panel .model-detection-list,
+html[data-theme="dark"] .side-panel .status-advice {
+  color: #D1D5DB;
+}
+
+html[data-theme="dark"] h1,
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3,
+html[data-theme="dark"] h4,
+html[data-theme="dark"] h5,
+html[data-theme="dark"] h6,
+html[data-theme="dark"] strong,
+html[data-theme="dark"] b,
+html[data-theme="dark"] .header-greeting,
+html[data-theme="dark"] .header-title,
+html[data-theme="dark"] .sidebar-logo,
+html[data-theme="dark"] .workspace-card-head > span,
+html[data-theme="dark"] .config-summary-card strong,
+html[data-theme="dark"] .detection-group h4,
+html[data-theme="dark"] .detected-model-row strong,
+html[data-theme="dark"] .local-model-row strong,
+html[data-theme="dark"] .local-provider-head strong,
+html[data-theme="dark"] .status-row > span,
+html[data-theme="dark"] .health-item > strong {
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .breadcrumb,
+html[data-theme="dark"] .cleanup-status,
+html[data-theme="dark"] .config-summary-card span,
+html[data-theme="dark"] .config-summary-card small,
+html[data-theme="dark"] .detected-model-row > small:not(.detected-model-reason),
+html[data-theme="dark"] .detected-model-reason,
+html[data-theme="dark"] .status-row > small,
+html[data-theme="dark"] .health-item > span,
+html[data-theme="dark"] .health-item > small {
+  color: #B8C0CC;
+}
+
+html[data-theme="dark"] .primary {
+  background: #FFFFFF;
+  color: #000000;
+  box-shadow: 0 12px 28px rgba(255, 255, 255, 0.14);
+}
+
+html[data-theme="dark"] .primary:hover {
+  background: #E5E7EB;
+}
+
+html[data-theme="dark"] .secondary,
+html[data-theme="dark"] .icon-button,
+html[data-theme="dark"] .glass-button,
+html[data-theme="dark"] .job-status-open {
+  background: #111113;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #FFFFFF;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .secondary:hover,
+html[data-theme="dark"] .icon-button:hover,
+html[data-theme="dark"] .glass-button:hover,
+html[data-theme="dark"] .job-status-open.active {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .sidebar-nav a,
+html[data-theme="dark"] .sidebar-nav button {
+  color: #D1D5DB;
+}
+
+html[data-theme="dark"] .sidebar-nav a:hover,
+html[data-theme="dark"] .sidebar-nav button:hover,
+html[data-theme="dark"] .sidebar-nav a.active,
+html[data-theme="dark"] .sidebar-nav button.active {
+  background: rgba(255, 255, 255, 0.11);
+  color: #FFFFFF;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+html[data-theme="dark"] input[type="text"],
+html[data-theme="dark"] input[type="url"],
+html[data-theme="dark"] input[type="time"],
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] .dropzone,
+html[data-theme="dark"] .choice-group label span,
+html[data-theme="dark"] .formats label span,
+html[data-theme="dark"] .prompt-preview pre,
+html[data-theme="dark"] .status-page-grid .custom-model-form,
+html[data-theme="dark"] .settings-grid > .switch,
+html[data-theme="dark"] .settings-grid .model-pool-picker #model-description,
+html[data-theme="dark"] .model-info-popover,
+html[data-theme="dark"] .result-empty-state,
+html[data-theme="dark"] .detected-model-row,
+html[data-theme="dark"] .local-model-row {
+  background: #151518;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] input:focus,
+html[data-theme="dark"] select:focus,
+html[data-theme="dark"] textarea:focus {
+  background: #17171A;
+  border-color: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.14);
+}
+
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder {
+  color: #7F8794;
+}
+
+html[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23D1D5DB' stroke-width='2'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+}
+
+html[data-theme="dark"] select option {
+  background: #111113;
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .switch input[type="checkbox"] {
+  background: #2A2A2E;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+html[data-theme="dark"] .switch input[type="checkbox"]::after {
+  background: #D1D5DB;
+}
+
+html[data-theme="dark"] .switch input[type="checkbox"]:checked {
+  background: #FFFFFF;
+  border-color: #FFFFFF;
+}
+
+html[data-theme="dark"] .switch input[type="checkbox"]:checked::after {
+  background: #000000;
+}
+
+html[data-theme="dark"] .job-status-card {
+  background: #111113;
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .job-status-card.is-active {
+  background: #102033;
+  border-color: rgba(96, 165, 250, 0.42);
+}
+
+html[data-theme="dark"] .job-status-card.is-complete {
+  background: #0D261C;
+  border-color: rgba(52, 211, 153, 0.34);
+}
+
+html[data-theme="dark"] .job-status-card.is-error {
+  background: #301315;
+  border-color: rgba(248, 113, 113, 0.34);
+}
+
+html[data-theme="dark"] .choice-group label:hover span,
+html[data-theme="dark"] .formats label:hover span {
+  background: #1F1F23;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+html[data-theme="dark"] .choice-group input[type="radio"]:checked + span,
+html[data-theme="dark"] .formats input:checked + span,
+html[data-theme="dark"] .config-summary-primary {
+  background: #172033;
+  border-color: rgba(147, 197, 253, 0.48);
+  color: #FFFFFF;
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.18);
+}
+
+html[data-theme="dark"] .completion-toast {
+  background: #0D261C;
+  border-color: rgba(52, 211, 153, 0.4);
+  color: #D1FAE5;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.45);
+}
+
+html[data-theme="dark"] .mock-banner,
+html[data-theme="dark"] .job-warning {
+  background: #2B2107;
+  border-color: rgba(251, 191, 36, 0.36);
+  color: #FDE68A;
+}
+
+html[data-theme="dark"] .model-cancel,
+html[data-theme="dark"] .danger {
+  color: #FCA5A5;
+  border-color: rgba(248, 113, 113, 0.36);
+}
+
+html[data-theme="dark"] .model-cancel:hover,
+html[data-theme="dark"] .danger:hover {
+  background: rgba(248, 113, 113, 0.14);
+}
+
+html[data-theme="dark"] .model-progress-track,
+html[data-theme="dark"] .job-progress {
+  background: #2A2A2E;
+}
+
+html[data-theme="dark"] .model-progress-track span,
+html[data-theme="dark"] .job-progress span {
+  background: #FFFFFF;
+}
+
+html[data-theme="dark"] .meta-pill,
+html[data-theme="dark"] .pill,
+html[data-theme="dark"] .device-pill,
+html[data-theme="dark"] .settings-grid .model-pool-picker .device-pill {
+  background: #222228;
+  color: #E5E7EB;
+}
+
+html[data-theme="dark"] .detected-model-state,
+html[data-theme="dark"] .status-warning {
+  background: #2B2107;
+  color: #FBBF24;
+}
+
+html[data-theme="dark"] .detected-model-row.is-available,
+html[data-theme="dark"] .local-provider-result.is-online {
+  background: #0D1F18;
+  border-color: rgba(52, 211, 153, 0.28);
+}
+
+html[data-theme="dark"] .detected-model-row.is-missing,
+html[data-theme="dark"] .local-provider-result.is-offline {
+  background: #25160C;
+  border-color: rgba(251, 146, 60, 0.26);
+}
+
+html[data-theme="dark"] .detected-model-row.is-available .detected-model-state,
+html[data-theme="dark"] .local-provider-result.is-online .pill,
+html[data-theme="dark"] .status-success {
+  background: #0F2A1F;
+  color: #6EE7B7;
+}
+
+html[data-theme="dark"] .status-error,
+html[data-theme="dark"] .status-danger,
+html[data-theme="dark"] .provider-error {
+  background: #321416;
+  color: #FCA5A5;
+}
+
+html[data-theme="dark"] .status-neutral,
+html[data-theme="dark"] .status-muted {
+  background: #222228;
+  color: #D1D5DB;
+}
+
+html[data-theme="dark"] .feature-widget {
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="dark"] .feature-widget-head strong,
+html[data-theme="dark"] .feature-widget-icon {
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .feature-widget-icon {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+html[data-theme="dark"] .feature-widget p {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+html[data-theme="dark"] .job-detail,
+html[data-theme="dark"] .stage-row,
+html[data-theme="dark"] .job-event,
+html[data-theme="dark"] .output-row,
+html[data-theme="dark"] .transcript-block,
+html[data-theme="dark"] .compare-view,
+html[data-theme="dark"] .job-diagnostic,
+html[data-theme="dark"] .fix-row {
+  background: #151518;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .transcript-block pre,
+html[data-theme="dark"] .compare-grid pre,
+html[data-theme="dark"] .job-diagnostic pre,
+html[data-theme="dark"] .fix-row code {
+  background: #050506;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #F9FAFB;
+}
+
+html[data-theme="dark"] a,
+html[data-theme="dark"] .download,
+html[data-theme="dark"] .job-title-link {
+  color: #93C5FD;
+}
+
+html[data-theme="dark"] .modal::backdrop {
+  background: rgba(0, 0, 0, 0.82);
+}
+
+html[data-theme="dark"] .glass-decorative-blob,
+html[data-theme="dark"] .upload-empty-img,
+html[data-theme="dark"] .result-empty-state img {
+  mix-blend-mode: screen !important;
+  filter: grayscale(100%) contrast(1.1) brightness(0.72) !important;
+  opacity: 0.58;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

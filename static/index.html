@@ -9,7 +9,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070707'/%3E%3Cpath d='M18 40V24M28 48V16M38 42V22M48 36V28' stroke='%23d8b15e' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="/styles.css?v=20260627-feature-memory-notice" />
+    <script>
+      (() => {
+        try {
+          const theme = localStorage.getItem("audio-transcribe:theme:v1");
+          document.documentElement.dataset.theme = theme === "dark" ? "dark" : "light";
+        } catch {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="/styles.css?v=20260630-dark-mode" />
   </head>
   <body>
     <!-- Welcome Page -->
@@ -25,6 +35,10 @@
           <span>模型</span>
         </div>
         <div class="nav-actions">
+          <button class="secondary theme-toggle" type="button" data-theme-toggle aria-pressed="false" title="切换深色模式">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v2m0 14v2M5.64 5.64l1.41 1.41m9.9 9.9 1.41 1.41M3 12h2m14 0h2M5.64 18.36l1.41-1.41m9.9-9.9 1.41-1.41"/><circle cx="12" cy="12" r="4"/></svg>
+            <span>深色模式</span>
+          </button>
           <button class="primary small-button" id="nav-start-button">进入工作台</button>
         </div>
       </nav>
@@ -278,6 +292,10 @@
             </button>
             <button class="icon-button" id="return-home-button" title="返回欢迎页">
               <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            </button>
+            <button class="secondary theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-pressed="false" title="切换深色模式">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v2m0 14v2M5.64 5.64l1.41 1.41m9.9 9.9 1.41 1.41M3 12h2m14 0h2M5.64 18.36l1.41-1.41m9.9-9.9 1.41-1.41"/><circle cx="12" cy="12" r="4"/></svg>
+              <span>深色模式</span>
             </button>
           </div>
         </header>
@@ -920,6 +938,6 @@
     </script>
 
     <div id="completion-toast" class="completion-toast" role="status" aria-live="polite" hidden></div>
-    <script src="/app.js?v=20260627-feature-memory-notice" type="module"></script>
+    <script src="/app.js?v=20260630-dark-mode" type="module"></script>
   </body>
 </html>

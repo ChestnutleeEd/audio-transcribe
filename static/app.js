@@ -126,6 +126,7 @@ const saveSettingsTemplateButton = document.querySelector("#save-settings-templa
 const deleteSettingsTemplateButton = document.querySelector("#delete-settings-template-button");
 const settingsMemoryMessage = document.querySelector("#settings-memory-message");
 const completionToast = document.querySelector("#completion-toast");
+const themeToggleButtons = Array.from(document.querySelectorAll("[data-theme-toggle]"));
 const configModals = {
   engine: document.querySelector("#engine-settings-modal"),
   polish: document.querySelector("#polish-settings-modal"),
@@ -152,6 +153,7 @@ const JOB_DIAGNOSTIC_DETAIL_OPEN_KEY = "audio-transcribe:job-diagnostic-detail-o
 const JOB_COMPARE_EXPANDED_KEY = "audio-transcribe:job-compare-expanded:v1";
 const TASK_SETTINGS_KEY = "audio-transcribe:task-settings:last:v1";
 const TASK_PRESETS_KEY = "audio-transcribe:task-settings-presets:v1";
+const THEME_KEY = "audio-transcribe:theme:v1";
 const HISTORY_LIMIT = 5;
 const HISTORY_TEXT_LIMIT = 12000;
 
@@ -184,6 +186,7 @@ let unreadCompletedJobs = 0;
 let completionToastTimer = null;
 let pendingDeletePresetId = "";
 
+initThemeToggle();
 refreshPolishProfiles();
 loadSavedCustomInstruction();
 renderSettingsTemplates();
@@ -210,6 +213,12 @@ jobsCleanupButton.addEventListener("click", cleanupJobWorkFiles);
 jobsCollapseButton.addEventListener("click", toggleJobsCollapsed);
 jobsNavButton?.addEventListener("click", clearCompletionNotifications);
 headerOpenJobsButton?.addEventListener("click", clearCompletionNotifications);
+themeToggleButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    applyTheme(nextTheme, { persist: true });
+  });
+});
 registryRefreshButton.addEventListener("click", refreshModelRegistry);
 audioModelSelect.addEventListener("change", () => {
   applySelectedAudioModelToForm();
@@ -244,6 +253,36 @@ Object.values(configModals).forEach((modal) => {
 });
 form.addEventListener("change", updateWorkbenchSummaries);
 form.addEventListener("input", updateWorkbenchSummaries);
+
+function initThemeToggle() {
+  const initialTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  applyTheme(initialTheme, { persist: false });
+}
+
+function applyTheme(theme, { persist = false } = {}) {
+  const nextTheme = theme === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme = nextTheme;
+  document.documentElement.style.colorScheme = nextTheme;
+  if (persist) {
+    try {
+      localStorage.setItem(THEME_KEY, nextTheme);
+    } catch {
+      // Theme persistence is optional; the visual state still updates.
+    }
+  }
+  syncThemeButtons(nextTheme);
+}
+
+function syncThemeButtons(theme) {
+  const isDark = theme === "dark";
+  themeToggleButtons.forEach((button) => {
+    button.setAttribute("aria-pressed", String(isDark));
+    button.title = isDark ? "切换浅色模式" : "切换深色模式";
+    button.setAttribute("aria-label", button.title);
+    const label = button.querySelector("span");
+    if (label) label.textContent = isDark ? "浅色模式" : "深色模式";
+  });
+}
 
 /* Template popover toggle */
 const templatePopoverBtn = document.querySelector("#header-open-template-button");
