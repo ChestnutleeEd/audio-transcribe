@@ -185,25 +185,36 @@
           <details class="model-details" open>
             <summary>本地大模型详情</summary>
             <div class="model-card ollama-card" aria-live="polite">
-              <div>
-                <h3>Ollama 状态</h3>
-                <p id="ollama-message">正在检测 Ollama 服务</p>
-                <label class="model-selector">
-                  <span>音频直转模型</span>
-                  <select id="ollama-transcription-model-select" aria-label="选择 Ollama 直转模型">
-                  </select>
-                </label>
-                <label class="model-selector">
-                  <span>模型下载状态</span>
-                  <select id="ollama-managed-model-select" aria-label="选择要检查或下载的 Ollama 模型">
-                  </select>
-                </label>
-                <div class="model-progress" id="ollama-progress" aria-hidden="true">
-                  <div class="model-progress-track"><span id="ollama-progress-fill"></span></div>
-                  <small id="ollama-progress-label"></small>
+              <div class="ollama-status-panel">
+                <div class="ollama-status-header">
+                  <div>
+                    <h3>Ollama 状态</h3>
+                    <p id="ollama-message">正在检测 Ollama 服务</p>
+                  </div>
+                  <span class="device-pill" id="ollama-service-pill">服务：检测中</span>
                 </div>
-                <span class="device-pill" id="ollama-service-pill">服务：检测中</span>
-                <small id="ollama-model-path">Ollama 模型由 Ollama 管理，不下载到项目目录。</small>
+                <div class="ollama-config-grid">
+                  <label class="model-selector">
+                    <span>音频直转模型</span>
+                    <select id="ollama-transcription-model-select" aria-label="选择 Ollama 直转模型">
+                    </select>
+                  </label>
+                  <label class="model-selector">
+                    <span>模型下载状态</span>
+                    <select id="ollama-managed-model-select" aria-label="选择要检查或下载的 Ollama 模型">
+                    </select>
+                  </label>
+                </div>
+                <div class="ollama-download-panel">
+                  <div>
+                    <strong>下载进度</strong>
+                    <small id="ollama-model-path">Ollama 模型由 Ollama 管理，不下载到项目目录。</small>
+                  </div>
+                  <div class="model-progress" id="ollama-progress" aria-hidden="true">
+                    <div class="model-progress-track"><span id="ollama-progress-fill"></span></div>
+                    <small id="ollama-progress-label"></small>
+                  </div>
+                </div>
               </div>
               <div class="model-actions">
                 <button class="secondary" type="button" id="ollama-refresh-button">
