@@ -2497,6 +2497,12 @@ html[data-theme="dark"] textarea::placeholder {
 
 html[data-theme="dark"] select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23D1D5DB' stroke-width='2'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: var(--space-5);
 }
 
 html[data-theme="dark"] select option {
@@ -2690,11 +2696,16 @@ html[data-theme="dark"] .modal::backdrop {
 }
 
 html[data-theme="dark"] .glass-decorative-blob,
-html[data-theme="dark"] .upload-empty-img,
+html[data-theme="dark"] .upload-empty-img {
+  mix-blend-mode: normal !important;
+  filter: invert(1) hue-rotate(180deg) saturate(1.35) contrast(1.08) brightness(0.92) !important;
+  opacity: 0.94;
+}
+
 html[data-theme="dark"] .result-empty-state img {
   mix-blend-mode: screen !important;
-  filter: grayscale(100%) contrast(1.1) brightness(0.72) !important;
-  opacity: 0.58;
+  filter: contrast(1.05) brightness(0.78) !important;
+  opacity: 0.64;
 }
 
 @media (prefers-reduced-motion: reduce) {
