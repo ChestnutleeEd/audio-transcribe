@@ -67,9 +67,15 @@ const ollamaDownloadButton = document.querySelector("#ollama-download-button");
 const ollamaDownloadLabel = document.querySelector("#ollama-download-label");
 const ollamaCancelButton = document.querySelector("#ollama-cancel-button");
 const ollamaCancelLabel = document.querySelector("#ollama-cancel-label");
+const ollamaModelPath = document.querySelector("#ollama-model-path");
 const ollamaProgress = document.querySelector("#ollama-progress");
 const ollamaProgressFill = document.querySelector("#ollama-progress-fill");
 const ollamaProgressLabel = document.querySelector("#ollama-progress-label");
+const loadedModelSummary = document.querySelector("#loaded-model-summary");
+const loadedAudioCount = document.querySelector("#loaded-audio-count");
+const loadedTextCount = document.querySelector("#loaded-text-count");
+const ollamaLocalCount = document.querySelector("#ollama-local-count");
+const localModelInventory = document.querySelector("#local-model-inventory");
 const healthMessage = document.querySelector("#health-message");
 const healthList = document.querySelector("#health-list");
 const healthRefreshButton = document.querySelector("#health-refresh-button");
@@ -364,6 +370,7 @@ qwenModelPathOrRepo.addEventListener("input", () => {
   qwenModelPathOrRepo._refreshTimer = window.setTimeout(() => refreshQwenStatus(), 350);
 });
 ollamaManagedModelSelect.addEventListener("change", refreshSelectedOllamaModel);
+ollamaTranscriptionModelSelect.addEventListener("change", applyDetailAudioModelSelection);
 modelInfoButton.addEventListener("click", () => {
   modelInfoPopover.hidden = !modelInfoPopover.hidden;
   renderSelectedWhisperModelMeta();
@@ -969,6 +976,8 @@ function renderModelRegistry(payload, preferred = {}) {
   renderAudioModelOptions(audioModels, preferred.audioModelId);
   renderPolishModelOptions(textModels, preferred.polishModelPath);
   renderModelDetection(payload.errors || []);
+  renderOllamaOptions(lastOllamaStatus || {});
+  refreshSelectedOllamaModel();
   applySelectedAudioModelToForm();
   renderSelectedAudioModel();
   updateEngineControls();
@@ -2862,7 +2871,7 @@ function updateEngineControls() {
   if (usingMlxVlmAudio) {
     refreshMlxVlmStatus();
   }
-  ollamaTranscriptionModelSelect.disabled = !usingOllamaAudio;
+  ollamaTranscriptionModelSelect.disabled = !availableAudioRegistryModels().length;
   renderModeStatus();
   renderEnvironmentStatus();
   updateWorkbenchSummaries();
@@ -3552,56 +3561,173 @@ function formatOllamaModelOption(model, details = []) {
   return `${model.label} — ${model.id}${suffix ? `（${suffix}）` : ""}`;
 }
 
-function renderOllamaOptions(status) {
-  const transcriptionModels = status.transcription_models || [];
-  const polishModels = status.polish_models || [];
-  const configuredIds = new Set([...transcriptionModels, ...polishModels].map((model) => model.id));
-  const localUnmanagedModels = (status.local_models || [])
-    .filter((modelId) => !configuredIds.has(modelId))
-    .map((modelId) => ({
-      id: modelId,
-      label: modelId,
-      role: "本机已有模型",
-      available: true,
-      unmanaged: true,
-    }));
-  if (transcriptionModels.length) {
-    ollamaTranscriptionModelSelect.replaceChildren(
-      ...transcriptionModels.map((model) => {
-        const option = document.createElement("option");
-        option.value = model.id;
-        option.textContent = formatOllamaModelOption(model, [
-          model.experimental ? "实验性" : "",
-          model.role,
-          model.available ? "已存在" : "",
-        ]);
-        return option;
-      }),
-    );
-  }
+function availableRegistryModels() {
+  return (lastModelRegistry?.models || []).filter(
+    (model) => model.metadata?.status === "available" && !isWhisperLikeModel(model) && (model.capabilities?.audio || model.capabilities?.text),
+  );
+}
 
-  const combined = [...transcriptionModels, ...polishModels, ...localUnmanagedModels];
+function availableAudioRegistryModels() {
+  return availableRegistryModels().filter((model) => isLocalAudioLlmModel(model) && audioPipelineForModel(model));
+}
+
+function availableTextRegistryModels() {
+  return availableRegistryModels().filter((model) => model.capabilities?.text);
+}
+
+function modelCapabilityTags(model) {
+  const tags = [];
+  if (model.capabilities?.audio) tags.push("音频");
+  if (model.capabilities?.text) tags.push("文本");
+  if (model.capabilities?.vision) tags.push("视觉");
+  return tags.join(" / ") || "未知能力";
+}
+
+function modelDetailOptionLabel(model) {
+  return `${model.name} — ${providerLabel(model.provider)} · ${modelCapabilityTags(model)}`;
+}
+
+function registryModelOption(model) {
+  const option = document.createElement("option");
+  option.value = model.path_or_id;
+  option.textContent = modelDetailOptionLabel(model);
+  option.dataset.provider = model.provider;
+  option.dataset.modelId = model.id;
+  option.dataset.status = model.metadata?.status || "";
+  return option;
+}
+
+function ollamaStatusModelOption(modelId) {
+  const option = document.createElement("option");
+  option.value = modelId;
+  option.textContent = `${modelId} — Ollama · 本机已有模型`;
+  option.dataset.provider = "ollama";
+  option.dataset.status = "available";
+  return option;
+}
+
+function selectedManagedModelMeta() {
+  const option = ollamaManagedModelSelect.selectedOptions[0];
+  const value = ollamaManagedModelSelect.value;
+  const registryModel = availableRegistryModels().find((model) => model.path_or_id === value || model.id === option?.dataset.modelId);
+  return {
+    option,
+    model: registryModel || null,
+    provider: registryModel?.provider || option?.dataset.provider || "",
+    available: option?.dataset.status === "available" || Boolean(registryModel),
+  };
+}
+
+function renderLoadedModelMetrics(status = {}) {
+  const audioModels = availableAudioRegistryModels();
+  const textModels = availableTextRegistryModels();
+  const ollamaModels = status.local_models || [];
+  if (loadedAudioCount) loadedAudioCount.textContent = String(audioModels.length);
+  if (loadedTextCount) loadedTextCount.textContent = String(textModels.length);
+  if (ollamaLocalCount) ollamaLocalCount.textContent = String(ollamaModels.length);
+  if (loadedModelSummary) {
+    loadedModelSummary.textContent = audioModels.length
+      ? `${audioModels.length} 个音频模型可用于直转`
+      : "未检测到已加载音频模型";
+  }
+  renderLocalModelInventory();
+}
+
+function renderLocalModelInventory() {
+  if (!localModelInventory) return;
+  const models = availableRegistryModels();
+  if (!models.length) {
+    const empty = document.createElement("small");
+    empty.className = "inventory-empty";
+    empty.textContent = "未检测到已加载模型；请在“模型检测”中绑定目录或启动本地模型服务。";
+    localModelInventory.replaceChildren(empty);
+    return;
+  }
+  localModelInventory.replaceChildren(
+    ...models.slice(0, 6).map((model) => {
+      const item = document.createElement("div");
+      item.className = "inventory-model";
+      item.title = model.path_or_id;
+      const name = document.createElement("strong");
+      name.textContent = model.name;
+      const meta = document.createElement("span");
+      meta.textContent = `${providerLabel(model.provider)} · ${modelCapabilityTags(model)}`;
+      const path = document.createElement("small");
+      path.textContent = displayModelPath(model.path_or_id);
+      item.append(name, meta, path);
+      return item;
+    }),
+  );
+}
+
+function renderOllamaOptions(status) {
+  const audioModels = availableAudioRegistryModels();
+  const registryModels = availableRegistryModels();
+  const currentTranscription = ollamaTranscriptionModelSelect.value;
+  const currentManaged = ollamaManagedModelSelect.value;
+
+  const transcriptionOptions = audioModels.map(registryModelOption);
+  if (!transcriptionOptions.length) {
+    transcriptionOptions.push(new Option("未检测到已加载音频模型", ""));
+  }
+  ollamaTranscriptionModelSelect.replaceChildren(...transcriptionOptions);
+  const selectedAudio = selectedAudioModel();
+  const preferredTranscription = selectedAudio?.path_or_id || currentTranscription || audioModels[0]?.path_or_id || "";
+  ollamaTranscriptionModelSelect.value = transcriptionOptions.some((option) => option.value === preferredTranscription)
+    ? preferredTranscription
+    : "";
+
+  const localOllamaIds = new Set(status.local_models || []);
+  const registryOllamaIds = new Set(
+    registryModels.filter((model) => model.provider === "ollama").map((model) => normalizeOllamaId(model.path_or_id)),
+  );
+  const ollamaOnlyOptions = [...localOllamaIds]
+    .filter((modelId) => !registryOllamaIds.has(normalizeOllamaId(modelId)))
+    .map(ollamaStatusModelOption);
+  const configuredMissingOptions = [...(status.transcription_models || []), ...(status.polish_models || [])]
+    .filter((model) => model.available && !localOllamaIds.has(model.id))
+    .map((model) => {
+      const option = document.createElement("option");
+      option.value = model.id;
+      option.textContent = formatOllamaModelOption(model, [model.role, "已存在"]);
+      option.dataset.provider = "ollama";
+      option.dataset.status = "available";
+      return option;
+    });
+  const combined = [...registryModels.map(registryModelOption), ...ollamaOnlyOptions, ...configuredMissingOptions];
   const seen = new Set();
   const options = [];
-  for (const model of combined) {
-    if (seen.has(model.id)) continue;
-    seen.add(model.id);
-    const option = document.createElement("option");
-    option.value = model.id;
-    option.textContent = formatOllamaModelOption(model, [
-      model.experimental ? "实验性" : "",
-      model.unmanaged ? "本机已有模型" : "",
-      model.available ? "已存在" : "",
-    ]);
+  for (const option of combined) {
+    if (seen.has(option.value)) continue;
+    seen.add(option.value);
     options.push(option);
   }
-  if (options.length) {
-    const current = ollamaManagedModelSelect.value;
-    ollamaManagedModelSelect.replaceChildren(...options);
-    if ([...ollamaManagedModelSelect.options].some((option) => option.value === current)) {
-      ollamaManagedModelSelect.value = current;
-    }
+  if (!options.length) {
+    options.push(new Option("未检测到已加载模型", ""));
   }
+  ollamaManagedModelSelect.replaceChildren(...options);
+  ollamaManagedModelSelect.value = options.some((option) => option.value === currentManaged) ? currentManaged : options[0]?.value || "";
+  renderLoadedModelMetrics(status);
+}
+
+function normalizeOllamaId(modelId) {
+  const value = String(modelId || "");
+  return value.includes(":") ? value : `${value}:latest`;
+}
+
+function applyDetailAudioModelSelection() {
+  const value = ollamaTranscriptionModelSelect.value;
+  const model = availableAudioRegistryModels().find((item) => item.path_or_id === value || item.id === value);
+  if (!model) {
+    updateWorkbenchSummaries();
+    return;
+  }
+  audioModelSelect.value = model.id;
+  selectAudioMode("local_audio_llm");
+  applySelectedAudioModelToForm();
+  renderSelectedAudioModel();
+  updateEngineControls();
+  updateWorkbenchSummaries();
 }
 
 async function refreshLocalModelDetection() {
@@ -3763,10 +3889,27 @@ function renderLocalProviderResult(provider) {
 async function refreshSelectedOllamaModel() {
   const modelId = ollamaManagedModelSelect.value;
   if (!modelId || !lastOllamaStatus) return;
-  const option = [...(lastOllamaStatus.transcription_models || []), ...(lastOllamaStatus.polish_models || [])].find(
-    (model) => model.id === modelId,
+  const selectedMeta = selectedManagedModelMeta();
+  const isOllamaModel = selectedMeta.provider === "ollama";
+  const available = Boolean(
+    selectedMeta.available
+      || (lastOllamaStatus.local_models || []).some((name) => normalizeOllamaId(name) === normalizeOllamaId(modelId)),
   );
-  const available = Boolean(option?.available || (lastOllamaStatus.local_models || []).includes(modelId));
+  const selectedLabel = selectedMeta.model?.name || modelId;
+  ollamaModelPath.textContent = selectedMeta.model
+    ? `${providerLabel(selectedMeta.model.provider)} · ${displayModelPath(selectedMeta.model.path_or_id)}`
+    : isOllamaModel
+      ? "Ollama 模型由 Ollama 管理，不下载到项目目录。"
+      : "本地模型已绑定，不由 Ollama 下载。";
+  if (!isOllamaModel) {
+    ollamaProgress.hidden = true;
+    ollamaProgress.setAttribute("aria-hidden", "true");
+    ollamaDownloadButton.disabled = true;
+    ollamaCancelButton.disabled = true;
+    ollamaDownloadLabel.textContent = available ? "本地已就绪" : "无需下载";
+    ollamaMessage.textContent = available ? `已加载：${selectedLabel}` : `未检测到：${selectedLabel}`;
+    return;
+  }
   const downloading = await refreshOllamaPullStatus(modelId);
   if (downloading) return;
   ollamaDownloadButton.disabled = !lastOllamaStatus.available || available;

@@ -54,9 +54,16 @@ def model_option(definition, local_models: list[str]) -> OllamaModelOption:
     )
 
 
+def mock_local_models() -> list[str]:
+    configured = settings.mock_ollama_models.strip()
+    if not configured:
+        return []
+    return [item.strip() for item in configured.split(",") if item.strip()]
+
+
 def ollama_status() -> OllamaServiceStatus:
     if settings.mock_mode:
-        local_models = ["gemma4:12b-it-qat", "gemma3:1b"]
+        local_models = mock_local_models()
         return OllamaServiceStatus(
             available=True,
             base_url=settings.ollama_base_url,
@@ -107,7 +114,7 @@ def ollama_status() -> OllamaServiceStatus:
 
 def check_model(model_id: str) -> OllamaModelCheck:
     if settings.mock_mode:
-        exists = model_id in {"gemma4:12b-it-qat", "gemma4:12b", "gemma3:1b"}
+        exists = model_id_in_list(model_id, mock_local_models())
         return OllamaModelCheck(
             model_id=model_id,
             available=exists,
@@ -275,7 +282,7 @@ def preflight(model_id: str, task: str) -> OllamaPreflightStatus:
             model_id=model_id,
             task=task,
             service_available=True,
-            model_exists=model_id in {"gemma4:12b-it-qat", "gemma4:12b", "gemma3:1b"},
+            model_exists=model_id_in_list(model_id, mock_local_models()),
             can_generate=True,
             warnings=["Mock 模式：不会调用真实模型"],
             message="Mock 模式 preflight 通过",

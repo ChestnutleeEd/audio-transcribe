@@ -183,8 +183,25 @@
           </div>
 
           <details class="model-details" open>
-            <summary>本地大模型详情</summary>
+            <summary>
+              <span>本地大模型详情</span>
+              <small id="loaded-model-summary">等待模型检测</small>
+            </summary>
             <div class="model-card ollama-card" aria-live="polite">
+              <div class="local-model-metrics" aria-label="本地模型概览">
+                <div>
+                  <span>音频模型</span>
+                  <b id="loaded-audio-count">0</b>
+                </div>
+                <div>
+                  <span>文本模型</span>
+                  <b id="loaded-text-count">0</b>
+                </div>
+                <div>
+                  <span>Ollama 本机模型</span>
+                  <b id="ollama-local-count">0</b>
+                </div>
+              </div>
               <div class="ollama-status-panel">
                 <div class="ollama-status-header">
                   <div>
@@ -195,19 +212,20 @@
                 </div>
                 <div class="ollama-config-grid">
                   <label class="model-selector">
-                    <span>音频直转模型</span>
-                    <select id="ollama-transcription-model-select" aria-label="选择 Ollama 直转模型">
+                    <span>已加载音频模型</span>
+                    <select id="ollama-transcription-model-select" aria-label="选择已加载音频模型">
                     </select>
                   </label>
                   <label class="model-selector">
-                    <span>模型下载状态</span>
-                    <select id="ollama-managed-model-select" aria-label="选择要检查或下载的 Ollama 模型">
+                    <span>已加载模型状态</span>
+                    <select id="ollama-managed-model-select" aria-label="选择要检查状态的已加载模型">
                     </select>
                   </label>
                 </div>
+                <div class="local-model-inventory" id="local-model-inventory" aria-label="已加载模型列表"></div>
                 <div class="ollama-download-panel">
                   <div>
-                    <strong>下载进度</strong>
+                    <strong>模型状态</strong>
                     <small id="ollama-model-path">Ollama 模型由 Ollama 管理，不下载到项目目录。</small>
                   </div>
                   <div class="model-progress" id="ollama-progress" aria-hidden="true">
@@ -737,7 +755,7 @@
             <div class="panel-head panel-head-shaped">
               <div>
                 <h2>本地大模型详情</h2>
-                <p>Ollama 服务、模型下载状态和直转模型选择。</p>
+                <p>本地模型服务、加载状态和直转模型选择。</p>
               </div>
             </div>
             <div class="side-panel-body status-page-grid" data-panel-body="models"></div>

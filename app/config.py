@@ -209,6 +209,7 @@ class Settings:
     mlx_vlm_overlap_seconds: int = int(os.getenv("AUDIO_TRANSCRIBE_MLX_VLM_OVERLAP_SECONDS", "1"))
     mock_mode: bool = os.getenv("AUDIO_TRANSCRIBE_MOCK", "0") in {"1", "true", "True", "yes", "YES"}
     mock_polish_fail: bool = os.getenv("AUDIO_TRANSCRIBE_MOCK_POLISH_FAIL", "0") in {"1", "true", "True", "yes", "YES"}
+    mock_ollama_models: str = os.getenv("AUDIO_TRANSCRIBE_MOCK_OLLAMA_MODELS", "")
     ollama_polish_batch_size: int | None = optional_positive_int_env("OLLAMA_POLISH_BATCH_SIZE")
 
     @property

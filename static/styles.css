@@ -2974,6 +2974,361 @@ html[data-theme="dark"] .switch input[type="checkbox"] {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+/* Local LLM detail page: dense industrial console */
+.models-side-panel {
+  --llm-bg: #000000;
+  --llm-panel: #0B0C0A;
+  --llm-panel-2: #10120F;
+  --llm-line: rgba(255, 255, 255, 0.16);
+  --llm-line-strong: rgba(0, 230, 118, 0.55);
+  --llm-text: #F5F7F2;
+  --llm-muted: #9AA39A;
+  --llm-signal: #00E676;
+  --llm-danger: #FF3B30;
+  background: var(--llm-bg);
+  color: var(--llm-text);
+  font-family: "IBM Plex Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.models-side-panel,
+.models-side-panel * {
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.models-side-panel .panel-head-shaped {
+  min-height: 70px;
+  padding: 14px 24px;
+  clip-path: none;
+  background: var(--llm-bg);
+  border-bottom: 1px solid var(--llm-line);
+  font-family: inherit;
+}
+
+.models-side-panel .panel-head-shaped h2 {
+  color: var(--llm-text);
+  font-family: inherit;
+  font-size: 1.32rem;
+  font-weight: 800;
+}
+
+.models-side-panel .panel-head-shaped p {
+  color: var(--llm-muted);
+  font-family: inherit;
+}
+
+.models-side-panel .side-panel-body {
+  min-height: 0;
+  padding: 14px 24px 24px;
+  background: var(--llm-bg);
+}
+
+.models-side-panel .model-details {
+  display: grid;
+  min-height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--llm-line);
+  border-radius: 0;
+  background: var(--llm-bg);
+  box-shadow: none;
+}
+
+.models-side-panel .model-details > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--llm-line);
+  background: var(--llm-panel);
+  color: var(--llm-text);
+  font-family: inherit;
+}
+
+.models-side-panel .model-details > summary::before {
+  display: none;
+}
+
+.models-side-panel .model-details > summary span {
+  color: var(--llm-text);
+  font-weight: 800;
+}
+
+.models-side-panel .model-details > summary small {
+  align-self: center;
+  color: var(--llm-signal);
+  white-space: nowrap;
+}
+
+.models-side-panel .ollama-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 184px;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--llm-bg);
+  color: var(--llm-text);
+  box-shadow: none;
+}
+
+.models-side-panel .local-model-metrics {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 1px solid var(--llm-line);
+}
+
+.models-side-panel .local-model-metrics > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  min-height: 64px;
+  padding: 12px 16px;
+  border-right: 1px solid var(--llm-line);
+  background: var(--llm-panel);
+}
+
+.models-side-panel .local-model-metrics > div:last-child {
+  border-right: 0;
+}
+
+.models-side-panel .local-model-metrics span {
+  color: var(--llm-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.models-side-panel .local-model-metrics b {
+  color: var(--llm-signal);
+  font-size: 2rem;
+  line-height: 0.9;
+}
+
+.models-side-panel .ollama-status-panel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.models-side-panel .ollama-status-header,
+.models-side-panel .ollama-download-panel,
+.models-side-panel .model-selector,
+.models-side-panel .model-actions {
+  border: 0;
+  border-bottom: 1px solid var(--llm-line);
+  border-radius: 0;
+  background: var(--llm-panel-2);
+  box-shadow: none;
+}
+
+.models-side-panel .ollama-status-header {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 14px 16px;
+}
+
+.models-side-panel .ollama-status-header h3,
+.models-side-panel .ollama-download-panel strong {
+  color: var(--llm-text);
+  font-family: inherit;
+}
+
+.models-side-panel .ollama-status-header p,
+.models-side-panel .ollama-download-panel small,
+.models-side-panel .model-progress small {
+  color: var(--llm-muted);
+}
+
+.models-side-panel .device-pill {
+  border: 1px solid var(--llm-line-strong);
+  border-radius: 0;
+  background: #061008;
+  color: var(--llm-signal);
+  font-family: inherit;
+}
+
+.models-side-panel .device-pill[data-device="unknown"] {
+  border-color: rgba(255, 59, 48, 0.55);
+  color: #FF8A80;
+}
+
+.models-side-panel .ollama-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  border-bottom: 1px solid var(--llm-line);
+}
+
+.models-side-panel .model-selector {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 16px;
+  border-right: 1px solid var(--llm-line);
+  border-bottom: 0;
+}
+
+.models-side-panel .model-selector:last-child {
+  border-right: 0;
+}
+
+.models-side-panel .model-selector span {
+  color: var(--llm-muted);
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.models-side-panel .model-selector select {
+  min-height: 40px;
+  border: 1px solid var(--llm-line);
+  border-radius: 0;
+  background-color: #050605;
+  color: var(--llm-text);
+  font-family: inherit;
+  font-weight: 700;
+}
+
+.models-side-panel .model-selector select:hover,
+.models-side-panel .model-selector select:focus {
+  border-color: var(--llm-line-strong);
+  box-shadow: none;
+}
+
+.models-side-panel .local-model-inventory {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 0;
+  min-height: 0;
+  overflow: auto;
+  border-bottom: 1px solid var(--llm-line);
+}
+
+.models-side-panel .inventory-model,
+.models-side-panel .inventory-empty {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  min-height: 82px;
+  padding: 12px 16px;
+  border-right: 1px solid var(--llm-line);
+  border-bottom: 1px solid var(--llm-line);
+  background: #050605;
+}
+
+.models-side-panel .inventory-model:nth-child(2n) {
+  border-right: 0;
+}
+
+.models-side-panel .inventory-model strong {
+  color: var(--llm-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.models-side-panel .inventory-model span {
+  color: var(--llm-signal);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.models-side-panel .inventory-model small,
+.models-side-panel .inventory-empty {
+  color: var(--llm-muted);
+  overflow-wrap: anywhere;
+}
+
+.models-side-panel .ollama-download-panel {
+  grid-template-columns: minmax(220px, 0.42fr) minmax(0, 0.58fr);
+  align-self: end;
+  padding: 14px 16px;
+  border-bottom: 0;
+}
+
+.models-side-panel .model-progress-track {
+  height: 8px;
+  border-radius: 0;
+  background: #1A1F1A;
+}
+
+.models-side-panel .model-progress-track span {
+  border-radius: 0;
+  background: var(--llm-signal);
+}
+
+.models-side-panel .model-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 0;
+  min-width: 0;
+  padding: 0;
+  border-left: 1px solid var(--llm-line);
+  border-bottom: 0;
+  background: var(--llm-panel);
+}
+
+.models-side-panel .model-actions button {
+  justify-content: flex-start;
+  min-height: 54px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--llm-line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--llm-text);
+  font-family: inherit;
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.models-side-panel .model-actions button:hover:not(:disabled) {
+  background: #07140A;
+  color: var(--llm-signal);
+}
+
+.models-side-panel #ollama-download-button:not(:disabled) {
+  color: var(--llm-signal);
+}
+
+.models-side-panel .model-actions .model-cancel:not(:disabled) {
+  color: #FF8A80;
+}
+
+@media (max-width: 900px) {
+  .models-side-panel .side-panel-body {
+    padding: 12px;
+  }
+
+  .models-side-panel .model-details > summary,
+  .models-side-panel .ollama-card,
+  .models-side-panel .local-model-metrics,
+  .models-side-panel .ollama-status-header,
+  .models-side-panel .ollama-config-grid,
+  .models-side-panel .ollama-download-panel,
+  .models-side-panel .local-model-inventory {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .models-side-panel .model-actions {
+    border-left: 0;
+    border-top: 1px solid var(--llm-line);
+  }
+
+  .models-side-panel .local-model-metrics > div,
+  .models-side-panel .model-selector,
+  .models-side-panel .inventory-model {
+    border-right: 0;
+  }
+}
+
 html[data-theme="dark"] .switch input[type="checkbox"]::after {
   background: #D1D5DB;
 }
