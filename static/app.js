@@ -3587,6 +3587,10 @@ function modelDetailOptionLabel(model) {
   return `${model.name} — ${providerLabel(model.provider)} · ${modelCapabilityTags(model)}`;
 }
 
+function modelSourceLabel(model) {
+  return model.metadata?.source === "user_added" ? "已导入" : "已检测";
+}
+
 function registryModelOption(model) {
   const option = document.createElement("option");
   option.value = model.path_or_id;
@@ -3627,8 +3631,8 @@ function renderLoadedModelMetrics(status = {}) {
   if (ollamaLocalCount) ollamaLocalCount.textContent = String(ollamaModels.length);
   if (loadedModelSummary) {
     loadedModelSummary.textContent = audioModels.length
-      ? `${audioModels.length} 个音频模型可用于直转`
-      : "未检测到已加载音频模型";
+      ? `${audioModels.length} 个模型可直转，${textModels.length} 个模型可整理`
+      : "未检测到可直转模型";
   }
   renderLocalModelInventory();
 }
@@ -3648,13 +3652,17 @@ function renderLocalModelInventory() {
       const item = document.createElement("div");
       item.className = "inventory-model";
       item.title = model.path_or_id;
+      const state = document.createElement("span");
+      state.className = "inventory-state";
+      state.textContent = modelSourceLabel(model);
       const name = document.createElement("strong");
       name.textContent = model.name;
       const meta = document.createElement("span");
+      meta.className = "inventory-capability";
       meta.textContent = `${providerLabel(model.provider)} · ${modelCapabilityTags(model)}`;
       const path = document.createElement("small");
       path.textContent = displayModelPath(model.path_or_id);
-      item.append(name, meta, path);
+      item.append(state, name, meta, path);
       return item;
     }),
   );
@@ -3668,7 +3676,7 @@ function renderOllamaOptions(status) {
 
   const transcriptionOptions = audioModels.map(registryModelOption);
   if (!transcriptionOptions.length) {
-    transcriptionOptions.push(new Option("未检测到已加载音频模型", ""));
+    transcriptionOptions.push(new Option("未检测到可直转模型", ""));
   }
   ollamaTranscriptionModelSelect.replaceChildren(...transcriptionOptions);
   const selectedAudio = selectedAudioModel();
@@ -3703,7 +3711,7 @@ function renderOllamaOptions(status) {
     options.push(option);
   }
   if (!options.length) {
-    options.push(new Option("未检测到已加载模型", ""));
+    options.push(new Option("未检测到模型库记录", ""));
   }
   ollamaManagedModelSelect.replaceChildren(...options);
   ollamaManagedModelSelect.value = options.some((option) => option.value === currentManaged) ? currentManaged : options[0]?.value || "";
@@ -3897,7 +3905,7 @@ async function refreshSelectedOllamaModel() {
   );
   const selectedLabel = selectedMeta.model?.name || modelId;
   ollamaModelPath.textContent = selectedMeta.model
-    ? `${providerLabel(selectedMeta.model.provider)} · ${displayModelPath(selectedMeta.model.path_or_id)}`
+    ? `${modelSourceLabel(selectedMeta.model)}：${providerLabel(selectedMeta.model.provider)} · ${displayModelPath(selectedMeta.model.path_or_id)}`
     : isOllamaModel
       ? "Ollama 模型由 Ollama 管理，不下载到项目目录。"
       : "本地模型已绑定，不由 Ollama 下载。";
@@ -3907,7 +3915,7 @@ async function refreshSelectedOllamaModel() {
     ollamaDownloadButton.disabled = true;
     ollamaCancelButton.disabled = true;
     ollamaDownloadLabel.textContent = available ? "本地已就绪" : "无需下载";
-    ollamaMessage.textContent = available ? `已加载：${selectedLabel}` : `未检测到：${selectedLabel}`;
+    ollamaMessage.textContent = available ? `已导入并可用：${selectedLabel}` : `未检测到：${selectedLabel}`;
     return;
   }
   const downloading = await refreshOllamaPullStatus(modelId);

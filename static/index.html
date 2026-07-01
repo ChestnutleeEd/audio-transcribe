@@ -184,17 +184,17 @@
 
           <details class="model-details" open>
             <summary>
-              <span>本地大模型详情</span>
+              <span>本地模型状态</span>
               <small id="loaded-model-summary">等待模型检测</small>
             </summary>
             <div class="model-card ollama-card" aria-live="polite">
               <div class="local-model-metrics" aria-label="本地模型概览">
                 <div>
-                  <span>音频模型</span>
+                  <span>可直转模型</span>
                   <b id="loaded-audio-count">0</b>
                 </div>
                 <div>
-                  <span>文本模型</span>
+                  <span>可整理模型</span>
                   <b id="loaded-text-count">0</b>
                 </div>
                 <div>
@@ -212,12 +212,14 @@
                 </div>
                 <div class="ollama-config-grid">
                   <label class="model-selector">
-                    <span>已加载音频模型</span>
+                    <span>直转使用模型</span>
+                    <small>提交“本地音频大模型”任务时使用的模型。</small>
                     <select id="ollama-transcription-model-select" aria-label="选择已加载音频模型">
                     </select>
                   </label>
                   <label class="model-selector">
-                    <span>已加载模型状态</span>
+                    <span>模型库状态</span>
+                    <small>查看模型来源、导入状态，以及是否需要 Ollama 下载。</small>
                     <select id="ollama-managed-model-select" aria-label="选择要检查状态的已加载模型">
                     </select>
                   </label>
