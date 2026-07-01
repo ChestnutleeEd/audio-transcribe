@@ -1188,12 +1188,16 @@ function renderModelDetectionGroup(label, models) {
   section.className = "detection-group";
   const title = document.createElement("h4");
   const exists = models.some((model) => model.exists);
+  const readyCount = models.filter((model) => model.exists).length;
   const titleText = document.createElement("span");
   titleText.textContent = label;
+  const summary = document.createElement("small");
+  summary.className = "detection-group-summary";
+  summary.textContent = `${readyCount}/${models.length} 可用`;
   const groupState = document.createElement("b");
   groupState.className = `detection-group-state ${exists ? "is-ready" : "needs-config"}`;
   groupState.textContent = exists ? "已就绪" : "需配置";
-  title.append(titleText, groupState);
+  title.append(titleText, summary, groupState);
   section.append(title);
   for (const model of models.slice(0, 8)) {
     const row = document.createElement("div");
@@ -1215,6 +1219,12 @@ function renderModelDetectionGroup(label, models) {
     const capability = document.createElement("span");
     capability.textContent = model.capability;
     meta.append(provider, capability);
+    const detail = document.createElement("details");
+    detail.className = "detected-model-detail";
+    const detailSummary = document.createElement("summary");
+    detailSummary.textContent = "详情";
+    const detailBody = document.createElement("div");
+    detailBody.className = "detected-model-detail-body";
     const path = document.createElement("small");
     path.className = "detected-model-path";
     path.textContent = displayModelPath(model.path);
@@ -1222,7 +1232,9 @@ function renderModelDetectionGroup(label, models) {
     const reason = document.createElement("small");
     reason.className = "detected-model-reason";
     reason.textContent = model.reason || "可用";
-    row.append(main, meta, path, reason);
+    detailBody.append(path, reason);
+    detail.append(detailSummary, detailBody);
+    row.append(main, meta, detail);
     if (model.canDelete) {
       const removeButton = document.createElement("button");
       removeButton.className = "secondary model-cancel detected-model-delete";
