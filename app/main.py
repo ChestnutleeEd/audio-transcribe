@@ -1655,6 +1655,18 @@ def clear_job_history() -> list[JobStatus]:
     return [build_status(job) for job in job_store.clear_history()]
 
 
+@app.delete("/api/jobs/history/{job_id}", response_model=list[JobStatus])
+def delete_job_history_record(job_id: str) -> list[JobStatus]:
+    job = job_store.get(job_id)
+    if job is None:
+        return [build_status(item) for item in job_store.list()]
+    try:
+        job_store.delete(job_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return [build_status(item) for item in job_store.list()]
+
+
 @app.delete("/api/jobs/{job_id}", response_model=list[JobStatus])
 def delete_job_record(job_id: str) -> list[JobStatus]:
     job = job_store.get(job_id)

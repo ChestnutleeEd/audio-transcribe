@@ -2668,7 +2668,7 @@ async function deleteJobRecord(jobId, sourceLabel = "") {
   const name = sourceLabel || `任务 ${shortId(jobId)}`;
   const approved = window.confirm(`删除转录记录 ${name}？已自动存储或已下载的文件不会被删除。`);
   if (!approved) return;
-  const response = await fetch(`/api/jobs/${jobId}`, { method: "DELETE" });
+  const response = await fetch(`/api/jobs/history/${encodeURIComponent(jobId)}`, { method: "DELETE" });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     showDiagnostic(diagnoseClientError(payload.detail || "删除任务记录失败"));
