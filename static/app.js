@@ -2116,7 +2116,7 @@ function renderJob(job) {
   }
   const meta = document.createElement("p");
   meta.className = "job-meta";
-  meta.textContent = `任务 ${shortId(job.id)}`;
+  meta.textContent = `任务 ${shortId(job.id)} · ${jobMeta(job)}`;
   titleWrap.append(title, meta);
 
   const pill = document.createElement("span");
@@ -2148,6 +2148,14 @@ function renderJob(job) {
   const barFill = document.createElement("span");
   bar.append(barFill);
 
+  const progressMeta = document.createElement("div");
+  progressMeta.className = "job-progress-meta";
+  const progressLabel = document.createElement("span");
+  progressLabel.textContent = stateLabel(job.state);
+  const progressValue = document.createElement("strong");
+  progressValue.textContent = `${progress}%`;
+  progressMeta.append(progressLabel, progressValue);
+
   const message = document.createElement("p");
   message.className = "job-message";
   message.textContent = job.error || job.message || "";
@@ -2176,7 +2184,7 @@ function renderJob(job) {
   actions.className = "job-actions";
   if (isActiveState(job.state)) {
     const stopButton = document.createElement("button");
-    stopButton.className = "danger";
+    stopButton.className = "danger job-action-button";
     stopButton.type = "button";
     stopButton.textContent = "停止";
     stopButton.addEventListener("click", () => cancelJob(job.id, stopButton));
@@ -2184,7 +2192,7 @@ function renderJob(job) {
   }
   if (job.raw_text) {
     const copyRawButton = document.createElement("button");
-    copyRawButton.className = "secondary";
+    copyRawButton.className = "secondary job-action-button";
     copyRawButton.type = "button";
     copyRawButton.textContent = "复制原始文本";
     copyRawButton.addEventListener("click", () => copyText(job.raw_text, copyRawButton));
@@ -2192,7 +2200,7 @@ function renderJob(job) {
   }
   if (job.polished_text) {
     const copyPolishedButton = document.createElement("button");
-    copyPolishedButton.className = "secondary";
+    copyPolishedButton.className = "secondary job-action-button";
     copyPolishedButton.type = "button";
     copyPolishedButton.textContent = "复制整理后文本";
     copyPolishedButton.addEventListener("click", () => copyText(job.polished_text, copyPolishedButton));
@@ -2200,7 +2208,7 @@ function renderJob(job) {
   }
   if (job.raw_text && job.polished_text) {
     const compareButton = document.createElement("button");
-    compareButton.className = "secondary";
+    compareButton.className = "secondary job-action-button";
     compareButton.type = "button";
     compareButton.textContent = compareExpandedJobIds.has(job.id) ? "收起对比" : "对比";
     compareButton.setAttribute("aria-expanded", String(compareExpandedJobIds.has(job.id)));
@@ -2209,7 +2217,7 @@ function renderJob(job) {
   }
   if (job.raw_text && !isActiveState(job.state)) {
     const rerunButton = document.createElement("button");
-    rerunButton.className = "secondary";
+    rerunButton.className = "secondary job-action-button";
     rerunButton.type = "button";
     rerunButton.textContent = "重新整理";
     rerunButton.addEventListener("click", () => rerunPolish(job.id, rerunButton));
@@ -2239,14 +2247,14 @@ function renderJob(job) {
   const body = document.createElement("div");
   body.className = "job-body";
   body.hidden = isCollapsed;
-  body.append(details, diagnostic, warnings, stages, transcripts);
+  body.append(actions, outputs, details, diagnostic, warnings, stages, transcripts);
   if (job.raw_text && job.polished_text && compareExpandedJobIds.has(job.id)) {
     body.append(renderCompareView(job));
   }
-  body.append(events, actions, outputs);
+  body.append(events);
 
   item.classList.toggle("is-collapsed", isCollapsed);
-  item.append(header, bar, message, body);
+  item.append(header, progressMeta, bar, message, body);
   return item;
 }
 

@@ -450,16 +450,7 @@ small {
   gap: var(--space-3);
 }
 
-/* Make jobs items look like terminal output */
-.jobs-list > div {
-  background: #F8FAFC;
-  border: 1px solid var(--panel-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-3);
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  word-break: break-all;
-}
+/* Job cards use their own layout in styles.css. Keep this list neutral here. */
 
 /* Sidebar Accordions */
 details summary {
