@@ -339,7 +339,7 @@
                   <div class="panel-head">
                     <div>
                       <h2>新建任务</h2>
-                      <p>文件和链接二选一；如果同时填写，会优先处理上传文件。</p>
+                      <p>文件和链接二选一；如果同时填写，会优先处理本地文件。</p>
                     </div>
                     <button class="icon-button" type="button" id="reset-button" aria-label="清空表单" title="清空表单">
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/></svg>
@@ -350,6 +350,21 @@
                     <input id="file-input" name="file" type="file" accept=".mp3,.m4a,.wav,.flac,.aac,.ogg,.mp4,.mov,.mkv,.webm,.avi" />
                     <strong id="file-label">选择本地音频或视频</strong>
                     <small>支持 mp3、m4a、wav、flac、mp4、mov、mkv、webm 等</small>
+                  </label>
+
+                  <div class="local-file-picker">
+                    <input id="source-path-input" name="source_path" type="hidden" />
+                    <button class="secondary icon-text-button" type="button" id="pick-source-file-button" title="使用系统文件选择器选择音视频">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v7A2.5 2.5 0 0 1 18.5 18h-13A2.5 2.5 0 0 1 3 15.5z"/></svg>
+                      选择系统文件
+                    </button>
+                    <small id="source-path-label">自动存储需要通过系统文件选择器提交本地文件。</small>
+                  </div>
+
+                  <label class="switch">
+                    <input type="checkbox" name="auto_save_outputs" id="auto-save-outputs" />
+                    <span></span>
+                    <b>自动存储转录文件</b>
                   </label>
 
                   <label class="field">

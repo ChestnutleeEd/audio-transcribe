@@ -21,6 +21,7 @@ class ExportScope(str, Enum):
 
 
 class JobState(str, Enum):
+    queued = "queued"
     validating = "validating"
     preparing_model = "preparing_model"
     transcribing = "transcribing"
@@ -43,6 +44,7 @@ class OutputFile(BaseModel):
     format: OutputFormat
     bytes: int
     download_url: str
+    saved_path: str | None = None
 
 
 class JobEvent(BaseModel):
@@ -97,6 +99,8 @@ class JobStatus(BaseModel):
     polished_text: str | None = None
     has_segments: bool = False
     duration_seconds: float | None = None
+    auto_save_outputs: bool = False
+    auto_save_dir: str | None = None
 
 
 class OptionItem(BaseModel):

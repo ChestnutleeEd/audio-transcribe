@@ -12,7 +12,7 @@ from app.services.exporters import TranscriptSegment
 @dataclass
 class Job:
     id: str
-    state: JobState = JobState.validating
+    state: JobState = JobState.queued
     progress: int = 0
     message: str = "等待处理"
     source_label: str = "未命名任务"
@@ -50,6 +50,10 @@ class Job:
     polished_text: str | None = None
     duration_seconds: float | None = None
     engine_metadata: dict[str, object] = field(default_factory=dict)
+    source_path: Path | None = None
+    source_dir: Path | None = None
+    auto_save_outputs: bool = False
+    auto_save_dir: Path | None = None
 
 
 class JobStore:
@@ -80,6 +84,9 @@ class JobStore:
         polish_custom_instruction: str | None = None,
         export_scope: ExportScope = ExportScope.raw,
         base_name: str = "transcript",
+        source_path: Path | None = None,
+        source_dir: Path | None = None,
+        auto_save_outputs: bool = False,
     ) -> Job:
         job = Job(
             id=job_id,
@@ -103,11 +110,11 @@ class JobStore:
             export_scope=export_scope,
             include_timestamps=include_timestamps,
             base_name=base_name,
+            source_path=source_path,
+            source_dir=source_dir,
+            auto_save_outputs=auto_save_outputs,
         )
-        terminal = {JobState.completed, JobState.failed, JobState.cancelled}
         with self._lock:
-            if any(existing.state not in terminal for existing in self._jobs.values()):
-                raise ValueError("已有任务正在处理。请先等待完成或取消当前任务。")
             self._jobs[job_id] = job
         return job
 
@@ -138,6 +145,14 @@ class JobStore:
             self._jobs = {job_id: job for job_id, job in self._jobs.items() if job.state not in terminal}
             return sorted(self._jobs.values(), key=lambda job: job.created_at, reverse=True)
 
+    def delete(self, job_id: str) -> Job:
+        terminal = {JobState.completed, JobState.failed, JobState.cancelled}
+        with self._lock:
+            job = self._jobs[job_id]
+            if job.state not in terminal:
+                raise ValueError("任务仍在处理或排队，请先停止后再删除记录。")
+            return self._jobs.pop(job_id)
+
     def has_active_job(self) -> bool:
         terminal = {JobState.completed, JobState.failed, JobState.cancelled}
         with self._lock:
@@ -147,7 +162,7 @@ class JobStore:
         with self._lock:
             job = self._jobs[job_id]
             job.cancel_requested = True
-            if job.state == JobState.validating:
+            if job.state in {JobState.queued, JobState.validating}:
                 job.message = "已取消排队任务"
             else:
                 job.message = "正在停止任务"

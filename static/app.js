@@ -2,6 +2,10 @@ const form = document.querySelector("#job-form");
 const resetButton = document.querySelector("#reset-button");
 const fileInput = document.querySelector("#file-input");
 const fileLabel = document.querySelector("#file-label");
+const sourcePathInput = document.querySelector("#source-path-input");
+const sourcePathLabel = document.querySelector("#source-path-label");
+const pickSourceFileButton = document.querySelector("#pick-source-file-button");
+const autoSaveOutputsInput = document.querySelector("#auto-save-outputs");
 const submitButton = form.querySelector(".primary");
 const startTimeInput = form.querySelector('input[name="start_time"]');
 const endTimeInput = form.querySelector('input[name="end_time"]');
@@ -491,6 +495,10 @@ ollamaCancelButton.addEventListener("click", async () => {
 fileInput.addEventListener("change", () => {
   const file = fileInput.files[0];
   fileLabel.textContent = file?.name || "选择本地音频或视频";
+  if (file) {
+    sourcePathInput.value = "";
+    sourcePathLabel.textContent = "浏览器上传不会暴露原始目录；自动存储请改用“选择系统文件”。";
+  }
   clipDefaultsReady = false;
   clipRangeTouched = false;
   setClipRange("00:00:00", "00:00:00");
@@ -507,10 +515,14 @@ resetButton.addEventListener("click", () => {
   updateFormatControls();
   updatePromptPreview();
   fileLabel.textContent = "选择本地音频或视频";
+  sourcePathInput.value = "";
+  sourcePathLabel.textContent = "自动存储需要通过系统文件选择器提交本地文件。";
   clipDefaultsReady = false;
   clipRangeTouched = false;
   setClipRange("00:00:00", "00:00:00");
 });
+
+pickSourceFileButton?.addEventListener("click", pickSourceFile);
 
 startTimeInput.addEventListener("change", () => {
   clipRangeTouched = true;
@@ -522,8 +534,7 @@ endTimeInput.addEventListener("change", () => {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (submittingJob || hasActiveJob()) {
-    showDiagnostic(diagnoseClientError("已有任务正在处理。请先等待完成或取消当前任务。", "TASK_ACTIVE"));
+  if (submittingJob) {
     return;
   }
   const mode = selectedAudioMode();
@@ -606,6 +617,10 @@ form.addEventListener("submit", async (event) => {
   if (!fileInput.files.length) {
     data.delete("file");
   }
+  if (fileInput.files.length) {
+    data.delete("source_path");
+  }
+  data.set("auto_save_outputs", autoSaveOutputsInput?.checked ? "true" : "false");
 
   submittingJob = true;
   submitButton.disabled = true;
@@ -626,6 +641,8 @@ form.addEventListener("submit", async (event) => {
     updatePromptPreview();
     renderSettingsTemplates();
     fileLabel.textContent = "选择本地音频或视频";
+    sourcePathInput.value = "";
+    sourcePathLabel.textContent = "自动存储需要通过系统文件选择器提交本地文件。";
     clipDefaultsReady = false;
     clipRangeTouched = false;
     setClipRange("00:00:00", "00:00:00");
@@ -656,6 +673,7 @@ function collectTaskSettings() {
     include_timestamps: includeTimestampsInput.checked,
     formats: [...form.querySelectorAll('input[name="formats"]:checked')].map((input) => input.value),
     export_scope: form.querySelector('input[name="export_scope"]:checked')?.value || "raw",
+    auto_save_outputs: autoSaveOutputsInput?.checked || false,
   };
 }
 
@@ -677,6 +695,7 @@ function applyStoredTaskSettings(settings, options = {}) {
   includeTimestampsInput.checked = settings.include_timestamps !== false;
   setCheckedValues('input[name="formats"]', settings.formats?.length ? settings.formats : ["txt"]);
   setCheckedValue('input[name="export_scope"]', settings.export_scope || "raw");
+  if (autoSaveOutputsInput) autoSaveOutputsInput.checked = Boolean(settings.auto_save_outputs);
   if (settings.polish_custom_instruction) {
     localStorage.setItem(CUSTOM_INSTRUCTION_KEY, settings.polish_custom_instruction);
   }
@@ -717,6 +736,30 @@ function setCheckedValues(selector, values) {
 function setCheckedValue(selector, value) {
   const input = form.querySelector(`${selector}[value="${cssEscape(String(value || ""))}"]`);
   if (input) input.checked = true;
+}
+
+async function pickSourceFile() {
+  if (!pickSourceFileButton || !sourcePathInput || !sourcePathLabel) return;
+  pickSourceFileButton.disabled = true;
+  sourcePathLabel.textContent = "正在打开系统文件选择器。";
+  try {
+    const response = await fetch("/api/media/pick-file", { method: "POST" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.detail || "选择文件失败");
+    }
+    sourcePathInput.value = payload.path || "";
+    sourcePathLabel.textContent = payload.path || payload.name || "已选择系统文件";
+    if (fileInput) fileInput.value = "";
+    fileLabel.textContent = payload.name || "已选择系统文件";
+    clipDefaultsReady = false;
+    clipRangeTouched = false;
+    setClipRange("00:00:00", "00:00:00");
+  } catch (error) {
+    sourcePathLabel.textContent = error.message === "未选择文件" ? "未选择系统文件。" : `选择文件失败：${error.message}`;
+  } finally {
+    pickSourceFileButton.disabled = false;
+  }
 }
 
 function setSelectedPolishProfileIds(value) {
@@ -1844,7 +1887,7 @@ function renderJobs(jobs) {
   const activeCount = jobs.filter((job) => isActiveState(job.state)).length;
   updateWorkbenchJobStats(jobs, activeCount);
   jobSummary.textContent = jobs.length ? `${jobs.length} 个任务，${activeCount} 个进行中或排队` : "等待创建任务";
-  submitButton.disabled = submittingJob || activeCount > 0;
+  submitButton.disabled = submittingJob;
   const seen = new Set();
   const nodes = jobs.map((job) => {
     seen.add(job.id);
@@ -2082,12 +2125,8 @@ function showHistorySnapshot(item) {
   jobsList.prepend(renderJob(pseudoJob));
 }
 
-function hasActiveJob() {
-  return lastJobs.some((job) => isActiveState(job.state));
-}
-
 function isActiveState(state) {
-  return ["validating", "preparing_model", "transcribing", "polishing"].includes(state);
+  return ["queued", "validating", "preparing_model", "transcribing", "polishing"].includes(state);
 }
 
 function renderJob(job) {
@@ -2222,6 +2261,14 @@ function renderJob(job) {
     rerunButton.textContent = "重新整理";
     rerunButton.addEventListener("click", () => rerunPolish(job.id, rerunButton));
     actions.append(rerunButton);
+  }
+  if (terminalJobState(job.state)) {
+    const deleteRecordButton = document.createElement("button");
+    deleteRecordButton.className = "danger ghost job-action-button";
+    deleteRecordButton.type = "button";
+    deleteRecordButton.textContent = "删除记录";
+    deleteRecordButton.addEventListener("click", () => deleteJobRecord(job.id, job.source_label));
+    actions.append(deleteRecordButton);
   }
 
   const outputs = document.createElement("div");
@@ -2530,7 +2577,7 @@ function renderOutput(jobId, file) {
   link.textContent = file.name;
 
   const size = document.createElement("small");
-  size.textContent = formatBytes(file.bytes);
+  size.textContent = file.saved_path ? `${formatBytes(file.bytes)} · 已存储到 ${file.saved_path}` : formatBytes(file.bytes);
 
   const deleteButton = document.createElement("button");
   deleteButton.className = "danger ghost";
@@ -2617,6 +2664,27 @@ async function deleteOutput(jobId, fileName) {
   await refreshJobs();
 }
 
+async function deleteJobRecord(jobId, sourceLabel = "") {
+  const name = sourceLabel || `任务 ${shortId(jobId)}`;
+  const approved = window.confirm(`删除转录记录 ${name}？已自动存储或已下载的文件不会被删除。`);
+  if (!approved) return;
+  const response = await fetch(`/api/jobs/${jobId}`, { method: "DELETE" });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    showDiagnostic(diagnoseClientError(payload.detail || "删除任务记录失败"));
+    return;
+  }
+  removeHistoryItem(jobId);
+  selectedHistoryJobId = selectedHistoryJobId === jobId ? null : selectedHistoryJobId;
+  renderJobs(Array.isArray(payload) ? payload : []);
+}
+
+function removeHistoryItem(jobId) {
+  const next = loadHistory().filter((item) => item.taskId !== jobId);
+  saveHistory(next);
+  renderHistory(next);
+}
+
 function showDiagnostic(diagnostic) {
   diagnosticCard.hidden = false;
   diagnosticCard.replaceChildren();
@@ -2649,15 +2717,6 @@ function showDiagnostic(diagnostic) {
 function diagnoseClientError(message, codeHint) {
   const text = String(message || "");
   const lower = text.toLowerCase();
-  if (codeHint === "TASK_ACTIVE") {
-    return {
-      code: "TASK_ACTIVE",
-      title: "已有任务正在处理",
-      message: text,
-      action: "等待任务完成，或先取消当前任务。",
-      technical_detail: text,
-    };
-  }
   if (codeHint === "EXPORT_FORMAT_MISSING") {
     return {
       code: "EXPORT_FORMAT_MISSING",
@@ -2750,6 +2809,7 @@ function diagnoseClientError(message, codeHint) {
 
 function stateLabel(state) {
   return {
+    queued: "排队中",
     validating: "校验中",
     preparing_model: "准备模型",
     transcribing: "转录中",
@@ -2765,7 +2825,7 @@ function shortId(id) {
 }
 
 function jobDetails(job) {
-  return [
+  const details = [
     { label: "引擎", value: transcriptionEngineLabel(job.transcription_engine) },
     { label: "语言", value: languageLabel(job.language) },
     { label: "截取", value: timeRangeLabel(job.start_time, job.end_time) },
@@ -2775,6 +2835,10 @@ function jobDetails(job) {
     { label: "时间轴", value: job.include_timestamps ? "带时间轴" : "纯文本" },
     { label: "耗时", value: elapsedLabel(job) },
   ];
+  if (job.auto_save_outputs) {
+    details.push({ label: "自动存储", value: job.auto_save_dir || "等待保存到音频目录" });
+  }
+  return details;
 }
 
 function elapsedLabel(job) {

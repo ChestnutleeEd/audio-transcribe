@@ -533,9 +533,43 @@ summary:focus-visible {
 
 .workbench-control-panel > .dropzone,
 .workbench-control-panel > .field,
+.workbench-control-panel > .local-file-picker,
+.workbench-control-panel > .switch,
 .workbench-control-panel > button[type="submit"] {
   margin-left: 14px;
   margin-right: 14px;
+}
+
+.local-file-picker {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #F8FAFC;
+}
+
+.local-file-picker .icon-text-button {
+  justify-content: center;
+  min-height: 38px;
+}
+
+.local-file-picker small {
+  color: var(--text-secondary);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.workbench-control-panel > .switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #F8FAFC;
 }
 
 /* --- TEMPLATE POPOVER --- */
@@ -4322,6 +4356,7 @@ html[data-theme="dark"] .result-empty-state img {
 .job-item.state-failed { border-left-color: #DC2626; }
 .job-item.state-cancelled { border-left-color: #64748B; }
 .job-item.state-polishing { border-left-color: #7C3AED; }
+.job-item.state-queued,
 .job-item.state-preparing_model,
 .job-item.state-transcribing,
 .job-item.state-validating { border-left-color: #2563EB; }
@@ -4385,6 +4420,12 @@ html[data-theme="dark"] .result-empty-state img {
   background: #EFF6FF;
   color: #1D4ED8;
   font-size: 0.8rem;
+}
+
+.state-badge.state-queued {
+  border-color: rgba(37, 99, 235, 0.18);
+  background: #EFF6FF;
+  color: #1D4ED8;
 }
 
 .state-badge.state-completed {
@@ -4790,6 +4831,12 @@ html[data-theme="dark"] .job-item {
   border-color: rgba(148, 163, 184, 0.24);
   color: #F8FAFC;
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.45);
+}
+
+html[data-theme="dark"] .local-file-picker,
+html[data-theme="dark"] .workbench-control-panel > .switch {
+  border-color: rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.72);
 }
 
 html[data-theme="dark"] .workbench-jobs > .panel-head {

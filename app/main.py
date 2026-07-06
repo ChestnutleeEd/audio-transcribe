@@ -346,6 +346,8 @@ def build_status(job: Job) -> JobStatus:
         polished_text=job.polished_text,
         has_segments=bool(job.raw_segments),
         duration_seconds=job.duration_seconds,
+        auto_save_outputs=job.auto_save_outputs,
+        auto_save_dir=str(job.auto_save_dir) if job.auto_save_dir else None,
     )
 
 
@@ -526,16 +528,49 @@ def export_metadata(job: Job) -> dict[str, object]:
     }
 
 
-def build_output_files(job_id: str, paths: list[Path]) -> list[OutputFile]:
+def build_output_files(job_id: str, paths: list[Path], saved_paths: dict[str, Path] | None = None) -> list[OutputFile]:
+    saved_paths = saved_paths or {}
     return [
         OutputFile(
             name=path.name,
             format=OutputFormat(path.suffix.lstrip(".")),
             bytes=path.stat().st_size,
             download_url=f"/api/jobs/{job_id}/download/{path.name}",
+            saved_path=str(saved_paths[path.name]) if path.name in saved_paths else None,
         )
         for path in paths
     ]
+
+
+def auto_save_output_files(job_id: str, output_paths: list[Path]) -> dict[str, Path]:
+    job = job_store.get(job_id)
+    if job is None or not job.auto_save_outputs:
+        return {}
+    if job.source_dir is None:
+        append_job_warning(job_id, "自动存储未执行：当前来源没有可写入的本地音频目录，请使用“选择系统文件”提交本地文件。")
+        return {}
+
+    target_dir = job.source_dir / "转录结果"
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        append_job_warning(job_id, f"自动存储目录创建失败：{exc}")
+        return {}
+
+    saved_paths: dict[str, Path] = {}
+    for output_path in output_paths:
+        if not output_path.exists() or not output_path.is_file():
+            continue
+        target_path = target_dir / output_path.name
+        try:
+            shutil.copy2(output_path, target_path)
+            saved_paths[output_path.name] = target_path
+        except OSError as exc:
+            append_job_warning(job_id, f"自动存储 {output_path.name} 失败：{exc}")
+    if saved_paths:
+        job_store.update(job_id, auto_save_dir=target_dir)
+        add_event(job_id, f"转录文件已自动存储到：{target_dir}")
+    return saved_paths
 
 
 def regenerate_exports(job_id: str) -> list[OutputFile]:
@@ -552,7 +587,8 @@ def regenerate_exports(job_id: str) -> list[OutputFile]:
         job.export_scope,
         export_metadata(job),
     )
-    return build_output_files(job_id, output_paths)
+    saved_paths = auto_save_output_files(job_id, output_paths)
+    return build_output_files(job_id, output_paths, saved_paths)
 
 
 def mock_whisper_segments() -> list[TranscriptSegment]:
@@ -1038,7 +1074,8 @@ def run_job(
             export_metadata(job_store.get(job_id) or job),
         )
         add_event(job_id, "导出文件已生成")
-        outputs = build_output_files(job_id, output_paths)
+        saved_paths = auto_save_output_files(job_id, output_paths)
+        outputs = build_output_files(job_id, output_paths, saved_paths)
 
         ensure_not_cancelled(job_id)
 
@@ -1209,6 +1246,56 @@ def pick_model_directory():
     return {"path": selected}
 
 
+@app.api_route("/api/media/pick-file", methods=["GET", "POST"])
+def pick_media_file():
+    if platform.system().lower() == "darwin":
+        script = 'POSIX path of (choose file with prompt "选择要转录的音频或视频文件")'
+        try:
+            result = subprocess.run(
+                ["osascript", "-e", script],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"打开 macOS 文件选择器失败：{exc}") from exc
+        if result.returncode == 0 and result.stdout.strip():
+            selected = Path(result.stdout.strip())
+            if selected.suffix.lower() not in SUPPORTED_UPLOAD_SUFFIXES:
+                raise HTTPException(status_code=400, detail=f"暂不支持该文件格式: {selected.suffix or '未知'}")
+            return {"path": str(selected), "name": selected.name}
+        message = (result.stderr or "").strip()
+        if "User canceled" in message or result.returncode == 1:
+            raise HTTPException(status_code=400, detail="未选择文件")
+        raise HTTPException(status_code=500, detail=f"打开 macOS 文件选择器失败：{message or result.returncode}")
+
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"当前 Python 环境无法打开系统文件选择器：{exc}") from exc
+
+    root = None
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        selected = filedialog.askopenfilename(title="选择要转录的音频或视频文件")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"打开系统文件选择器失败：{exc}") from exc
+    finally:
+        if root is not None:
+            root.destroy()
+
+    if not selected:
+        raise HTTPException(status_code=400, detail="未选择文件")
+    path = Path(selected)
+    if path.suffix.lower() not in SUPPORTED_UPLOAD_SUFFIXES:
+        raise HTTPException(status_code=400, detail=f"暂不支持该文件格式: {path.suffix or '未知'}")
+    return {"path": selected, "name": path.name}
+
+
 @app.post("/api/models/audio-test", response_model=AudioModelTestResult)
 def quick_test_audio_model(request: AudioModelTestRequest) -> AudioModelTestResult:
     return test_audio_model(request)
@@ -1328,6 +1415,7 @@ def get_health_check() -> HealthCheckStatus:
 @app.post("/api/jobs", response_model=JobStatus)
 async def create_job(
     file: UploadFile | None = File(default=None),
+    source_path: str | None = Form(default=None),
     source_url: str | None = Form(default=None),
     language: str = Form(default="auto"),
     formats: str = Form(default="txt"),
@@ -1344,17 +1432,29 @@ async def create_job(
     polish_profile_id: str | None = Form(default=None),
     polish_custom_instruction: str | None = Form(default=None),
     export_scope: str = Form(default=ExportScope.raw.value),
+    auto_save_outputs: bool = Form(default=False),
 ) -> JobStatus:
-    if job_store.has_active_job():
-        raise HTTPException(status_code=409, detail="已有任务正在处理。请先等待完成或取消当前任务。")
-
     has_file = bool(file and file.filename)
+    clean_source_path = (source_path or "").strip()
+    local_source_path: Path | None = None
+    local_source_dir: Path | None = None
+    if clean_source_path:
+        try:
+            candidate = Path(clean_source_path).expanduser().resolve(strict=True)
+        except OSError as exc:
+            raise HTTPException(status_code=400, detail=f"本地文件不存在：{clean_source_path}") from exc
+        if not candidate.is_file():
+            raise HTTPException(status_code=400, detail=f"请选择具体音视频文件：{clean_source_path}")
+        if candidate.suffix.lower() not in SUPPORTED_UPLOAD_SUFFIXES:
+            raise HTTPException(status_code=400, detail=f"暂不支持该文件格式: {candidate.suffix or '未知'}")
+        local_source_path = candidate
+        local_source_dir = candidate.parent
     try:
         clean_source_url = normalize_source_url(source_url) if source_url else None
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if not has_file and not clean_source_url:
+    if not has_file and not local_source_path and not clean_source_url:
         raise HTTPException(status_code=400, detail="请上传本地文件或填写视频链接")
 
     try:
@@ -1446,6 +1546,7 @@ async def create_job(
     work_dir = settings.jobs_dir / job_id
     work_dir.mkdir(parents=True, exist_ok=True)
     source_path: Path | None = None
+    source_dir: Path | None = None
     base_name = "transcript"
     source_label = clean_source_url or "本地文件"
 
@@ -1458,6 +1559,11 @@ async def create_job(
         source_path = work_dir / f"source{suffix}"
         with source_path.open("wb") as handle:
             shutil.copyfileobj(file.file, handle)
+    elif local_source_path is not None:
+        base_name = safe_stem(local_source_path.name)
+        source_label = local_source_path.name
+        source_path = local_source_path
+        source_dir = local_source_dir
     elif clean_source_url:
         base_name = safe_stem(clean_source_url)
 
@@ -1497,6 +1603,9 @@ async def create_job(
             (polish_custom_instruction or "").strip() if enable_polish else None,
             active_export_scope,
             base_name,
+            source_path,
+            source_dir,
+            auto_save_outputs,
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -1544,6 +1653,18 @@ def list_jobs() -> list[JobStatus]:
 @app.delete("/api/jobs/history", response_model=list[JobStatus])
 def clear_job_history() -> list[JobStatus]:
     return [build_status(job) for job in job_store.clear_history()]
+
+
+@app.delete("/api/jobs/{job_id}", response_model=list[JobStatus])
+def delete_job_record(job_id: str) -> list[JobStatus]:
+    job = job_store.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    try:
+        job_store.delete(job_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return [build_status(item) for item in job_store.list()]
 
 
 @app.get("/api/jobs/cleanup/status", response_model=JobWorkFileCleanupStatus)
