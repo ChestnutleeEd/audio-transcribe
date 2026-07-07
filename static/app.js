@@ -1156,30 +1156,38 @@ function displayModelPath(path) {
 
 function renderModelDetection(errors = []) {
   modelDetectionList?.replaceChildren();
+  if (!modelDetectionList) return;
   const models = lastModelRegistry?.models || [];
   const groups = [
     ["Whisper / faster-whisper", whisperDetectionRows()],
     ["MLX Whisper", mlxWhisperDetectionRows()],
     ["本地音频大模型", localAudioLlmDetectionRows(models)],
   ];
-  for (const [label, group] of groups) {
-    modelDetectionList?.append(renderModelDetectionGroup(label, group));
-  }
   const visibleErrors = errors.slice(0, 4).filter(Boolean);
   if (visibleErrors.length) {
-    const errorPanel = document.createElement("section");
-    errorPanel.className = "detection-errors";
-    const title = document.createElement("strong");
-    title.textContent = "检测提示";
-    errorPanel.append(title);
-    for (const error of visibleErrors) {
-      const row = document.createElement("small");
-      row.className = "provider-error";
-      row.textContent = error;
-      errorPanel.append(row);
-    }
-    modelDetectionList?.append(errorPanel);
+    modelDetectionList.append(renderDetectionErrors(visibleErrors));
   }
+  const groupsGrid = document.createElement("div");
+  groupsGrid.className = "detection-groups-grid";
+  for (const [label, group] of groups) {
+    groupsGrid.append(renderModelDetectionGroup(label, group));
+  }
+  modelDetectionList.append(groupsGrid);
+}
+
+function renderDetectionErrors(errors) {
+  const errorPanel = document.createElement("section");
+  errorPanel.className = "detection-errors";
+  const title = document.createElement("strong");
+  title.textContent = "检测提示";
+  errorPanel.append(title);
+  for (const error of errors) {
+    const row = document.createElement("small");
+    row.className = "provider-error";
+    row.textContent = error;
+    errorPanel.append(row);
+  }
+  return errorPanel;
 }
 
 function whisperDetectionRows() {
@@ -1261,12 +1269,11 @@ function renderModelDetectionGroup(label, models) {
   for (const model of models.slice(0, 8)) {
     const row = document.createElement("div");
     row.className = `detected-model-row ${model.exists ? "is-available" : "is-missing"}`;
-    row.title = [model.name, model.exists ? "已找到" : "未就绪", providerLabel(model.provider), model.capability, model.path, model.reason].filter(Boolean).join(" · ");
+    row.setAttribute("aria-label", [model.name, model.exists ? "已找到" : "未就绪", providerLabel(model.provider), model.capability].filter(Boolean).join("，"));
     const main = document.createElement("div");
     main.className = "detected-model-main";
     const name = document.createElement("strong");
     name.textContent = model.name;
-    name.title = model.name;
     const state = document.createElement("b");
     state.className = "detected-model-state";
     state.textContent = model.exists ? "已找到" : "未就绪";
@@ -1279,7 +1286,7 @@ function renderModelDetectionGroup(label, models) {
     capability.textContent = model.capability;
     meta.append(provider, capability);
     const actions = document.createElement("div");
-    actions.className = "detected-model-actions";
+    actions.className = `detected-model-actions ${model.canDelete ? "has-delete" : ""}`.trim();
     const detailButton = document.createElement("button");
     detailButton.className = "secondary detected-model-action";
     detailButton.type = "button";
