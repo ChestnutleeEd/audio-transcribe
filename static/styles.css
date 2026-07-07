@@ -582,13 +582,23 @@ summary:focus-visible {
 
 .auto-save-directory .path-picker-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
+}
+
+.workbench-control-panel .auto-save-directory textarea {
+  width: 100%;
+  min-height: 62px;
+  resize: vertical;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .auto-save-directory .icon-text-button {
   justify-content: center;
   min-height: 38px;
+  width: 100%;
   white-space: nowrap;
 }
 

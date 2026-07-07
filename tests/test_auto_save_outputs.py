@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -115,6 +116,14 @@ class AutoSaveOutputsTest(unittest.TestCase):
 
         self.assertEqual(400, response.status_code)
         self.assertEqual("视频链接任务开启自动存储时，请先指定存储文件夹", response.json()["detail"])
+
+    def test_media_output_directory_picker_accepts_post(self) -> None:
+        with patch("app.main.pick_directory", return_value={"path": "/tmp/transcripts"}) as picker:
+            response = self.client.post("/api/media/pick-directory")
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual({"path": "/tmp/transcripts"}, response.json())
+        picker.assert_called_once_with("选择转录文件存储文件夹")
 
 
 if __name__ == "__main__":

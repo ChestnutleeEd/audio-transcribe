@@ -253,7 +253,10 @@ customModelProvider?.addEventListener("change", scheduleCustomModelProbe);
 customModelCapability?.addEventListener("change", scheduleCustomModelProbe);
 enablePolishInput.addEventListener("change", updatePolishControls);
 autoSaveOutputsInput?.addEventListener("change", updateAutoSaveControls);
-autoSaveDirInput?.addEventListener("input", updateAutoSaveControls);
+autoSaveDirInput?.addEventListener("input", () => {
+  syncAutoSaveDirTitle();
+  updateAutoSaveControls();
+});
 sourceUrlInput?.addEventListener("input", updateAutoSaveControls);
 pickAutoSaveDirButton?.addEventListener("click", pickAutoSaveDirectory);
 polishProfileSelect.addEventListener("change", () => {
@@ -539,6 +542,7 @@ resetButton.addEventListener("click", () => {
   sourcePathInput.value = "";
   sourcePathLabel.textContent = "自动存储需要通过系统文件选择器提交本地文件。";
   if (autoSaveDirInput) autoSaveDirInput.value = "";
+  syncAutoSaveDirTitle();
   updateAutoSaveControls();
   clipDefaultsReady = false;
   clipRangeTouched = false;
@@ -741,6 +745,7 @@ function applyStoredTaskSettings(settings, options = {}) {
   setCheckedValue('input[name="export_scope"]', settings.export_scope || "raw");
   if (autoSaveOutputsInput) autoSaveOutputsInput.checked = Boolean(settings.auto_save_outputs);
   if (autoSaveDirInput) autoSaveDirInput.value = settings.auto_save_dir || "";
+  syncAutoSaveDirTitle();
   if (settings.polish_custom_instruction) {
     localStorage.setItem(CUSTOM_INSTRUCTION_KEY, settings.polish_custom_instruction);
   }
@@ -1690,11 +1695,12 @@ async function pickAutoSaveDirectory() {
   if (autoSaveDirHint) autoSaveDirHint.textContent = "正在打开文件夹选择器。";
   try {
     const path = await pickDirectoryPath({
-      endpoint: "/api/media/pick-directory",
+      endpoints: ["/api/media/pick-directory", "/api/models/pick-directory"],
       fallbackNoun: "存储文件夹",
     });
     if (!path) throw new Error("未选择文件夹");
     autoSaveDirInput.value = path;
+    syncAutoSaveDirTitle();
     updateAutoSaveControls();
   } catch (error) {
     if (autoSaveDirHint) autoSaveDirHint.textContent = `选择文件夹失败：${error.message}`;
@@ -1707,18 +1713,29 @@ async function pickDirectoryPath(options = {}) {
   const electronPath = await pickDirectoryWithDesktopApi();
   if (electronPath) return electronPath;
 
-  const endpoint = options.endpoint || "/api/models/pick-directory";
+  const endpoints = options.endpoints || [options.endpoint || "/api/models/pick-directory"];
   const fallbackNoun = options.fallbackNoun || "模型目录";
-  try {
+  const fallbackErrors = [];
+  for (const endpoint of endpoints) {
     const response = await fetch(endpoint, { method: "POST" });
     const payload = await readJsonResponse(response);
     if (response.ok && payload.path) return payload.path;
-    throw new Error(payload.detail || "后端文件夹选择器不可用");
-  } catch (backendError) {
-    throw new Error(
-      `${backendError.message}；浏览器文件夹上传无法提供可靠绝对路径，请手动粘贴${fallbackNoun}。`,
-    );
+
+    const message = payload.detail || `后端文件夹选择器不可用：${response.status}`;
+    if (response.status === 404 || response.status === 405) {
+      fallbackErrors.push(message);
+      continue;
+    }
+    throw new Error(`${message}；浏览器文件夹上传无法提供可靠绝对路径，请手动粘贴${fallbackNoun}。`);
   }
+
+  const detail = fallbackErrors[fallbackErrors.length - 1] || "后端文件夹选择器不可用";
+  throw new Error(`${detail}；浏览器文件夹上传无法提供可靠绝对路径，请手动粘贴${fallbackNoun}。`);
+}
+
+function syncAutoSaveDirTitle() {
+  if (!autoSaveDirInput) return;
+  autoSaveDirInput.title = autoSaveDirInput.value.trim() || autoSaveDirInput.placeholder || "";
 }
 
 async function pickDirectoryWithDesktopApi() {
@@ -3138,6 +3155,7 @@ function updateAutoSaveControls() {
   const hasBrowserFile = Boolean(fileInput?.files?.length);
   const usesUrlSource = Boolean(sourceUrlInput?.value.trim()) && !hasBrowserFile && !selectedSourcePath;
 
+  syncAutoSaveDirTitle();
   autoSaveDirPanel.hidden = !enabled;
   autoSaveDirInput.disabled = !enabled;
   if (pickAutoSaveDirButton) pickAutoSaveDirButton.disabled = !enabled;
@@ -3148,7 +3166,7 @@ function updateAutoSaveControls() {
     return;
   }
   if (specifiedDir) {
-    autoSaveDirHint.textContent = "转录文件将自动存储到指定文件夹。";
+    autoSaveDirHint.textContent = `转录文件将自动存储到：${specifiedDir}`;
     return;
   }
   if (usesUrlSource) {
