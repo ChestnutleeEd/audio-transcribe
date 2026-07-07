@@ -110,6 +110,10 @@ const environmentSummary = document.querySelector("#environment-summary");
 const environmentStatusGrid = document.querySelector("#environment-status-grid");
 const environmentAdvice = document.querySelector("#environment-advice");
 const modelDetectionList = document.querySelector("#model-detection-list");
+const modelDetailModal = document.querySelector("#model-detail-modal");
+const modelDetailTitle = document.querySelector("#model-detail-title");
+const modelDetailSubtitle = document.querySelector("#model-detail-subtitle");
+const modelDetailContent = document.querySelector("#model-detail-content");
 const jobsCollapseButton = document.querySelector("#jobs-collapse-button");
 const jobsRegion = document.querySelector("#jobs-region");
 const editPromptButton = document.querySelector("#edit-prompt-button");
@@ -260,6 +264,9 @@ Object.values(configModals).forEach((modal) => {
   modal?.addEventListener("click", (event) => {
     if (event.target === modal) modal.close();
   });
+});
+modelDetailModal?.addEventListener("click", (event) => {
+  if (event.target === modelDetailModal) modelDetailModal.close();
 });
 form.addEventListener("change", updateWorkbenchSummaries);
 form.addEventListener("input", updateWorkbenchSummaries);
@@ -1158,11 +1165,20 @@ function renderModelDetection(errors = []) {
   for (const [label, group] of groups) {
     modelDetectionList?.append(renderModelDetectionGroup(label, group));
   }
-  for (const error of errors.slice(0, 4)) {
-    const row = document.createElement("small");
-    row.className = "provider-error";
-    row.textContent = error;
-    modelDetectionList?.append(row);
+  const visibleErrors = errors.slice(0, 4).filter(Boolean);
+  if (visibleErrors.length) {
+    const errorPanel = document.createElement("section");
+    errorPanel.className = "detection-errors";
+    const title = document.createElement("strong");
+    title.textContent = "检测提示";
+    errorPanel.append(title);
+    for (const error of visibleErrors) {
+      const row = document.createElement("small");
+      row.className = "provider-error";
+      row.textContent = error;
+      errorPanel.append(row);
+    }
+    modelDetectionList?.append(errorPanel);
   }
 }
 
@@ -1262,33 +1278,54 @@ function renderModelDetectionGroup(label, models) {
     const capability = document.createElement("span");
     capability.textContent = model.capability;
     meta.append(provider, capability);
-    const detail = document.createElement("details");
-    detail.className = "detected-model-detail";
-    const detailSummary = document.createElement("summary");
-    detailSummary.textContent = "详情";
-    const detailBody = document.createElement("div");
-    detailBody.className = "detected-model-detail-body";
-    const path = document.createElement("small");
-    path.className = "detected-model-path";
-    path.textContent = displayModelPath(model.path);
-    path.title = model.path || "";
-    const reason = document.createElement("small");
-    reason.className = "detected-model-reason";
-    reason.textContent = model.reason || "可用";
-    detailBody.append(path, reason);
-    detail.append(detailSummary, detailBody);
-    row.append(main, meta, detail);
+    const actions = document.createElement("div");
+    actions.className = "detected-model-actions";
+    const detailButton = document.createElement("button");
+    detailButton.className = "secondary detected-model-action";
+    detailButton.type = "button";
+    detailButton.textContent = "详情";
+    detailButton.addEventListener("click", () => openModelDetailModal(model, label));
+    actions.append(detailButton);
     if (model.canDelete) {
       const removeButton = document.createElement("button");
-      removeButton.className = "secondary model-cancel detected-model-delete";
+      removeButton.className = "secondary model-cancel detected-model-action detected-model-delete";
       removeButton.type = "button";
       removeButton.textContent = "删除绑定";
       removeButton.addEventListener("click", () => deleteCustomModelBinding(model.provider, model.path));
-      row.append(removeButton);
+      actions.append(removeButton);
     }
+    row.append(main, meta, actions);
     section.append(row);
   }
   return section;
+}
+
+function openModelDetailModal(model, groupLabel = "模型检测") {
+  if (!modelDetailModal || !modelDetailContent) return;
+  modelDetailTitle.textContent = model.name || "模型详情";
+  modelDetailSubtitle.textContent = groupLabel;
+  modelDetailContent.replaceChildren(
+    modelDetailItem("状态", model.exists ? "已找到" : "未就绪"),
+    modelDetailItem("来源", providerLabel(model.provider)),
+    modelDetailItem("能力", model.capability || "-"),
+    modelDetailItem("位置", model.path || "未记录位置", { mono: true }),
+    modelDetailItem("检测信息", model.reason || (model.exists ? "可用" : "未返回原因")),
+  );
+  if (modelDetailModal.open) modelDetailModal.close();
+  modelDetailModal.showModal();
+}
+
+function modelDetailItem(label, value, { mono = false } = {}) {
+  const item = document.createElement("div");
+  item.className = "model-detail-item";
+  const name = document.createElement("span");
+  name.textContent = label;
+  const content = document.createElement("strong");
+  content.textContent = value || "-";
+  if (mono) content.classList.add("is-path");
+  content.title = value || "";
+  item.append(name, content);
+  return item;
 }
 
 function applySelectedAudioModelToForm() {

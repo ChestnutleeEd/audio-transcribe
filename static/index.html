@@ -19,7 +19,7 @@
         }
       })();
     </script>
-    <link rel="stylesheet" href="/styles.css?v=20260704-model-detection-layout" />
+    <link rel="stylesheet" href="/styles.css?v=20260707-model-detail-modal" />
   </head>
   <body>
     <!-- Welcome Page -->
@@ -850,6 +850,24 @@
       </form>
     </dialog>
 
+    <dialog id="model-detail-modal" class="modal model-detail-modal">
+      <form method="dialog" class="modal-panel model-detail-panel">
+        <div class="panel-head">
+          <div>
+            <h2 id="model-detail-title">模型详情</h2>
+            <p id="model-detail-subtitle">当前检测到的模型信息。</p>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="关闭" title="关闭" type="submit">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div id="model-detail-content" class="model-detail-content"></div>
+        <div class="model-actions model-actions-two">
+          <button class="secondary" value="default" type="submit">关闭</button>
+        </div>
+      </form>
+    </dialog>
+
     
     <script>
       document.addEventListener("DOMContentLoaded", () => {
@@ -984,6 +1002,6 @@
     </script>
 
     <div id="completion-toast" class="completion-toast" role="status" aria-live="polite" hidden></div>
-    <script src="/app.js?v=20260704-model-detection-layout" type="module"></script>
+    <script src="/app.js?v=20260707-model-detail-modal" type="module"></script>
   </body>
 </html>
