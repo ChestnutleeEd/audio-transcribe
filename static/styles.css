@@ -534,6 +534,7 @@ summary:focus-visible {
 .workbench-control-panel > .dropzone,
 .workbench-control-panel > .field,
 .workbench-control-panel > .local-file-picker,
+.workbench-control-panel > .auto-save-directory,
 .workbench-control-panel > .switch,
 .workbench-control-panel > button[type="submit"] {
   margin-left: 14px;
@@ -556,6 +557,42 @@ summary:focus-visible {
 }
 
 .local-file-picker small {
+  color: var(--text-secondary);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.auto-save-directory {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #F8FAFC;
+}
+
+.auto-save-directory[hidden] {
+  display: none !important;
+}
+
+.auto-save-directory .field {
+  margin: 0;
+}
+
+.auto-save-directory .path-picker-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.auto-save-directory .icon-text-button {
+  justify-content: center;
+  min-height: 38px;
+  white-space: nowrap;
+}
+
+.auto-save-directory small {
   color: var(--text-secondary);
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -2860,6 +2897,9 @@ h1, h2, h3, h4, h5, h6 {
 
   .workbench-control-panel > .dropzone,
   .workbench-control-panel > .field,
+  .workbench-control-panel > .local-file-picker,
+  .workbench-control-panel > .auto-save-directory,
+  .workbench-control-panel > .switch,
   .workbench-control-panel > button[type="submit"] {
     margin-left: 16px;
     margin-right: 16px;
@@ -4969,6 +5009,7 @@ html[data-theme="dark"] .job-item {
 }
 
 html[data-theme="dark"] .local-file-picker,
+html[data-theme="dark"] .auto-save-directory,
 html[data-theme="dark"] .workbench-control-panel > .switch {
   border-color: rgba(148, 163, 184, 0.18);
   background: rgba(15, 23, 42, 0.72);

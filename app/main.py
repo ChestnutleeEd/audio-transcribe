@@ -167,6 +167,19 @@ def unlink_file(path: Path) -> None:
         path.unlink()
 
 
+def resolve_output_directory(value: str | None) -> Path | None:
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    try:
+        directory = Path(raw).expanduser().resolve(strict=False)
+    except OSError as exc:
+        raise HTTPException(status_code=400, detail=f"存储路径无效：{raw}") from exc
+    if directory.exists() and not directory.is_dir():
+        raise HTTPException(status_code=400, detail=f"存储路径不是文件夹：{raw}")
+    return directory
+
+
 def is_path_inside(path: Path, parent: Path) -> bool:
     try:
         path.resolve().relative_to(parent.resolve())
@@ -546,11 +559,13 @@ def auto_save_output_files(job_id: str, output_paths: list[Path]) -> dict[str, P
     job = job_store.get(job_id)
     if job is None or not job.auto_save_outputs:
         return {}
-    if job.source_dir is None:
+    target_dir = job.auto_save_dir
+    if target_dir is None and job.source_dir is not None:
+        target_dir = job.source_dir / "转录结果"
+    if target_dir is None:
         append_job_warning(job_id, "自动存储未执行：当前来源没有可写入的本地音频目录，请使用“选择系统文件”提交本地文件。")
         return {}
 
-    target_dir = job.source_dir / "转录结果"
     try:
         target_dir.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
@@ -563,6 +578,9 @@ def auto_save_output_files(job_id: str, output_paths: list[Path]) -> dict[str, P
             continue
         target_path = target_dir / output_path.name
         try:
+            if output_path.resolve() == target_path.resolve():
+                saved_paths[output_path.name] = target_path
+                continue
             shutil.copy2(output_path, target_path)
             saved_paths[output_path.name] = target_path
         except OSError as exc:
@@ -1202,10 +1220,9 @@ def unregister_model(
     return {"deleted": True}
 
 
-@app.api_route("/api/models/pick-directory", methods=["GET", "POST"])
-def pick_model_directory():
+def pick_directory(prompt: str) -> dict[str, str]:
     if platform.system().lower() == "darwin":
-        script = 'POSIX path of (choose folder with prompt "选择模型文件夹")'
+        script = f'POSIX path of (choose folder with prompt "{prompt}")'
         try:
             result = subprocess.run(
                 ["osascript", "-e", script],
@@ -1234,7 +1251,7 @@ def pick_model_directory():
         root = tk.Tk()
         root.withdraw()
         root.attributes("-topmost", True)
-        selected = filedialog.askdirectory(title="选择模型文件夹")
+        selected = filedialog.askdirectory(title=prompt)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"打开系统文件夹选择器失败：{exc}") from exc
     finally:
@@ -1244,6 +1261,16 @@ def pick_model_directory():
     if not selected:
         raise HTTPException(status_code=400, detail="未选择文件夹")
     return {"path": selected}
+
+
+@app.api_route("/api/models/pick-directory", methods=["GET", "POST"])
+def pick_model_directory():
+    return pick_directory("选择模型文件夹")
+
+
+@app.api_route("/api/media/pick-directory", methods=["GET", "POST"])
+def pick_media_output_directory():
+    return pick_directory("选择转录文件存储文件夹")
 
 
 @app.api_route("/api/media/pick-file", methods=["GET", "POST"])
@@ -1433,6 +1460,7 @@ async def create_job(
     polish_custom_instruction: str | None = Form(default=None),
     export_scope: str = Form(default=ExportScope.raw.value),
     auto_save_outputs: bool = Form(default=False),
+    auto_save_dir: str | None = Form(default=None),
 ) -> JobStatus:
     has_file = bool(file and file.filename)
     clean_source_path = (source_path or "").strip()
@@ -1456,6 +1484,11 @@ async def create_job(
 
     if not has_file and not local_source_path and not clean_source_url:
         raise HTTPException(status_code=400, detail="请上传本地文件或填写视频链接")
+
+    requested_auto_save_dir = resolve_output_directory(auto_save_dir) if auto_save_outputs else None
+    uses_url_source = not has_file and local_source_path is None and clean_source_url is not None
+    if auto_save_outputs and uses_url_source and requested_auto_save_dir is None:
+        raise HTTPException(status_code=400, detail="视频链接任务开启自动存储时，请先指定存储文件夹")
 
     try:
         parsed_formats = parse_formats(formats)
@@ -1547,6 +1580,7 @@ async def create_job(
     work_dir.mkdir(parents=True, exist_ok=True)
     source_path: Path | None = None
     source_dir: Path | None = None
+    effective_auto_save_dir = requested_auto_save_dir
     base_name = "transcript"
     source_label = clean_source_url or "本地文件"
 
@@ -1566,6 +1600,9 @@ async def create_job(
         source_dir = local_source_dir
     elif clean_source_url:
         base_name = safe_stem(clean_source_url)
+
+    if auto_save_outputs and effective_auto_save_dir is None and source_dir is not None:
+        effective_auto_save_dir = source_dir / "转录结果"
 
     model_id = active_whisper_model_id
     if active_transcription_engine == TranscriptionEngine.ollama_audio:
@@ -1606,6 +1643,7 @@ async def create_job(
             source_path,
             source_dir,
             auto_save_outputs,
+            effective_auto_save_dir,
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

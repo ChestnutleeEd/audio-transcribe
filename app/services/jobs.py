@@ -87,6 +87,7 @@ class JobStore:
         source_path: Path | None = None,
         source_dir: Path | None = None,
         auto_save_outputs: bool = False,
+        auto_save_dir: Path | None = None,
     ) -> Job:
         job = Job(
             id=job_id,
@@ -113,6 +114,7 @@ class JobStore:
             source_path=source_path,
             source_dir=source_dir,
             auto_save_outputs=auto_save_outputs,
+            auto_save_dir=auto_save_dir,
         )
         with self._lock:
             self._jobs[job_id] = job

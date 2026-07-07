@@ -6,6 +6,11 @@ const sourcePathInput = document.querySelector("#source-path-input");
 const sourcePathLabel = document.querySelector("#source-path-label");
 const pickSourceFileButton = document.querySelector("#pick-source-file-button");
 const autoSaveOutputsInput = document.querySelector("#auto-save-outputs");
+const autoSaveDirPanel = document.querySelector("#auto-save-directory-panel");
+const autoSaveDirInput = document.querySelector("#auto-save-dir-input");
+const pickAutoSaveDirButton = document.querySelector("#pick-auto-save-dir-button");
+const autoSaveDirHint = document.querySelector("#auto-save-dir-hint");
+const sourceUrlInput = document.querySelector("#source-url");
 const submitButton = form.querySelector(".primary");
 const startTimeInput = form.querySelector('input[name="start_time"]');
 const endTimeInput = form.querySelector('input[name="end_time"]');
@@ -219,6 +224,7 @@ startJobsPolling();
 updateEngineControls();
 updatePolishControls();
 updateFormatControls();
+updateAutoSaveControls();
 initCompletionNotificationBadges();
 updateWorkbenchSummaries();
 
@@ -246,6 +252,10 @@ customModelPath?.addEventListener("input", scheduleCustomModelProbe);
 customModelProvider?.addEventListener("change", scheduleCustomModelProbe);
 customModelCapability?.addEventListener("change", scheduleCustomModelProbe);
 enablePolishInput.addEventListener("change", updatePolishControls);
+autoSaveOutputsInput?.addEventListener("change", updateAutoSaveControls);
+autoSaveDirInput?.addEventListener("input", updateAutoSaveControls);
+sourceUrlInput?.addEventListener("input", updateAutoSaveControls);
+pickAutoSaveDirButton?.addEventListener("click", pickAutoSaveDirectory);
 polishProfileSelect.addEventListener("change", () => {
   updatePolishProfileDescription();
   updatePromptPreview();
@@ -503,9 +513,13 @@ fileInput.addEventListener("change", () => {
   const file = fileInput.files[0];
   fileLabel.textContent = file?.name || "选择本地音频或视频";
   if (file) {
-    sourcePathInput.value = "";
-    sourcePathLabel.textContent = "浏览器上传不会暴露原始目录；自动存储请改用“选择系统文件”。";
+    const filePath = localPathFromBrowserFile(file);
+    sourcePathInput.value = filePath;
+    sourcePathLabel.textContent = filePath
+      ? filePath
+      : "浏览器上传不会暴露原始目录；自动存储请改用“选择系统文件”或指定存储文件夹。";
   }
+  updateAutoSaveControls();
   clipDefaultsReady = false;
   clipRangeTouched = false;
   setClipRange("00:00:00", "00:00:00");
@@ -524,6 +538,8 @@ resetButton.addEventListener("click", () => {
   fileLabel.textContent = "选择本地音频或视频";
   sourcePathInput.value = "";
   sourcePathLabel.textContent = "自动存储需要通过系统文件选择器提交本地文件。";
+  if (autoSaveDirInput) autoSaveDirInput.value = "";
+  updateAutoSaveControls();
   clipDefaultsReady = false;
   clipRangeTouched = false;
   setClipRange("00:00:00", "00:00:00");
@@ -595,6 +611,20 @@ form.addEventListener("submit", async (event) => {
     showDiagnostic(diagnoseClientError("请至少选择 TXT、Markdown、JSON、SRT 或 Word 中的一种导出格式。", "EXPORT_FORMAT_MISSING"));
     return;
   }
+  const autoSaveEnabled = Boolean(autoSaveOutputsInput?.checked);
+  const selectedSourcePath = sourcePathInput?.value.trim() || "";
+  const selectedAutoSaveDir = autoSaveDirInput?.value.trim() || "";
+  const usesUrlSource = Boolean(sourceUrlInput?.value.trim()) && !fileInput.files.length && !selectedSourcePath;
+  if (autoSaveEnabled && usesUrlSource && !selectedAutoSaveDir) {
+    showDiagnostic({
+      code: "AUTO_SAVE_DIR_REQUIRED_FOR_URL",
+      title: "需要指定存储文件夹",
+      message: "视频链接任务开启自动存储时，必须手动指定转录文件的存储文件夹。",
+      action: "填写存储文件夹路径，或点击“选择文件夹”后再开始转写。",
+      technical_detail: "source_url with auto_save_outputs requires auto_save_dir",
+    });
+    return;
+  }
   data.set("formats", selectedFormats.join(","));
   data.set("include_timestamps", includeTimestampsInput.checked ? "true" : "false");
   data.set("transcription_engine", selectedTranscriptionEngine());
@@ -621,13 +651,18 @@ form.addEventListener("submit", async (event) => {
     }
   }
 
-  if (!fileInput.files.length) {
+  if (!fileInput.files.length || selectedSourcePath) {
     data.delete("file");
   }
-  if (fileInput.files.length) {
+  if (fileInput.files.length && !selectedSourcePath) {
     data.delete("source_path");
   }
-  data.set("auto_save_outputs", autoSaveOutputsInput?.checked ? "true" : "false");
+  data.set("auto_save_outputs", autoSaveEnabled ? "true" : "false");
+  if (autoSaveEnabled && selectedAutoSaveDir) {
+    data.set("auto_save_dir", selectedAutoSaveDir);
+  } else {
+    data.delete("auto_save_dir");
+  }
 
   submittingJob = true;
   submitButton.disabled = true;
@@ -650,6 +685,7 @@ form.addEventListener("submit", async (event) => {
     fileLabel.textContent = "选择本地音频或视频";
     sourcePathInput.value = "";
     sourcePathLabel.textContent = "自动存储需要通过系统文件选择器提交本地文件。";
+    updateAutoSaveControls();
     clipDefaultsReady = false;
     clipRangeTouched = false;
     setClipRange("00:00:00", "00:00:00");
@@ -681,6 +717,7 @@ function collectTaskSettings() {
     formats: [...form.querySelectorAll('input[name="formats"]:checked')].map((input) => input.value),
     export_scope: form.querySelector('input[name="export_scope"]:checked')?.value || "raw",
     auto_save_outputs: autoSaveOutputsInput?.checked || false,
+    auto_save_dir: autoSaveDirInput?.value.trim() || "",
   };
 }
 
@@ -703,6 +740,7 @@ function applyStoredTaskSettings(settings, options = {}) {
   setCheckedValues('input[name="formats"]', settings.formats?.length ? settings.formats : ["txt"]);
   setCheckedValue('input[name="export_scope"]', settings.export_scope || "raw");
   if (autoSaveOutputsInput) autoSaveOutputsInput.checked = Boolean(settings.auto_save_outputs);
+  if (autoSaveDirInput) autoSaveDirInput.value = settings.auto_save_dir || "";
   if (settings.polish_custom_instruction) {
     localStorage.setItem(CUSTOM_INSTRUCTION_KEY, settings.polish_custom_instruction);
   }
@@ -712,6 +750,7 @@ function applyStoredTaskSettings(settings, options = {}) {
   updatePromptPreview();
   renderSelectedAudioModel();
   updateEngineControls();
+  updateAutoSaveControls();
   if (!options.silent) {
     updateSettingsMemoryMessage(options.message || "已应用任务设置。");
   }
@@ -759,14 +798,20 @@ async function pickSourceFile() {
     sourcePathLabel.textContent = payload.path || payload.name || "已选择系统文件";
     if (fileInput) fileInput.value = "";
     fileLabel.textContent = payload.name || "已选择系统文件";
+    updateAutoSaveControls();
     clipDefaultsReady = false;
     clipRangeTouched = false;
     setClipRange("00:00:00", "00:00:00");
   } catch (error) {
     sourcePathLabel.textContent = error.message === "未选择文件" ? "未选择系统文件。" : `选择文件失败：${error.message}`;
+    updateAutoSaveControls();
   } finally {
     pickSourceFileButton.disabled = false;
   }
+}
+
+function localPathFromBrowserFile(file) {
+  return file?.path || file?.mozFullPath || "";
 }
 
 function setSelectedPolishProfileIds(value) {
@@ -1639,18 +1684,39 @@ async function unbindSelectedWhisperModelPath() {
   }
 }
 
-async function pickDirectoryPath() {
+async function pickAutoSaveDirectory() {
+  if (!pickAutoSaveDirButton || !autoSaveDirInput) return;
+  pickAutoSaveDirButton.disabled = true;
+  if (autoSaveDirHint) autoSaveDirHint.textContent = "正在打开文件夹选择器。";
+  try {
+    const path = await pickDirectoryPath({
+      endpoint: "/api/media/pick-directory",
+      fallbackNoun: "存储文件夹",
+    });
+    if (!path) throw new Error("未选择文件夹");
+    autoSaveDirInput.value = path;
+    updateAutoSaveControls();
+  } catch (error) {
+    if (autoSaveDirHint) autoSaveDirHint.textContent = `选择文件夹失败：${error.message}`;
+  } finally {
+    pickAutoSaveDirButton.disabled = !autoSaveOutputsInput?.checked;
+  }
+}
+
+async function pickDirectoryPath(options = {}) {
   const electronPath = await pickDirectoryWithDesktopApi();
   if (electronPath) return electronPath;
 
+  const endpoint = options.endpoint || "/api/models/pick-directory";
+  const fallbackNoun = options.fallbackNoun || "模型目录";
   try {
-    const response = await fetch("/api/models/pick-directory", { method: "POST" });
+    const response = await fetch(endpoint, { method: "POST" });
     const payload = await readJsonResponse(response);
     if (response.ok && payload.path) return payload.path;
     throw new Error(payload.detail || "后端文件夹选择器不可用");
   } catch (backendError) {
     throw new Error(
-      `${backendError.message}；浏览器文件夹上传无法提供可靠绝对路径，请手动粘贴模型目录。`,
+      `${backendError.message}；浏览器文件夹上传无法提供可靠绝对路径，请手动粘贴${fallbackNoun}。`,
     );
   }
 }
@@ -2880,7 +2946,7 @@ function jobDetails(job) {
     { label: "耗时", value: elapsedLabel(job) },
   ];
   if (job.auto_save_outputs) {
-    details.push({ label: "自动存储", value: job.auto_save_dir || "等待保存到音频目录" });
+    details.push({ label: "自动存储", value: job.auto_save_dir || "等待保存到原文件夹/转录结果" });
   }
   return details;
 }
@@ -3062,6 +3128,42 @@ function updateFormatControls() {
     label.classList.toggle("is-disabled", !enabled);
   }
   updateWorkbenchSummaries();
+}
+
+function updateAutoSaveControls() {
+  if (!autoSaveOutputsInput || !autoSaveDirPanel || !autoSaveDirInput) return;
+  const enabled = Boolean(autoSaveOutputsInput.checked);
+  const specifiedDir = autoSaveDirInput.value.trim();
+  const selectedSourcePath = sourcePathInput?.value.trim() || "";
+  const hasBrowserFile = Boolean(fileInput?.files?.length);
+  const usesUrlSource = Boolean(sourceUrlInput?.value.trim()) && !hasBrowserFile && !selectedSourcePath;
+
+  autoSaveDirPanel.hidden = !enabled;
+  autoSaveDirInput.disabled = !enabled;
+  if (pickAutoSaveDirButton) pickAutoSaveDirButton.disabled = !enabled;
+  if (!autoSaveDirHint) return;
+
+  if (!enabled) {
+    autoSaveDirHint.textContent = "关闭后只在任务界面提供手动下载。";
+    return;
+  }
+  if (specifiedDir) {
+    autoSaveDirHint.textContent = "转录文件将自动存储到指定文件夹。";
+    return;
+  }
+  if (usesUrlSource) {
+    autoSaveDirHint.textContent = "视频链接任务开启自动存储时必须指定存储文件夹。";
+    return;
+  }
+  if (selectedSourcePath) {
+    autoSaveDirHint.textContent = "未指定时，将在原文件所在目录创建“转录结果”文件夹。";
+    return;
+  }
+  if (hasBrowserFile) {
+    autoSaveDirHint.textContent = "浏览器上传无法确认原文件夹；请指定存储文件夹，或改用“选择系统文件”。";
+    return;
+  }
+  autoSaveDirHint.textContent = "未指定时，本地系统文件保存到原文件夹下的“转录结果”；视频链接必须指定。";
 }
 
 async function refreshPolishProfiles() {
