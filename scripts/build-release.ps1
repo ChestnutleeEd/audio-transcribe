@@ -1,5 +1,5 @@
 param(
-  [string]$Version = "v0.2.1",
+  [string]$Version = "v0.3.1",
   [ValidateSet("all", "zip", "zip-windows", "zip-macos", "installer", "installer-windows", "installer-macos")]
   [string]$Target = "all"
 )

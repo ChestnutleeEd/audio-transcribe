@@ -31,6 +31,16 @@ Audio-Transcribe 适合处理面试录音、会议音频、课程视频、YouTub
 
 ## 2. 安装方式
 
+### 最新推荐版本
+
+当前推荐发布版本：`v0.3.1`。
+
+普通用户优先下载安装器；开发者、测试用户或临时试用再下载 ZIP。源码启动、ZIP 启动和安装器启动都会走同一套本地服务，默认打开：
+
+```text
+http://127.0.0.1:8000/
+```
+
 ### 🟢 推荐方式：安装器版本
 
 安装器版本面向普通用户，是最接近“像普通软件一样安装和使用”的方式。
@@ -76,14 +86,43 @@ macOS 如果提示无法打开，进入解压目录后执行：
 chmod +x scripts/setup-macos.sh start-audio-transcribe.command stop-audio-transcribe.command
 ```
 
-## 3. 是否真正开箱即用
+## 3. 开箱即用清单
 
 必须透明说明：
 
+- Windows 安装器版本是普通用户的首选。当构建机提供 Python runtime 和 FFmpeg 时，安装包可以随包携带运行环境，并提供开始菜单、桌面快捷方式和卸载入口。
+- macOS 安装器版本是 Mac 用户的首选。它提供 `.app` 或 `.dmg` 安装体验；如果某些系统依赖无法随包携带，首次运行会显示中文引导。
 - ZIP 便携版是“半开箱即用”。它包含项目文件、启动脚本和中文引导，但仍依赖本机 Python 和 FFmpeg，首次启动可能需要安装 Python 依赖。
-- Windows 安装器版本的目标是“尽量全自动”。当构建机提供 Python runtime 和 FFmpeg 时，安装包可以随包携带运行环境。
-- macOS 安装器版本的目标是“拖拽安装”。如果无法合法或稳定地随包携带某些系统依赖，首次运行会显示中文引导。
+- 源码启动适合开发者。首次运行 `start-audio-transcribe.bat` 或 `start-audio-transcribe.command` 时，会自动创建 `.venv` 并安装 `requirements.txt`。
+- 启动脚本默认使用清华 PyPI 镜像：`https://pypi.tuna.tsinghua.edu.cn/simple`。如需切换，可先设置 `PIP_INDEX_URL`。
 - Whisper、MLX Whisper、Qwen2-Audio、Ollama 模型体积较大，仓库和发行包默认不内置模型。首次使用时请在页面中下载或手动放置模型。
+
+### Windows 开箱即用路径
+
+1. 优先下载 `AudioTranscribeSetup.exe` 并按提示安装。
+2. 如果使用 ZIP，解压后双击 `start-audio-transcribe.bat`。
+3. 启动器会检查 Python runtime、`.venv`、Python 依赖、FFmpeg / FFprobe 和端口占用。
+4. 如果缺少 Python，安装 Python 3.10 或更新版本后重新双击启动。
+5. 如果缺少 FFmpeg，把 `ffmpeg.exe` 和 `ffprobe.exe` 放到 `origin-code/`，或安装 FFmpeg 并加入 PATH。
+
+### macOS 开箱即用路径
+
+1. 优先下载 `AudioTranscribe.dmg` 或 `AudioTranscribeAppBundle.zip`。
+2. 如果使用 ZIP，解压后双击 `start-audio-transcribe.command`。
+3. 启动器会检查 `.venv`、Python 依赖、FFmpeg / FFprobe 和端口占用。
+4. 如果缺少 Python 或 FFmpeg，推荐使用 Homebrew 安装：
+
+```bash
+brew install python ffmpeg
+```
+
+5. 国内网络可使用镜像加速 Homebrew bottle 下载：
+
+```bash
+export HOMEBREW_API_DOMAIN=https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles/api
+export HOMEBREW_BOTTLE_DOMAIN=https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles
+brew install python ffmpeg
+```
 
 ## 4. 环境依赖
 
@@ -253,6 +292,11 @@ ZIP 与安装器差异：
 | Windows ZIP | `AudioTranscribe-v版本号-windows-x64.zip` | 测试和便携用户 | 否 | 需要本机 Python / FFmpeg，启动器会中文引导 |
 | macOS ZIP | `AudioTranscribe-v版本号-macos.zip` | 测试和便携用户 | 否 | 需要本机 Python / FFmpeg，启动器会中文引导 |
 
+最新发布说明：
+
+- [v0.3.1](docs/release-notes/v0.3.1.md)：修复转录工作台滚动面板溢出和右侧底部空白，完善 macOS / Windows 开箱即用说明。
+- [v0.3.0](docs/release-notes/v0.3.0.md)：新增 Qwen2-Audio MLX 多模态音频理解 pipeline。
+
 ## 9. 发行路线
 
 - `v0.2.x`：开发版，重点修正 ZIP 误导说明，并引入双发行体系骨架。
@@ -266,15 +310,15 @@ ZIP 与安装器差异：
 Windows PowerShell：
 
 ```powershell
-.\scripts\build-release.ps1 -Version v0.2.1 -Target zip
-.\scripts\build-release.ps1 -Version v0.2.1 -Target installer-windows
+.\scripts\build-release.ps1 -Version v0.3.1 -Target zip
+.\scripts\build-release.ps1 -Version v0.3.1 -Target installer-windows
 ```
 
 macOS PowerShell：
 
 ```powershell
-./scripts/build-release.ps1 -Version v0.2.1 -Target zip
-./scripts/build-release.ps1 -Version v0.2.1 -Target installer-macos
+./scripts/build-release.ps1 -Version v0.3.1 -Target zip
+./scripts/build-release.ps1 -Version v0.3.1 -Target installer-macos
 ```
 
 构建输出目录：
