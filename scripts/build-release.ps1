@@ -297,6 +297,10 @@ function build_installer_macos {
   & chmod +x (Join-Path $MacOS "AudioTranscribe")
   & chmod +x (Join-Path $AppResources "start-audio-transcribe.command")
   & chmod +x (Join-Path $AppResources "stop-audio-transcribe.command")
+  & codesign --force --deep --sign - $AppRoot
+  if ($LASTEXITCODE -ne 0) {
+    throw "macOS .app 临时签名失败。"
+  }
 
   $DmgPath = Join-Path $OutputDir "AudioTranscribe.dmg"
   $CreateDmg = Get-Command create-dmg -ErrorAction SilentlyContinue

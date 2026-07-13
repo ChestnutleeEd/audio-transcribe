@@ -61,6 +61,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Confirm Apple Silicon runner
+        run: test "$(uname -m)" = "arm64"
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -119,5 +121,4 @@ jobs:
           gh release create "$VERSION" "${assets[@]}" \
             --target "$GITHUB_SHA" \
             --title "Audio Transcribe $VERSION" \
-            --notes-file "docs/release-notes/$VERSION.md" \
-            --verify-tag
+            --notes-file "docs/release-notes/$VERSION.md"

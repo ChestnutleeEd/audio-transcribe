@@ -90,6 +90,8 @@ macOS ZIP 使用 `ditto` 构建并保留可执行权限。如果系统仍因下�
 chmod +x scripts/setup-macos.sh start-audio-transcribe.command stop-audio-transcribe.command
 ```
 
+当前 macOS 应用使用临时签名，尚未使用 Apple Developer ID 公证。首次打开 DMG 中的应用如被 Gatekeeper 拦截，请在 Finder 中右键应用并选择“打开”；这只影响首次确认，不影响本地运行。
+
 ## 3. 开箱即用清单
 
 发行包说明：
