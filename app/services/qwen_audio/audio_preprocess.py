@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable
 
-from app.services.media import OperationCanceled, ffmpeg_executable
+from app.services.media import OperationCanceled, ffmpeg_executable, terminate_process
 
 
 @dataclass(frozen=True)
@@ -32,11 +32,7 @@ def _run_ffmpeg(command: list[str], is_canceled: Callable[[], bool]) -> subproce
     )
     while process.poll() is None:
         if is_canceled():
-            process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
+            terminate_process(process)
             raise OperationCanceled("任务已停止")
     stdout, stderr = process.communicate()
     return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)

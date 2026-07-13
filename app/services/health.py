@@ -21,6 +21,7 @@ def module_available(name: str) -> bool:
 def health_check() -> HealthCheckStatus:
     items: list[HealthCheckItem] = []
     ollama = ollama_status()
+    faster_whisper_available = module_available("faster_whisper")
 
     items.append(
         HealthCheckItem(
@@ -34,9 +35,9 @@ def health_check() -> HealthCheckStatus:
         HealthCheckItem(
             id="faster_whisper",
             label="faster-whisper",
-            status="success" if module_available("faster_whisper") else "error",
-            message="faster-whisper 可导入。" if module_available("faster_whisper") else "未检测到 faster-whisper Python 包。",
-            suggestion=None if module_available("faster_whisper") else "激活虚拟环境后执行 pip install -r requirements.txt。",
+            status="success" if faster_whisper_available else "error",
+            message="faster-whisper 可导入。" if faster_whisper_available else "未检测到 faster-whisper Python 包。",
+            suggestion=None if faster_whisper_available else "激活虚拟环境后执行 pip install -r requirements.txt。",
         )
     )
     mlx_status = mlx_whisper_status()

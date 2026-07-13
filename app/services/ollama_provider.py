@@ -12,6 +12,42 @@ from app.services.ollama_client import OllamaClient, OllamaError
 
 
 DIRECT_AUDIO_UNSUPPORTED = "当前 Ollama API 不支持该模型的直接音频输入。"
+POLISH_RESPONSE_SCHEMA: dict[str, object] = {
+    "type": "object",
+    "properties": {
+        "segments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "index": {"type": "integer"},
+                    "text": {"type": "string"},
+                },
+                "required": ["index", "text"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["segments"],
+    "additionalProperties": False,
+}
+POLISH_EXAMPLE_INPUT_JSON = json.dumps(
+    [
+        {"index": 0, "start": 0.0, "end": 1.2, "text": "hello world"},
+        {"index": 1, "start": 1.2, "end": 2.5, "text": "this is test"},
+    ],
+    ensure_ascii=False,
+)
+POLISH_EXAMPLE_OUTPUT_JSON = json.dumps(
+    {
+        "segments": [
+            {"index": 0, "text": "Hello world."},
+            {"index": 1, "text": "This is a test."},
+        ]
+    },
+    ensure_ascii=False,
+)
+POLISH_RESPONSE_SCHEMA_JSON = json.dumps(POLISH_RESPONSE_SCHEMA, ensure_ascii=False)
 
 
 @dataclass(frozen=True)
@@ -164,16 +200,6 @@ def build_polish_prompt(segments: list[TranscriptSegment], profile_instruction: 
         }
         for index, segment in enumerate(segments)
     ]
-    example_input = [
-        {"index": 0, "start": 0.0, "end": 1.2, "text": "hello world"},
-        {"index": 1, "start": 1.2, "end": 2.5, "text": "this is test"},
-    ]
-    example_output = {
-        "segments": [
-            {"index": 0, "text": "Hello world."},
-            {"index": 1, "text": "This is a test."},
-        ]
-    }
     return (
         "你是一个音频转录文本校对器。输入里的 start/end 表示每个 segment 的时间范围，可用于判断停顿、轮次和说话人切换。\n"
         f"{profile_instruction or '只修正明显的语音识别错误、标点、空格和断句。'}\n"
@@ -185,36 +211,18 @@ def build_polish_prompt(segments: list[TranscriptSegment], profile_instruction: 
         "输出 JSON 结构必须是：\n"
         '{"segments":[{"index":0,"text":"..."}]}\n\n'
         "示例输入：\n"
-        f"{json.dumps(example_input, ensure_ascii=False)}\n"
+        f"{POLISH_EXAMPLE_INPUT_JSON}\n"
         "示例输出：\n"
-        f"{json.dumps(example_output, ensure_ascii=False)}\n\n"
+        f"{POLISH_EXAMPLE_OUTPUT_JSON}\n\n"
         "JSON Schema:\n"
-        f"{json.dumps(polish_response_schema(), ensure_ascii=False)}\n\n"
+        f"{POLISH_RESPONSE_SCHEMA_JSON}\n\n"
         "当前输入：\n"
         f"{json.dumps(payload, ensure_ascii=False)}"
     )
 
 
 def polish_response_schema() -> dict[str, object]:
-    return {
-        "type": "object",
-        "properties": {
-            "segments": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "index": {"type": "integer"},
-                        "text": {"type": "string"},
-                    },
-                    "required": ["index", "text"],
-                    "additionalProperties": False,
-                },
-            }
-        },
-        "required": ["segments"],
-        "additionalProperties": False,
-    }
+    return POLISH_RESPONSE_SCHEMA
 
 
 def parse_polish_response(raw: str, original: list[TranscriptSegment]) -> list[TranscriptSegment]:

@@ -8,8 +8,10 @@ from unittest.mock import patch
 
 from app.services.exporters import TranscriptSegment
 from app.services.mlx_vlm_audio_provider import (
+    _dependency_check_cache,
     _run_mlx_vlm_generate,
     clean_transcript_text,
+    dependency_available,
     is_mlx_vlm_audio_model,
     mlx_vlm_audio_status,
     parse_mlx_vlm_generate_output,
@@ -18,6 +20,9 @@ from app.services.mlx_vlm_audio_provider import (
 
 
 class MLXVlmAudioProviderTest(unittest.TestCase):
+    def tearDown(self) -> None:
+        _dependency_check_cache.clear()
+
     def test_parse_generate_output_extracts_model_text(self) -> None:
         stdout = """==========
 Files: ['/tmp/audio.wav']
@@ -50,6 +55,19 @@ Generation: 4 tokens
 
         self.assertTrue(status.available)
         self.assertEqual("gemma4", status.model_type)
+
+    def test_dependency_available_reuses_short_lived_cache(self) -> None:
+        class CompletedProcess:
+            returncode = 0
+
+        with (
+            patch("app.services.mlx_vlm_audio_provider.python_available", return_value=True),
+            patch("app.services.mlx_vlm_audio_provider.subprocess.run", return_value=CompletedProcess()) as run_mock,
+        ):
+            self.assertTrue(dependency_available("python"))
+            self.assertTrue(dependency_available("python"))
+
+        self.assertEqual(1, run_mock.call_count)
 
     def test_gemma4_path_is_mlx_vlm_audio_model(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -7,6 +7,8 @@ from pathlib import Path
 
 from app.schemas import ExportScope, OutputFormat
 
+MAX_FILENAME_PART_LENGTH = 120
+
 
 @dataclass(frozen=True)
 class TranscriptSegment:
@@ -64,11 +66,12 @@ def export_txt(
     include_timestamps: bool,
     scope: ExportScope,
 ) -> None:
-    with path.open("w", encoding="utf-8") as handle:
-        for title, segments in scope_sections(raw_segments, polished_segments, scope):
-            handle.write(f"{title}\n")
-            handle.write("=" * len(title) + "\n\n")
-            handle.write(segment_text(segments, include_timestamps) + "\n\n")
+    parts: list[str] = []
+    for title, segments in scope_sections(raw_segments, polished_segments, scope):
+        parts.append(f"{title}\n")
+        parts.append("=" * len(title) + "\n\n")
+        parts.append(segment_text(segments, include_timestamps) + "\n\n")
+    path.write_text("".join(parts), encoding="utf-8")
 
 
 def export_md(
@@ -80,21 +83,22 @@ def export_md(
     include_timestamps: bool,
     scope: ExportScope,
 ) -> None:
-    with path.open("w", encoding="utf-8") as handle:
-        handle.write(f"# {title}\n\n")
-        handle.write("## 元数据\n\n")
-        for key, value in metadata.items():
-            if value is not None:
-                handle.write(f"- **{key}**: {value}\n")
-        handle.write("\n")
-        for section_title, segments in scope_sections(raw_segments, polished_segments, scope):
-            handle.write(f"## {section_title}\n\n")
-            if include_timestamps:
-                for segment in segments:
-                    handle.write(f"- **{format_timestamp(segment.start)} -> {format_timestamp(segment.end)}** {segment.text}\n")
-                handle.write("\n")
-            else:
-                handle.write(segment_text(segments, include_timestamps=False) + "\n\n")
+    parts = [f"# {title}\n\n", "## 元数据\n\n"]
+    for key, value in metadata.items():
+        if value is not None:
+            parts.append(f"- **{key}**: {value}\n")
+    parts.append("\n")
+    for section_title, segments in scope_sections(raw_segments, polished_segments, scope):
+        parts.append(f"## {section_title}\n\n")
+        if include_timestamps:
+            parts.extend(
+                f"- **{format_timestamp(segment.start)} -> {format_timestamp(segment.end)}** {segment.text}\n"
+                for segment in segments
+            )
+            parts.append("\n")
+        else:
+            parts.append(segment_text(segments, include_timestamps=False) + "\n\n")
+    path.write_text("".join(parts), encoding="utf-8")
 
 
 def export_json(
@@ -126,11 +130,12 @@ def export_json(
 
 
 def export_srt(path: Path, segments: list[TranscriptSegment]) -> None:
-    with path.open("w", encoding="utf-8") as handle:
-        for index, segment in enumerate(segments, start=1):
-            handle.write(f"{index}\n")
-            handle.write(f"{srt_timestamp(segment.start)} --> {srt_timestamp(segment.end)}\n")
-            handle.write(f"{segment.text}\n\n")
+    parts: list[str] = []
+    for index, segment in enumerate(segments, start=1):
+        parts.append(f"{index}\n")
+        parts.append(f"{srt_timestamp(segment.start)} --> {srt_timestamp(segment.end)}\n")
+        parts.append(f"{segment.text}\n\n")
+    path.write_text("".join(parts), encoding="utf-8")
 
 
 def export_docx(
@@ -216,4 +221,5 @@ def export_transcript(
 
 def safe_filename_part(value: str) -> str:
     cleaned = "".join(char if char.isalnum() or char in {"-", "_"} else "_" for char in value)
-    return cleaned.strip("_") or "item"
+    filename_part = cleaned.strip("_") or "item"
+    return filename_part[:MAX_FILENAME_PART_LENGTH].rstrip("_") or "item"

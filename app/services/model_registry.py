@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
+from threading import Lock
 from typing import Iterable
 
 import httpx
@@ -23,7 +25,10 @@ from app.services.local_model_detection import format_bytes, parse_size
 
 
 REGISTRY_TIMEOUT_SECONDS = 0.35
+REGISTRY_CACHE_SECONDS = 2.0
 CUSTOM_MODELS_FILE = settings.data_dir / "custom_models.json"
+_registry_cache_lock = Lock()
+_registry_cache: tuple[float, ModelRegistryStatus] | None = None
 
 
 def utc_now_iso() -> str:
@@ -128,9 +133,13 @@ def candidate_mlx_roots() -> list[Path]:
 
 def unique_paths(paths: Iterable[Path]) -> list[Path]:
     unique: list[Path] = []
+    seen: set[str] = set()
     for path in paths:
-        if path not in unique:
-            unique.append(path)
+        key = str(path.expanduser().resolve(strict=False))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(path)
     return unique
 
 
@@ -287,9 +296,10 @@ def custom_path_or_id_exists(path_or_id: str) -> bool:
 def write_custom_models(models: list[CustomModelRegistration]) -> None:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     CUSTOM_MODELS_FILE.write_text(
-        json.dumps([model.dict() for model in models], ensure_ascii=False, indent=2),
+        json.dumps([model.model_dump() for model in models], ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+    invalidate_model_registry_cache()
 
 
 def discover_custom(checked_at: str) -> tuple[list[UnifiedModel], list[str]]:
@@ -365,23 +375,54 @@ def delete_custom_model(provider: str, path_or_id: str) -> bool:
     return True
 
 
-def model_registry() -> ModelRegistryStatus:
-    checked_at = utc_now_iso()
+def invalidate_model_registry_cache() -> None:
+    global _registry_cache
+    with _registry_cache_lock:
+        _registry_cache = None
+
+
+def _run_registry_detectors(checked_at: str) -> tuple[list[UnifiedModel], list[str]]:
+    detectors = (discover_ollama, discover_mlx, discover_huggingface_cache, discover_llamacpp, discover_custom)
     model_groups: list[UnifiedModel] = []
     errors: list[str] = []
-    for detector in (discover_ollama, discover_mlx, discover_huggingface_cache, discover_llamacpp, discover_custom):
-        models, detector_errors = detector(checked_at)
-        model_groups.extend(models)
-        errors.extend(detector_errors)
+    with ThreadPoolExecutor(max_workers=len(detectors)) as pool:
+        futures = {pool.submit(detector, checked_at): getattr(detector, "__name__", repr(detector)) for detector in detectors}
+        for future in as_completed(futures):
+            detector_name = futures[future]
+            try:
+                models, detector_errors = future.result()
+            except Exception as exc:
+                errors.append(f"{detector_name}: {exc}")
+                continue
+            model_groups.extend(models)
+            errors.extend(detector_errors)
+    return model_groups, errors
+
+
+def model_registry(*, force_refresh: bool = False) -> ModelRegistryStatus:
+    global _registry_cache
+    now = time.monotonic()
+    if not force_refresh:
+        with _registry_cache_lock:
+            if _registry_cache is not None:
+                cached_at, cached_status = _registry_cache
+                if now - cached_at < REGISTRY_CACHE_SECONDS:
+                    return cached_status
+
+    checked_at = utc_now_iso()
+    model_groups, errors = _run_registry_detectors(checked_at)
     deduped: dict[str, UnifiedModel] = {}
     for model in model_groups:
         deduped[model.id] = model
-    return ModelRegistryStatus(checked_at=checked_at, models=list(deduped.values()), errors=errors)
+    status = ModelRegistryStatus(checked_at=checked_at, models=list(deduped.values()), errors=errors)
+    with _registry_cache_lock:
+        _registry_cache = (time.monotonic(), status)
+    return status
 
 
 def test_audio_model(request: AudioModelTestRequest) -> AudioModelTestResult:
     start = time.perf_counter()
-    registry = model_registry()
+    registry = model_registry(force_refresh=True)
     model = next((item for item in registry.models if item.id == request.model_id), None)
     latency_ms = int((time.perf_counter() - start) * 1000)
     if not model:

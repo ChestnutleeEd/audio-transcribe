@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
+from threading import Lock
 from typing import Callable
 
 from app.config import settings
@@ -17,6 +18,10 @@ from app.services.exporters import segment_text
 from app.services.media import ffmpeg_executable
 from app.services.media import OperationCanceled
 from app.services.qwen_audio.audio_preprocess import audio_duration_seconds
+
+DEPENDENCY_CHECK_TTL_SECONDS = 5.0
+_dependency_check_cache: dict[str, tuple[float, bool]] = {}
+_dependency_check_lock = Lock()
 
 
 def is_macos() -> bool:
@@ -72,19 +77,30 @@ def is_mlx_vlm_audio_model(model_path_or_repo: str | None) -> bool:
 
 def dependency_available(python_executable: str | None = None) -> bool:
     executable = (python_executable or settings.mlx_vlm_python).strip()
+    now = time.monotonic()
+    with _dependency_check_lock:
+        cached = _dependency_check_cache.get(executable)
+        if cached is not None and now - cached[0] < DEPENDENCY_CHECK_TTL_SECONDS:
+            return cached[1]
+
     if not python_available(executable):
-        return False
-    try:
-        result = subprocess.run(
-            [executable, "-c", "import importlib.util; raise SystemExit(0 if importlib.util.find_spec('mlx_vlm') else 1)"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return result.returncode == 0
+        available = False
+    else:
+        try:
+            result = subprocess.run(
+                [executable, "-c", "import importlib.util; raise SystemExit(0 if importlib.util.find_spec('mlx_vlm') else 1)"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            available = result.returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            available = False
+
+    with _dependency_check_lock:
+        _dependency_check_cache[executable] = (time.monotonic(), available)
+    return available
 
 
 def mlx_vlm_audio_status(model_path_or_repo: str | None = None) -> MLXVlmAudioStatus:

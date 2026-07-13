@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -173,18 +174,32 @@ def provider_registry() -> list[LocalModelProvider]:
 
 
 def detect_local_models() -> LocalModelDetectionStatus:
-    providers = [provider.detect(provider) for provider in provider_registry()]
-    providers_online = sum(1 for provider in providers if provider.online)
-    models_found = sum(len(provider.models) for provider in providers)
+    registered_providers = provider_registry()
+    providers: list[LocalModelProviderStatus | None] = [None] * len(registered_providers)
+    with ThreadPoolExecutor(max_workers=max(1, len(registered_providers))) as pool:
+        futures = {
+            pool.submit(provider.detect, provider): (index, provider)
+            for index, provider in enumerate(registered_providers)
+        }
+        for future in as_completed(futures):
+            index, provider = futures[future]
+            try:
+                providers[index] = future.result()
+            except Exception as exc:
+                providers[index] = provider_error_status(provider, f"{provider.name} 检测异常。", str(exc))
+
+    provider_statuses = [provider for provider in providers if provider is not None]
+    providers_online = sum(1 for provider in provider_statuses if provider.online)
+    models_found = sum(len(provider.models) for provider in provider_statuses)
     if models_found:
         message = f"检测到 {providers_online} 个在线提供方，{models_found} 个本地模型。"
     else:
         message = "未检测到本地模型服务。请确认 Ollama / LM Studio / llama.cpp server 是否已启动。本功能不会自动下载模型。"
     return LocalModelDetectionStatus(
         checked_at=datetime.now(timezone.utc).isoformat(),
-        providers_checked=len(providers),
+        providers_checked=len(provider_statuses),
         providers_online=providers_online,
         models_found=models_found,
         message=message,
-        providers=providers,
+        providers=provider_statuses,
     )

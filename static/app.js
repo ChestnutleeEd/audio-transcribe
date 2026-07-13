@@ -186,6 +186,7 @@ let lastQwenStatus = null;
 let lastMlxVlmStatus = null;
 let lastLocalModelDetection = null;
 let lastModelRegistry = null;
+let lastHealthStatus = null;
 let lastJobs = [];
 let jobElements = new Map();
 let selectedHistoryJobId = null;
@@ -3304,6 +3305,7 @@ async function refreshHealth() {
 }
 
 function renderHealth(payload) {
+  lastHealthStatus = payload;
   const items = payload.items || [];
   const errorCount = items.filter((item) => item.status === "error").length;
   const warningCount = items.filter((item) => item.status === "warning").length;
@@ -3501,28 +3503,357 @@ function healthItem(id) {
 }
 
 function environmentAdviceItems(platform, engine) {
-  const items = [];
-  const add = (text) => {
-    const item = document.createElement("p");
-    item.textContent = text;
-    items.push(item);
+  return [renderSystemStatusOverview(platform, engine)];
+}
+
+function renderSystemStatusOverview(platform, engine) {
+  const selected = selectedAudioModel();
+  const registryModels = lastModelRegistry?.models || [];
+  const availableModels = registryModels.filter((model) => model.metadata?.status === "available");
+  const audioCount = availableModels.filter((model) => model.capabilities?.audio).length;
+  const textCount = availableModels.filter((model) => model.capabilities?.text).length;
+  const readiness = systemEngineReadiness(engine, selected);
+
+  const board = document.createElement("div");
+  board.className = "system-status-board";
+
+  const primary = document.createElement("section");
+  primary.className = "system-status-primary";
+  primary.append(
+    systemSectionHead("当前运行路径", "提交任务时会按这里的引擎、模型和导出设置执行。"),
+    systemRouteHero(readiness),
+    systemRouteGrid(platform, engine, selected),
+  );
+
+  const stack = document.createElement("div");
+  stack.className = "system-status-stack";
+  stack.append(
+    systemMetricsPanel(availableModels.length, audioCount, textCount),
+    systemDependencyPanel(),
+    systemRecommendationPanel(platform, engine, selected, readiness),
+  );
+
+  board.append(primary, stack);
+  return board;
+}
+
+function systemSectionHead(title, subtitle) {
+  const head = document.createElement("div");
+  head.className = "system-section-head";
+  const strong = document.createElement("strong");
+  strong.textContent = title;
+  const small = document.createElement("small");
+  small.textContent = subtitle;
+  head.append(strong, small);
+  return head;
+}
+
+function systemRouteHero(readiness) {
+  const hero = document.createElement("div");
+  hero.className = "system-route-hero";
+  const title = document.createElement("div");
+  const label = document.createElement("span");
+  label.textContent = readiness.title;
+  const badge = document.createElement("strong");
+  badge.className = `status-badge status-${readiness.kind}`;
+  badge.textContent = readiness.label;
+  title.append(label, badge);
+  const detail = document.createElement("p");
+  detail.textContent = readiness.detail;
+  detail.title = readiness.detail;
+  hero.append(title, detail);
+  return hero;
+}
+
+function systemRouteGrid(platform, engine, selected) {
+  const grid = document.createElement("div");
+  grid.className = "system-route-grid";
+  grid.append(
+    systemInfoTile("引擎", engine ? transcriptionEngineLabel(engine) : "未选择", systemEngineModeDetail(engine)),
+    systemInfoTile("模型", systemCurrentModelLabel(engine, selected), systemCurrentModelDetail(engine, selected), true),
+    systemInfoTile("平台", platform.label || "等待检测", platform.detail || "等待平台检测"),
+    systemInfoTile("导出", currentExportLabel(), currentClipLabel()),
+    systemInfoTile("文本整理", currentPolishLabel(), currentPolishDetail()),
+    systemInfoTile("最近检测", latestStatusCheckLabel(), latestStatusCheckDetail()),
+  );
+  return grid;
+}
+
+function systemMetricsPanel(total, audioCount, textCount) {
+  const panel = document.createElement("section");
+  panel.className = "system-status-panel system-metrics-panel";
+  panel.append(systemSectionHead("模型池概览", "只统计当前检测为可用的模型。"));
+  const grid = document.createElement("div");
+  grid.className = "system-metrics-grid";
+  grid.append(
+    systemMetric("全部模型", total),
+    systemMetric("音频模型", audioCount),
+    systemMetric("文本模型", textCount),
+    systemMetric("Ollama 本机", lastOllamaStatus?.local_models?.length || 0),
+  );
+  panel.append(grid);
+  return panel;
+}
+
+function systemMetric(label, value) {
+  const item = document.createElement("div");
+  item.className = "system-metric";
+  const strong = document.createElement("strong");
+  strong.textContent = String(value);
+  const span = document.createElement("span");
+  span.textContent = label;
+  item.append(strong, span);
+  return item;
+}
+
+function systemDependencyPanel() {
+  const panel = document.createElement("section");
+  panel.className = "system-status-panel system-dependency-panel";
+  panel.append(systemSectionHead("关键依赖", "转录链路需要这些服务或运行库。"));
+  const list = document.createElement("div");
+  list.className = "system-check-list";
+  list.append(
+    systemCheckRow("Python / API", dependencyLabel("python"), dependencyKind("python"), dependencyMessage("python")),
+    systemCheckRow("FFmpeg", dependencyLabel("ffmpeg"), dependencyKind("ffmpeg"), dependencyMessage("ffmpeg")),
+    systemCheckRow("faster-whisper", dependencyLabel("faster_whisper"), dependencyKind("faster_whisper"), dependencyMessage("faster_whisper")),
+    systemCheckRow("MLX Whisper", dependencyLabel("mlx_whisper"), dependencyKind("mlx_whisper"), dependencyMessage("mlx_whisper")),
+    systemCheckRow(
+      "Ollama 服务",
+      lastOllamaStatus?.available ? "可用" : "需确认",
+      lastOllamaStatus?.available ? "success" : "warning",
+      lastOllamaStatus?.message || "等待 Ollama 状态检测",
+    ),
+  );
+  panel.append(list);
+  return panel;
+}
+
+function systemRecommendationPanel(platform, engine, selected, readiness) {
+  const panel = document.createElement("section");
+  panel.className = "system-status-panel system-recommendation-panel";
+  panel.append(systemSectionHead("运行建议", "按当前选择列出下一步需要处理的事项。"));
+  const list = document.createElement("div");
+  list.className = "system-check-list";
+  const recommendations = systemRecommendations(platform, engine, selected, readiness);
+  list.replaceChildren(...recommendations.map((item) => systemCheckRow(item.title, item.label, item.kind, item.detail)));
+  panel.append(list);
+  return panel;
+}
+
+function systemInfoTile(label, value, detail, mono = false) {
+  const tile = document.createElement("div");
+  tile.className = "system-info-tile";
+  const span = document.createElement("span");
+  span.textContent = label;
+  const strong = document.createElement("strong");
+  strong.textContent = value || "等待检测";
+  strong.title = value || "";
+  if (mono) strong.classList.add("is-path");
+  const small = document.createElement("small");
+  small.textContent = detail || "";
+  small.title = detail || "";
+  tile.append(span, strong, small);
+  return tile;
+}
+
+function systemCheckRow(title, label, kind, detail) {
+  const row = document.createElement("div");
+  row.className = "system-check-row";
+  const strong = document.createElement("strong");
+  strong.textContent = title;
+  const badge = document.createElement("span");
+  badge.className = `status-badge status-${kind || "neutral"}`;
+  badge.textContent = label || "等待检测";
+  const small = document.createElement("small");
+  small.textContent = compactSystemDetail(detail);
+  small.title = detail || "";
+  row.append(strong, badge, small);
+  return row;
+}
+
+function systemEngineReadiness(engine, selected) {
+  if (!engine) {
+    return {
+      title: "转录引擎",
+      label: "未选择",
+      kind: "neutral",
+      detail: "请在转录工作台选择 Whisper、MLX Whisper 或本地音频大模型。",
+    };
+  }
+  if (engine === "whisper") {
+    return {
+      title: "Whisper",
+      label: lastModelStatus?.available ? "可运行" : "待配置",
+      kind: lastModelStatus?.available ? "success" : "warning",
+      detail: lastModelStatus?.message || "等待 Whisper 模型检测。",
+    };
+  }
+  if (engine === "mlx-whisper") {
+    return {
+      title: "MLX Whisper",
+      label: lastMlxStatus?.available ? "可运行" : mlxStatusLabel(lastMlxStatus),
+      kind: lastMlxStatus?.available ? "success" : mlxStatusKind(lastMlxStatus),
+      detail: mlxStatusDetail(lastMlxStatus),
+    };
+  }
+  if (engine === "qwen-audio") {
+    return {
+      title: "MLX Audio",
+      label: lastQwenStatus?.available ? "可运行" : qwenStatusLabel(lastQwenStatus),
+      kind: lastQwenStatus?.available ? "success" : qwenStatusKind(lastQwenStatus),
+      detail: qwenStatusDetail(lastQwenStatus),
+    };
+  }
+  if (engine === "mlx-vlm-audio") {
+    return {
+      title: "MLX VLM Audio",
+      label: lastMlxVlmStatus?.available ? "可运行" : mlxVlmStatusLabel(lastMlxVlmStatus),
+      kind: lastMlxVlmStatus?.available ? "success" : mlxVlmStatusKind(lastMlxVlmStatus),
+      detail: mlxVlmStatusDetail(lastMlxVlmStatus),
+    };
+  }
+  if (engine === "ollama_audio") {
+    const ready = Boolean(selected && lastOllamaStatus?.available);
+    return {
+      title: "本地大模型音频转录",
+      label: ready ? "可运行" : selected ? "服务待确认" : "未选择模型",
+      kind: ready ? "success" : "warning",
+      detail: selected
+        ? lastOllamaStatus?.message || "等待 Ollama 服务检测。"
+        : "请先选择支持音频输入的本地模型。",
+    };
+  }
+  return {
+    title: transcriptionEngineLabel(engine),
+    label: "需确认",
+    kind: "warning",
+    detail: "当前引擎需要确认可用状态。",
   };
-  if (lastMlxStatus?.is_apple_silicon) {
-    add("Mac 用户可优先配置 MLX Whisper。");
-  } else {
-    add(platform.detail || "当前平台建议优先使用 faster-whisper。");
+}
+
+function systemCurrentModelLabel(engine, selected) {
+  if (selected) return `${selected.name} · ${providerLabel(selected.provider)}`;
+  if (engine === "whisper") {
+    const selectedWhisper = (lastModelStatus?.models || []).find((model) => model.id === lastModelStatus?.selected_model);
+    return selectedWhisper?.label || lastModelStatus?.selected_model || "Whisper 模型";
+  }
+  if (engine === "mlx-whisper") return displayModelPath(lastMlxStatus?.model_path_or_repo || mlxModelPathOrRepo.value || lastMlxStatus?.default_model_label);
+  if (engine === "qwen-audio") return displayModelPath(lastQwenStatus?.model_path_or_repo || qwenModelPathOrRepo.value || lastQwenStatus?.default_model_label);
+  if (engine === "mlx-vlm-audio") return displayModelPath(lastMlxVlmStatus?.model_path_or_repo || qwenModelPathOrRepo.value);
+  return "未选择模型";
+}
+
+function systemCurrentModelDetail(engine, selected) {
+  if (selected) return displayModelPath(selected.path_or_id);
+  if (engine === "whisper") return displayModelPath(lastModelStatus?.active_path || lastModelStatus?.configured_path || lastModelStatus?.managed_path);
+  if (engine === "mlx-whisper") return lastMlxStatus?.model_configured ? "已配置模型路径或 repo id" : "未配置模型路径或 repo id";
+  if (engine === "qwen-audio") return lastQwenStatus?.model_configured ? "已配置 MLX Audio 模型" : "未配置 MLX Audio 模型";
+  if (engine === "mlx-vlm-audio") return lastMlxVlmStatus?.model_configured ? "已配置 MLX VLM Audio 模型" : "未配置 MLX VLM Audio 模型";
+  return "等待模型选择";
+}
+
+function systemEngineModeDetail(engine) {
+  return {
+    whisper: "faster-whisper 本地转录",
+    "mlx-whisper": "Apple Silicon 优先的 MLX 转录路径",
+    ollama_audio: "调用支持音频输入的 Ollama 模型",
+    "qwen-audio": "MLX Audio 音频理解路径",
+    "mlx-vlm-audio": "MLX VLM 多模态音频路径",
+  }[engine] || "等待选择";
+}
+
+function currentExportLabel() {
+  const labels = checkedInputLabels('input[name="formats"]');
+  return labels.length ? labels.join(" / ") : "未选择格式";
+}
+
+function currentClipLabel() {
+  const start = startTimeInput.value || "00:00:00";
+  const end = endTimeInput.value || "00:00:00";
+  const hasStart = start !== "00:00:00";
+  const hasEnd = end !== "00:00:00";
+  const range = !hasStart && !hasEnd ? "完整音频" : `${hasStart ? start : "开始"} - ${hasEnd ? end : "结束"}`;
+  return `${range} · ${includeTimestampsInput.checked ? "带时间轴" : "纯文本"}`;
+}
+
+function currentPolishLabel() {
+  return enablePolishInput.checked ? "已启用" : "未启用";
+}
+
+function currentPolishDetail() {
+  if (!enablePolishInput.checked) return "只导出转录原文。";
+  const model = selectedPolishModel();
+  const profile = selectedPolishProfiles().map((item) => item.label).join(" / ") || "默认整理配置";
+  return model ? `${model.name} · ${profile}` : `未选择 Text 模型 · ${profile}`;
+}
+
+function latestStatusCheckLabel() {
+  const times = [lastHealthStatus?.checked_at, lastModelRegistry?.checked_at].map((value) => Date.parse(value || "")).filter(Number.isFinite);
+  if (!times.length) return "等待检测";
+  return new Date(Math.max(...times)).toLocaleString([], {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function latestStatusCheckDetail() {
+  const parts = [];
+  if (lastHealthStatus?.checked_at) parts.push("环境检查已返回");
+  if (lastModelRegistry?.checked_at) parts.push("模型池已返回");
+  return parts.join(" · ") || "等待后端检测结果";
+}
+
+function systemRecommendations(platform, engine, selected, readiness) {
+  const recommendations = [];
+  const add = (kind, label, title, detail) => recommendations.push({ kind, label, title, detail });
+  if (!engine) {
+    add("warning", "待处理", "选择转录引擎", "在转录工作台选择 Whisper、MLX Whisper 或本地音频大模型。");
+  }
+  if (engine === "whisper" && !lastModelStatus?.available) {
+    add("warning", "待处理", "准备 Whisper 模型", lastModelStatus?.message || "请配置 faster-whisper 模型目录。");
   }
   if (engine === "mlx-whisper" && !lastMlxStatus?.available) {
-    add(lastMlxStatus?.hint || "请先安装 mlx-whisper 并配置模型。");
+    add(mlxStatusKind(lastMlxStatus), "待处理", "补齐 MLX Whisper", lastMlxStatus?.hint || "请安装 mlx-whisper 并配置模型路径或 repo id。");
   }
   if (engine === "qwen-audio" && !lastQwenStatus?.available) {
-    add(lastQwenStatus?.hint || "请先安装 mlx-audio 并配置 MLX Audio 模型。");
+    add(qwenStatusKind(lastQwenStatus), "待处理", "补齐 MLX Audio", lastQwenStatus?.hint || "请安装 mlx-audio 并配置 MLX Audio 模型。");
   }
   if (engine === "mlx-vlm-audio" && !lastMlxVlmStatus?.available) {
-    add(lastMlxVlmStatus?.hint || "请先配置安装了 mlx-vlm 的 Python 环境和 Gemma4 MLX 模型。");
+    add(mlxVlmStatusKind(lastMlxVlmStatus), "待处理", "补齐 MLX VLM Audio", lastMlxVlmStatus?.hint || "请配置安装了 mlx-vlm 的 Python 环境和 Gemma4 MLX 模型。");
   }
-  add("本项目不会自动下载 MLX Whisper、MLX Audio 或 MLX VLM Audio 模型。");
-  return items.slice(0, 3);
+  if (engine === "ollama_audio") {
+    if (!selected) {
+      add("warning", "待处理", "选择音频模型", "请在本地音频大模型列表中选择支持音频输入的模型。");
+    } else if (!lastOllamaStatus?.available) {
+      add("warning", "待处理", "启动 Ollama 服务", lastOllamaStatus?.message || "启动 Ollama 桌面应用，或执行 ollama serve。");
+    }
+  }
+  if (dependencyKind("ffmpeg") === "danger") {
+    add("danger", "缺失", "安装 FFmpeg", dependencyMessage("ffmpeg"));
+  }
+  if (lastMlxStatus?.is_apple_silicon && engine !== "mlx-whisper" && lastMlxStatus?.available) {
+    add("success", "可选", "Apple Silicon 加速", "本机可用 MLX Whisper，可在需要更低延迟时切换。");
+  } else if (!lastMlxStatus?.is_apple_silicon && platform.detail) {
+    add(platform.status, "平台", "平台适配", platform.detail);
+  }
+  add("neutral", "说明", "模型下载", "本项目不会自动下载 MLX Whisper、MLX Audio 或 MLX VLM Audio 模型。");
+  if (!recommendations.some((item) => item.kind === "warning" || item.kind === "danger")) {
+    recommendations.unshift({
+      kind: readiness.kind === "success" ? "success" : "neutral",
+      label: readiness.kind === "success" ? "可运行" : "确认",
+      title: "当前配置",
+      detail: readiness.kind === "success" ? "可以回到转录工作台提交音频任务。" : readiness.detail,
+    });
+  }
+  return recommendations.slice(0, 4);
+}
+
+function compactSystemDetail(detail) {
+  const text = String(detail || "").trim();
+  if (!text) return "";
+  return text.length > 72 ? `${text.slice(0, 69)}...` : text;
 }
 
 async function ensureSelectedOllamaModelsReady() {

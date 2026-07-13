@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 import platform
 import subprocess
+from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
@@ -97,7 +98,13 @@ from app.services.polish_profiles import combine_profiles_instruction, get_profi
 from app.services.transcriber import transcribe_audio
 
 
-app = FastAPI(title=settings.app_name)
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    ensure_runtime_dirs()
+    yield
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 executor = ThreadPoolExecutor(max_workers=1)
 ollama_executor = ThreadPoolExecutor(max_workers=1)
 
@@ -142,6 +149,10 @@ def offset_segments(segments: list[TranscriptSegment], offset_seconds: float) ->
         )
         for segment in segments
     ]
+
+
+def segments_duration(segments: list[TranscriptSegment]) -> float | None:
+    return max((segment.end for segment in segments), default=None)
 
 
 def parse_formats(raw_formats: list[str] | str) -> list[OutputFormat]:
@@ -814,7 +825,7 @@ def run_job(
                     message=f"Qwen2-Audio 已完成 {partial_count} 个音频 chunk",
                     raw_segments=result.segments,
                     raw_text=result.raw_text,
-                    duration_seconds=max((segment.end for segment in result.segments), default=None),
+                    duration_seconds=segments_duration(result.segments),
                     engine_metadata=result.metadata,
                     model_label=result.model_label,
                 )
@@ -833,7 +844,7 @@ def run_job(
                         model_label=f"{settings.qwen_audio_default_model_label}（MLX mock）",
                         raw_segments=segments,
                         raw_text=segment_text(segments, include_timestamps=False),
-                        duration_seconds=max((segment.end for segment in segments), default=None),
+                        duration_seconds=segments_duration(segments),
                         engine_metadata={
                             "engine": "qwen-audio",
                             "backend": "mlx-audio",
@@ -909,7 +920,7 @@ def run_job(
                     message=f"Gemma4 MLX VLM Audio 已完成 {partial_count} 个音频 chunk",
                     raw_segments=result.segments,
                     raw_text=result.raw_text,
-                    duration_seconds=max((segment.end for segment in result.segments), default=None),
+                    duration_seconds=segments_duration(result.segments),
                     engine_metadata=result.metadata,
                     model_label=result.model_label,
                 )
@@ -925,7 +936,7 @@ def run_job(
                         model_label=f"{Path(active_vlm_model).name or active_vlm_model}（MLX VLM mock）",
                         raw_segments=segments,
                         raw_text=segment_text(segments, include_timestamps=False),
-                        duration_seconds=max((segment.end for segment in segments), default=None),
+                        duration_seconds=segments_duration(segments),
                         engine_metadata={
                             "engine": "mlx-vlm-audio",
                             "backend": "mlx-vlm",
@@ -1018,7 +1029,7 @@ def run_job(
             job_id,
             raw_segments=raw_segments,
             raw_text=segment_text(raw_segments, include_timestamps=False),
-            duration_seconds=max((segment.end for segment in raw_segments), default=None),
+            duration_seconds=segments_duration(raw_segments),
             engine_metadata=engine_metadata,
         )
 
@@ -1130,11 +1141,6 @@ def run_job(
             error_diagnostic=diagnose_error(str(exc)),
             processing_finished_at=utc_now_iso(),
         )
-
-
-@app.on_event("startup")
-def startup() -> None:
-    ensure_runtime_dirs()
 
 
 @app.get("/api/options", response_model=AppOptions)

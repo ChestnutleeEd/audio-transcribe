@@ -174,11 +174,11 @@ def unbind_model_path(model_id: str) -> None:
     unbind_whisper_model_path(model.id)
 
 
-def model_options() -> list[ModelOption]:
+def model_options(active_paths: dict[str, Path | None] | None = None) -> list[ModelOption]:
     options: list[ModelOption] = []
     for model in SUPPORTED_MODELS:
         configured_path = whisper_model_path(model.id)
-        active_path = resolve_model_path(model.id)
+        active_path = active_paths[model.id] if active_paths is not None and model.id in active_paths else resolve_model_path(model.id)
         options.append(
             ModelOption(
                 id=model.id,
@@ -206,7 +206,9 @@ def model_options() -> list[ModelOption]:
 def model_status() -> ModelStatus:
     model_id = current_model_id()
     model = settings.model_definition(model_id)
-    active_path = resolve_model_path(model.id)
+    active_paths = {definition.id: resolve_model_path(definition.id) for definition in SUPPORTED_MODELS}
+    active_path = active_paths.get(model.id)
+    configured_path = whisper_model_path(model.id)
     with tracker_lock:
         tracker = get_tracker(model.id)
         state = tracker.state
@@ -233,10 +235,10 @@ def model_status() -> ModelStatus:
     return ModelStatus(
         available=active_path is not None,
         selected_model=model.id,
-        models=model_options(),
+        models=model_options(active_paths),
         active_path=str(active_path) if active_path else None,
         managed_path=str(settings.managed_model_path_for(model.id)),
-        configured_path=str(whisper_model_path(model.id)) if whisper_model_path(model.id) else None,
+        configured_path=str(configured_path) if configured_path else None,
         repo_id=model.repo_id,
         required_files=required_model_files(),
         configured_device=settings.device,

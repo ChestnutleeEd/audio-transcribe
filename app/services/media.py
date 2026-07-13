@@ -26,6 +26,7 @@ SUPPORTED_UPLOAD_SUFFIXES = {
     ".webm",
     ".avi",
 }
+MAX_SAFE_STEM_LENGTH = 120
 
 
 class OperationCanceled(RuntimeError):
@@ -36,7 +37,8 @@ def safe_stem(name: str) -> str:
     keep = []
     for char in Path(name).stem:
         keep.append(char if char.isalnum() or char in ("-", "_") else "_")
-    return "".join(keep).strip("_") or "transcript"
+    stem = "".join(keep).strip("_") or "transcript"
+    return stem[:MAX_SAFE_STEM_LENGTH].rstrip("_") or "transcript"
 
 
 def ensure_runtime_dirs() -> None:
@@ -68,6 +70,18 @@ def run_command(command: list[str], is_canceled: Callable[[], bool]) -> subproce
     return run_command_with_env(command, is_canceled)
 
 
+def terminate_process(process: subprocess.Popen[str], wait_seconds: float = 5) -> None:
+    process.terminate()
+    try:
+        process.wait(timeout=wait_seconds)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        try:
+            process.wait(timeout=wait_seconds)
+        except subprocess.TimeoutExpired:
+            pass
+
+
 def run_command_with_env(
     command: list[str],
     is_canceled: Callable[[], bool],
@@ -86,18 +100,10 @@ def run_command_with_env(
     )
     while process.poll() is None:
         if timeout_seconds is not None and time.monotonic() - started_at > timeout_seconds:
-            process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
+            terminate_process(process)
             raise RuntimeError("视频音频下载超时，请检查链接、网络代理或稍后重试")
         if is_canceled():
-            process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
+            terminate_process(process)
             raise OperationCanceled("任务已停止")
         time.sleep(0.3)
     stdout, stderr = process.communicate()
