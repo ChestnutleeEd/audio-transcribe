@@ -1,0 +1,123 @@
+name: Build and publish release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release tag (for example v0.4.0)
+        required: true
+        default: v0.4.0
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Prepare embedded runtime from domestic mirrors
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
+          NPM_CONFIG_REGISTRY: https://registry.npmmirror.com
+        run: ./scripts/prepare-release-runtime.ps1 -Platform windows
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+      - name: Install test runner
+        shell: pwsh
+        run: '& "runtime/windows/python/python.exe" -m pip install pytest -i https://pypi.tuna.tsinghua.edu.cn/simple'
+      - name: Build Windows portable package and installer
+        shell: pwsh
+        run: |
+          ./scripts/build-release.ps1 -Version '${{ inputs.version }}' -Target zip-windows
+          ./scripts/build-release.ps1 -Version '${{ inputs.version }}' -Target installer-windows
+      - name: Verify Windows release payloads
+        shell: pwsh
+        run: |
+          $zip = "dist/zip/windows/${{ inputs.version }}/AudioTranscribe-${{ inputs.version }}-windows-x64.zip"
+          $setup = "dist/installer/windows/${{ inputs.version }}/AudioTranscribeSetup.exe"
+          if (-not (Test-Path $zip) -or (Get-Item $zip).Length -lt 50MB) { throw "Windows ZIP missing embedded runtime" }
+          if (-not (Test-Path $setup) -or (Get-Item $setup).Length -lt 50MB) { throw "Windows installer missing embedded runtime" }
+          & "runtime/windows/python/python.exe" -m pytest -q
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          if-no-files-found: error
+          path: |
+            dist/zip/windows/${{ inputs.version }}/AudioTranscribe-${{ inputs.version }}-windows-x64.zip
+            dist/installer/windows/${{ inputs.version }}/AudioTranscribeSetup.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Prepare embedded runtime from domestic mirrors
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
+          NPM_CONFIG_REGISTRY: https://registry.npmmirror.com
+        run: ./scripts/prepare-release-runtime.ps1 -Platform macos
+      - name: Install DMG builder
+        env:
+          HOMEBREW_API_DOMAIN: https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles/api
+          HOMEBREW_BOTTLE_DOMAIN: https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles
+        run: brew install create-dmg
+      - name: Install test runner
+        run: runtime/macos/python/bin/python3 -m pip install pytest -i https://pypi.tuna.tsinghua.edu.cn/simple
+      - name: Build macOS portable package and installer
+        shell: pwsh
+        run: |
+          ./scripts/build-release.ps1 -Version '${{ inputs.version }}' -Target zip-macos
+          ./scripts/build-release.ps1 -Version '${{ inputs.version }}' -Target installer-macos
+      - name: Verify macOS release payloads
+        shell: pwsh
+        run: |
+          $zip = "dist/zip/macos/${{ inputs.version }}/AudioTranscribe-${{ inputs.version }}-macos.zip"
+          $dmg = "dist/installer/macos/${{ inputs.version }}/AudioTranscribe.dmg"
+          if (-not (Test-Path $zip) -or (Get-Item $zip).Length -lt 50MB) { throw "macOS ZIP missing embedded runtime" }
+          if (-not (Test-Path $dmg) -or (Get-Item $dmg).Length -lt 50MB) { throw "macOS DMG missing embedded runtime" }
+          & "runtime/macos/python/bin/python3" -m pytest -q
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          if-no-files-found: error
+          path: |
+            dist/zip/macos/${{ inputs.version }}/AudioTranscribe-${{ inputs.version }}-macos.zip
+            dist/installer/macos/${{ inputs.version }}/AudioTranscribe.dmg
+
+  publish:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          mapfile -t assets < <(find release-assets -type f -print)
+          test "${#assets[@]}" -eq 4
+          gh release create "$VERSION" "${assets[@]}" \
+            --target "$GITHUB_SHA" \
+            --title "Audio Transcribe $VERSION" \
+            --notes-file "docs/release-notes/$VERSION.md" \
+            --verify-tag

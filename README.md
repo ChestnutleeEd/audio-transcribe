@@ -1,12 +1,12 @@
 # Audio-Transcribe
 
-Audio-Transcribe 是一个本地优先的音视频转写桌面工作台。它在本机启动一个本地网页应用，用于上传音频、视频或粘贴视频链接，然后使用本地 Whisper / MLX Whisper / Qwen2-Audio / Ollama 工作流完成转写、音频理解、整理、导出和复查。
+Audio-Transcribe 是一个本地优先的音视频转写桌面工作台。它在本机启动网页界面，用于处理本地音频、视频和 `yt-dlp` 支持的链接，并通过 Whisper、MLX Whisper、MLX Audio / VLM Audio 与 Ollama 等本地工作流完成转写、音频理解、文本整理、导出和复查。音频、转写文本和模型默认都留在本机。
 
-![Audio-Transcribe 首页](docs/assets/audio-transcribe-home.png)
+![Audio-Transcribe v0.4.0 最新首页](docs/assets/audio-transcribe-home-latest.png)
 
-![任务工作文件清理](docs/assets/audio-transcribe-cleanup.png)
+![Audio-Transcribe v0.4.0 最新转录工作台](docs/assets/audio-transcribe-workbench-latest.png)
 
-![说话人识别配置](docs/assets/audio-transcribe-speaker-diarization.png)
+![Audio-Transcribe v0.4.0 最新系统状态页](docs/assets/audio-transcribe-system-status-latest.png)
 
 ## 1. 项目简介
 
@@ -21,19 +21,23 @@ Audio-Transcribe 适合处理面试录音、会议音频、课程视频、YouTub
 - 支持 TXT、Markdown、JSON、SRT、Word 导出。
 - 支持原始文本、整理后文本、原始加整理后三种导出范围。
 - 支持模型检测、模型下载进度、下载取消、CUDA 失败后的 CPU 降级提示。
-- 支持稳定 Whisper、Apple Silicon 推荐的 MLX Whisper、Qwen2-Audio MLX 多模态音频理解、实验性 Ollama 本地大模型音频转录。
+- 支持稳定 Whisper、Apple Silicon 推荐的 MLX Whisper、MLX Audio / VLM Audio 多模态音频理解，以及已检测到的 Ollama / 本地音频模型。
 - 支持本地大模型文本整理，内置标点修复、保守清理、日语自然断句、中文会议纪要、双语翻译、Repair 文本修复和说话人识别。
 - 说话人识别会根据分段时间、停顿、问答关系和语言逻辑推断发言轮次，并统一使用 `说话人 1：`、`说话人 2：` 这类命名。
 - 支持原始文本和整理后文本同屏展示、复制、重新整理、段落级对比；对比视图会保留展开状态，不会被任务轮询刷新打断。
 - 支持任务耗时、错误诊断、事件时间线和最近任务历史。
 - 支持右侧任务卡片单独展开/收起，适合连续处理多个长音频任务。
 - 支持清理 `data/jobs` 下已结束任务遗留的 source 音频、chunk、中间文件和导出文件，释放本地磁盘空间；运行中的任务不会被清理。
+- 提供独立“系统状态”页，集中展示当前转录路径、可用模型数量、平台、导出配置、关键依赖与运行建议。
+- Ollama、MLX、Hugging Face 缓存、llama.cpp 和自定义目录会并行检测；模型池使用短时缓存降低重复扫描开销。
 
 ## 2. 安装方式
 
 ### 最新推荐版本
 
-当前推荐发布版本：`v0.3.1`。
+当前推荐发布版本：`v0.4.0`。
+
+下载地址：[GitHub Releases](https://github.com/ChestnutleeEd/audio-transcribe/releases/latest)
 
 普通用户优先下载安装器；开发者、测试用户或临时试用再下载 ZIP。源码启动、ZIP 启动和安装器启动都会走同一套本地服务，默认打开：
 
@@ -53,19 +57,19 @@ http://127.0.0.1:8000/
 推荐原因：
 
 - 安装后可从桌面快捷方式、开始菜单或应用程序目录启动。
-- Windows 安装器目标是随包携带 Python runtime，并自动创建卸载入口。
-- macOS 安装器目标是提供 `.app` 应用包和 `.dmg` 拖拽安装体验。
-- 安装器会写入默认配置文件，方便后续升级为真正的一键桌面应用。
+- Windows 安装器随包携带可再发行 Python 3.12、项目依赖、FFmpeg / FFprobe，并自动创建快捷方式和卸载入口。
+- macOS 安装器提供 Apple Silicon `.app` 与 `.dmg` 拖拽安装体验，同样内置 Python 运行时和媒体工具。
+- 启动器仍会执行运行检查；如果 Python 包不完整，会默认通过清华 PyPI 镜像自动补齐。
 
 当前阶段说明：
 
 - Windows 安装器构建依赖 Inno Setup，构建入口是 `scripts/build-release.ps1 -Target installer-windows`。
 - macOS 安装器构建依赖 macOS 的 `hdiutil`，构建入口是 `scripts/build-release.ps1 -Target installer-macos`。
-- 如果构建机没有准备 Python runtime、FFmpeg 或安装器工具，构建脚本会用中文报错，不会生成误导性的安装包。
+- Release 工作流只有在内置运行时、FFmpeg、测试和产物体积检查全部通过后才会发布；缺失安装器工具时不会生成假文件。
 
 ### 🟡 便携版（ZIP）
 
-便携版适合开发者、测试用户、临时使用或不想安装软件的用户。
+便携版适合不想安装软件、临时使用或需要把程序放在独立目录中的用户；`v0.4.0` 起同样内置基础运行环境。
 
 下载位置：
 
@@ -80,7 +84,7 @@ http://127.0.0.1:8000/
 4. macOS 双击 `start-audio-transcribe.command`。
 5. 浏览器会打开 `http://127.0.0.1:8000/`。
 
-macOS 如果提示无法打开，进入解压目录后执行：
+macOS ZIP 使用 `ditto` 构建并保留可执行权限。如果系统仍因下载隔离提示无法打开，进入解压目录后执行：
 
 ```bash
 chmod +x scripts/setup-macos.sh start-audio-transcribe.command stop-audio-transcribe.command
@@ -88,29 +92,29 @@ chmod +x scripts/setup-macos.sh start-audio-transcribe.command stop-audio-transc
 
 ## 3. 开箱即用清单
 
-必须透明说明：
+发行包说明：
 
-- Windows 安装器版本是普通用户的首选。当构建机提供 Python runtime 和 FFmpeg 时，安装包可以随包携带运行环境，并提供开始菜单、桌面快捷方式和卸载入口。
-- macOS 安装器版本是 Mac 用户的首选。它提供 `.app` 或 `.dmg` 安装体验；如果某些系统依赖无法随包携带，首次运行会显示中文引导。
-- ZIP 便携版是“半开箱即用”。它包含项目文件、启动脚本和中文引导，但仍依赖本机 Python 和 FFmpeg，首次启动可能需要安装 Python 依赖。
+- Windows 安装器和 ZIP 均内置 Windows x64 Python 3.12、基础 Python 依赖、FFmpeg 与 FFprobe。
+- macOS DMG 和 ZIP 均在 Apple Silicon GitHub 构建机上生成，内置 arm64 Python 3.12、基础 Python 依赖、FFmpeg 与 FFprobe。
+- ZIP 解压后可直接运行启动器，不依赖系统 Python 或系统 FFmpeg。
 - 源码启动适合开发者。首次运行 `start-audio-transcribe.bat` 或 `start-audio-transcribe.command` 时，会自动创建 `.venv` 并安装 `requirements.txt`。
 - 启动脚本默认使用清华 PyPI 镜像：`https://pypi.tuna.tsinghua.edu.cn/simple`。如需切换，可先设置 `PIP_INDEX_URL`。
-- Whisper、MLX Whisper、Qwen2-Audio、Ollama 模型体积较大，仓库和发行包默认不内置模型。首次使用时请在页面中下载或手动放置模型。
+- Whisper、MLX Whisper、MLX Audio / VLM Audio、Ollama 模型体积较大，仓库和发行包默认不内置模型。首次使用时请在页面中下载、通过对应模型管理器准备，或绑定已有本地目录。
 
 ### Windows 开箱即用路径
 
-1. 优先下载 `AudioTranscribeSetup.exe` 并按提示安装。
+1. 优先下载 `AudioTranscribeSetup.exe` 并按提示安装；无需另装 Python 或 FFmpeg。
 2. 如果使用 ZIP，解压后双击 `start-audio-transcribe.bat`。
 3. 启动器会检查 Python runtime、`.venv`、Python 依赖、FFmpeg / FFprobe 和端口占用。
-4. 如果缺少 Python，安装 Python 3.10 或更新版本后重新双击启动。
-5. 如果缺少 FFmpeg，把 `ffmpeg.exe` 和 `ffprobe.exe` 放到 `origin-code/`，或安装 FFmpeg 并加入 PATH。
+4. 正式 Release 已内置 Python 与 FFmpeg；源码启动时如依赖不完整，启动器会通过清华 PyPI 镜像补齐 Python 包。
+5. 只有源码环境缺少系统级 Python / FFmpeg 且自动准备失败时，才需要按中文提示手动安装。
 
 ### macOS 开箱即用路径
 
-1. 优先下载 `AudioTranscribe.dmg` 或 `AudioTranscribeAppBundle.zip`。
+1. Apple Silicon Mac 优先下载 `AudioTranscribe.dmg`；无需另装 Python 或 FFmpeg。
 2. 如果使用 ZIP，解压后双击 `start-audio-transcribe.command`。
-3. 启动器会检查 `.venv`、Python 依赖、FFmpeg / FFprobe 和端口占用。
-4. 如果缺少 Python 或 FFmpeg，推荐使用 Homebrew 安装：
+3. 启动器会优先使用包内 `.runtime/python` 与 `origin-code/ffmpeg`，并检查依赖和端口占用。
+4. 源码启动缺少 Python 或 FFmpeg 时，推荐使用 Homebrew 安装：
 
 ```bash
 brew install python ffmpeg
@@ -287,21 +291,22 @@ ZIP 与安装器差异：
 
 | 类型 | 文件 | 适合用户 | 是否安装 | 依赖处理 |
 | --- | --- | --- | --- | --- |
-| Windows 安装器 | `AudioTranscribeSetup.exe` | 普通 Windows 用户 | 是 | 目标是随包携带 Python runtime，并创建快捷方式和卸载入口 |
-| macOS 安装器 | `AudioTranscribe.dmg` 或 `AudioTranscribeAppBundle.zip` | 普通 macOS 用户 | 拖拽安装 | 优先用 `create-dmg` 生成 dmg；没有 `create-dmg` 时 fallback 为真实 `.app` bundle ZIP |
-| Windows ZIP | `AudioTranscribe-v版本号-windows-x64.zip` | 测试和便携用户 | 否 | 需要本机 Python / FFmpeg，启动器会中文引导 |
-| macOS ZIP | `AudioTranscribe-v版本号-macos.zip` | 测试和便携用户 | 否 | 需要本机 Python / FFmpeg，启动器会中文引导 |
+| Windows 安装器 | `AudioTranscribeSetup.exe` | 普通 Windows x64 用户 | 是 | 内置 Python 3.12、依赖、FFmpeg；创建快捷方式和卸载入口 |
+| macOS 安装器 | `AudioTranscribe.dmg` | Apple Silicon Mac 用户 | 拖拽安装 | 内置 arm64 Python 3.12、依赖、FFmpeg 和 `.app` 应用包 |
+| Windows ZIP | `AudioTranscribe-v版本号-windows-x64.zip` | 便携用户 | 否 | 内置运行环境，解压后双击 `.bat` |
+| macOS ZIP | `AudioTranscribe-v版本号-macos.zip` | 便携用户 | 否 | 内置运行环境与可执行权限，解压后双击 `.command` |
 
 最新发布说明：
 
-- [v0.3.1](docs/release-notes/v0.3.1.md)：修复转录工作台滚动面板溢出和右侧底部空白，完善 macOS / Windows 开箱即用说明。
+- [v0.4.0](docs/release-notes/v0.4.0.md)：新增系统状态总览与并行模型检测，更新全套界面截图，并提供内置 Python / FFmpeg 的 Windows 与 Apple Silicon macOS 发行包。
+- [v0.3.1](docs/release-notes/v0.3.1.md)：修复转录工作台滚动面板溢出和右侧底部空白。
 - [v0.3.0](docs/release-notes/v0.3.0.md)：新增 Qwen2-Audio MLX 多模态音频理解 pipeline。
 
 ## 9. 发行路线
 
-- `v0.2.x`：开发版，重点修正 ZIP 误导说明，并引入双发行体系骨架。
-- `v0.9.x`：安装器测试版，重点验证 Windows 安装器和 macOS dmg。
-- `v1.0.0`：正式桌面应用，目标是普通用户可按安装器方式稳定使用。
+- `v0.4.x`：内置运行时发行版，完善系统状态、模型池、跨平台安装与自动更新能力。
+- `v0.9.x`：安装器测试版，重点验证签名、公证和增量升级。
+- `v1.0.0`：正式桌面应用，目标是普通用户可长期稳定使用并平滑升级。
 
 详细规划见 [docs/release-notes/v1.0-roadmap.md](docs/release-notes/v1.0-roadmap.md)。
 
@@ -310,15 +315,17 @@ ZIP 与安装器差异：
 Windows PowerShell：
 
 ```powershell
-.\scripts\build-release.ps1 -Version v0.3.1 -Target zip
-.\scripts\build-release.ps1 -Version v0.3.1 -Target installer-windows
+.\scripts\prepare-release-runtime.ps1 -Platform windows
+.\scripts\build-release.ps1 -Version v0.4.0 -Target zip-windows
+.\scripts\build-release.ps1 -Version v0.4.0 -Target installer-windows
 ```
 
 macOS PowerShell：
 
 ```powershell
-./scripts/build-release.ps1 -Version v0.3.1 -Target zip
-./scripts/build-release.ps1 -Version v0.3.1 -Target installer-macos
+./scripts/prepare-release-runtime.ps1 -Platform macos
+./scripts/build-release.ps1 -Version v0.4.0 -Target zip-macos
+./scripts/build-release.ps1 -Version v0.4.0 -Target installer-macos
 ```
 
 构建输出目录：
@@ -333,7 +340,9 @@ dist/
     macos/
 ```
 
-构建脚本不会批量删除旧产物。如果目标目录已经存在，会停止并要求手动处理。Installer 构建不会生成假文件：Windows 未检测到 Inno Setup 时会中文提示并跳过 `AudioTranscribeSetup.exe`；macOS 未检测到 `create-dmg` 时会 fallback 为 `.app` bundle ZIP。
+`prepare-release-runtime.ps1` 从 python-build-standalone 获取可再发行 Python，Python 依赖优先使用清华 PyPI，FFmpeg 工具依赖优先使用 npmmirror。构建脚本不会批量删除旧产物；目标目录已经存在时会停止并要求手动处理。Windows 未检测到 Inno Setup 时会跳过 EXE；macOS 未检测到 `create-dmg` 时会 fallback 为真实 `.app` bundle ZIP，不会生成假安装包。
+
+正式 Release 使用 [`.github/workflows/release.yml`](.github/workflows/release.yml) 在 Windows 与 Apple Silicon macOS 原生构建机上完成运行时准备、测试、打包、产物校验和发布。
 
 ## 11. 本地模型
 

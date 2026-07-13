@@ -7,9 +7,8 @@ $RuntimePython = Join-Path $Root ".runtime\python\python.exe"
 Set-Location $Root
 
 if (Test-Path $RuntimePython) {
+  $Python = $RuntimePython
   Write-Host "已检测到安装器内置 Python runtime。"
-  Write-Host "启动命令：.\start-audio-transcribe.bat"
-  exit 0
 }
 
 if (-not (Test-Path $Python)) {

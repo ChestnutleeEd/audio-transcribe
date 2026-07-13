@@ -5,6 +5,27 @@ __pycache__/
 .codex/
 release-dist/
 dist/
+.release-tools/
+runtime/
+.playwright-cli/
+output/
+
+# Local agent / editor skills and generated handoff files
+.agent/
+.claude/
+.codebuddy/
+.continue/
+.cursor/
+.gemini/
+.kiro/
+.opencode/
+.qoder/
+.roo/
+.trae/
+.windsurf/
+.github/prompts/
+CODEX_HANDOFF.md
+scratch.py
 
 # Runtime artifacts
 data/uploads/

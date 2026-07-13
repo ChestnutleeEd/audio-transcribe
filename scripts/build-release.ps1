@@ -1,5 +1,5 @@
 param(
-  [string]$Version = "v0.3.1",
+  [string]$Version = "v0.4.0",
   [ValidateSet("all", "zip", "zip-windows", "zip-macos", "installer", "installer-windows", "installer-macos")]
   [string]$Target = "all"
 )
@@ -168,12 +168,27 @@ function Copy-WindowsRuntimeIfAvailable {
 function Copy-MacRuntimeIfAvailable {
   param([string]$Stage)
 
+  $EmbeddedPython = Join-Path $Root "runtime/macos/python"
   $MacVenv = Join-Path $Root ".venv"
-  if ((Test-Path $MacVenv) -and (Test-Path (Join-Path $MacVenv "bin/python"))) {
+  if (Test-Path (Join-Path $EmbeddedPython "bin/python3")) {
+    Copy-ReleaseTree -Source $EmbeddedPython -Destination (Join-Path $Stage ".runtime/python")
+    Write-Host "已复制 macOS Python runtime：$EmbeddedPython"
+  } elseif ((Test-Path $MacVenv) -and (Test-Path (Join-Path $MacVenv "bin/python"))) {
     Copy-Item -Path $MacVenv -Destination (Join-Path $Stage ".venv") -Recurse
     Write-Host "已复制 macOS 虚拟环境：$MacVenv"
   } else {
     Write-Host "未找到 macOS 虚拟环境。macOS 包会在首次启动时引导用户安装 Python 依赖。"
+  }
+
+  $OriginCodeStage = Join-Path $Stage "origin-code"
+  New-Item -ItemType Directory -Path $OriginCodeStage -Force | Out-Null
+  $OriginCode = Join-Path $Root "origin-code"
+  foreach ($Tool in @("ffmpeg", "ffprobe")) {
+    $ToolPath = Join-Path $OriginCode $Tool
+    if (Test-Path $ToolPath) {
+      Copy-Item -Path $ToolPath -Destination $OriginCodeStage
+      & chmod +x (Join-Path $OriginCodeStage $Tool)
+    }
   }
 }
 
@@ -213,7 +228,11 @@ function build_zip_macos {
   Assert-NewDirectory -Path $OutputDir
   New-MacStage -Stage $Stage
   $ZipPath = Join-Path $OutputDir "AudioTranscribe-$Version-macos.zip"
-  Compress-Archive -Path $Stage -DestinationPath $ZipPath
+  if ($IsMacOS) {
+    & ditto -c -k --sequesterRsrc --keepParent $Stage $ZipPath
+  } else {
+    Compress-Archive -Path $Stage -DestinationPath $ZipPath
+  }
   Write-Host "macOS ZIP 已创建：$ZipPath"
 }
 
@@ -297,7 +316,11 @@ function build_installer_macos {
   }
 
   $AppZipPath = Join-Path $OutputDir "AudioTranscribeAppBundle.zip"
-  Compress-Archive -Path $AppRoot -DestinationPath $AppZipPath
+  if ($IsMacOS) {
+    & ditto -c -k --sequesterRsrc --keepParent $AppRoot $AppZipPath
+  } else {
+    Compress-Archive -Path $AppRoot -DestinationPath $AppZipPath
+  }
   if (-not (Test-ZipArtifact -Path $AppZipPath)) {
     Write-ReleaseWarning "macOS .app bundle ZIP 生成失败。"
     Ensure-MacZipFallback

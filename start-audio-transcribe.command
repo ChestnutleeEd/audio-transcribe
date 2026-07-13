@@ -19,12 +19,19 @@ APP_URL="http://127.0.0.1:8000/"
 APP_HOST="127.0.0.1"
 APP_PORT="8000"
 PYTHON_EXE="$ROOT/.venv/bin/python"
+if [ -x "$ROOT/.runtime/python/bin/python3" ]; then
+  PYTHON_EXE="$ROOT/.runtime/python/bin/python3"
+fi
 RUNTIME_DIR="$ROOT/data/tmp"
 PID_FILE="$RUNTIME_DIR/audio-transcribe-server.pid"
 SERVER_PID=""
 
 export NO_PROXY="127.0.0.1,localhost,::1${NO_PROXY:+,$NO_PROXY}"
 export no_proxy="127.0.0.1,localhost,::1${no_proxy:+,$no_proxy}"
+if [ -x "$ROOT/origin-code/ffmpeg" ]; then
+  export PATH="$ROOT/origin-code:$PATH"
+  export AUDIO_TRANSCRIBE_FFMPEG="$ROOT/origin-code/ffmpeg"
+fi
 
 cleanup() {
   local PID="${SERVER_PID:-}"
@@ -109,10 +116,13 @@ fi
 
 echo "[3/5] 正在检查 Python 依赖和 FFmpeg..."
 if ! "$ROOT/scripts/runtime-check-macos.sh" "$ROOT"; then
-  echo
-  echo "运行环境检查未通过。请按照上方中文提示处理后重新双击启动。"
-  read -r -p "按回车键关闭窗口。"
-  exit 1
+  echo "检测到依赖不完整，正在使用国内镜像自动补齐..."
+  if ! "$ROOT/scripts/setup-macos.sh" || ! "$ROOT/scripts/runtime-check-macos.sh" "$ROOT"; then
+    echo
+    echo "自动安装未完成。请按照上方中文提示处理后重新双击启动。"
+    read -r -p "按回车键关闭窗口。"
+    exit 1
+  fi
 fi
 
 mkdir -p "$RUNTIME_DIR"

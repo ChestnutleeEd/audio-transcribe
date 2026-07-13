@@ -75,11 +75,11 @@ if not exist "%PYTHON_EXE%" (
 echo [3/5] 正在检查 Python 依赖和 FFmpeg...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\runtime-check-windows.ps1" -Root "%CD%"
 if not "%ERRORLEVEL%"=="0" (
-  echo.
-  echo 运行环境检查未通过。请按照上方中文提示处理后重新双击启动。
-  echo.
-  pause
-  exit /b 1
+  echo 检测到依赖不完整，正在使用国内镜像自动补齐...
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\setup-windows.ps1"
+  if not "%ERRORLEVEL%"=="0" goto dependency_error
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\runtime-check-windows.ps1" -Root "%CD%"
+  if not "%ERRORLEVEL%"=="0" goto dependency_error
 )
 
 echo [4/5] 正在启动后端服务：%APP_HOST%:%APP_PORT%...
@@ -103,6 +103,13 @@ echo.
 
 "%PYTHON_EXE%" -m uvicorn app.main:app --host %APP_HOST% --port %APP_PORT%
 goto done
+
+:dependency_error
+echo.
+echo 自动安装未完成。请按照上方中文提示处理后重新双击启动。
+echo.
+pause
+exit /b 1
 
 :open_existing_app
 echo Audio-Transcribe 似乎已经在运行。

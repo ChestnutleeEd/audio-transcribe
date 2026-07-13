@@ -3,7 +3,15 @@ set -euo pipefail
 
 ROOT="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
 PYTHON_EXE="$ROOT/.venv/bin/python"
+if [ -x "$ROOT/.runtime/python/bin/python3" ]; then
+  PYTHON_EXE="$ROOT/.runtime/python/bin/python3"
+fi
 REQUIREMENTS="$ROOT/requirements.txt"
+
+if [ -x "$ROOT/origin-code/ffmpeg" ]; then
+  export PATH="$ROOT/origin-code:$PATH"
+  export AUDIO_TRANSCRIBE_FFMPEG="$ROOT/origin-code/ffmpeg"
+fi
 
 echo "正在检查 Audio-Transcribe 运行环境..."
 
@@ -13,8 +21,8 @@ if [ ! -f "$REQUIREMENTS" ]; then
 fi
 
 if [ ! -x "$PYTHON_EXE" ]; then
-  echo "未找到 Python 虚拟环境：$PYTHON_EXE"
-  echo "首次运行会自动创建虚拟环境并安装依赖。"
+  echo "未找到可用的 Python 运行环境：$PYTHON_EXE"
+  echo "首次运行会自动准备运行环境并安装依赖。"
   exit 2
 fi
 
