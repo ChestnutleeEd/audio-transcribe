@@ -253,6 +253,21 @@ function build_installer_windows {
   $env:AUDIO_TRANSCRIBE_VERSION = $Version.TrimStart("v")
   $env:AUDIO_TRANSCRIBE_WINDOWS_STAGE = $Stage
   $env:AUDIO_TRANSCRIBE_WINDOWS_INSTALLER_DIR = $OutputDir
+  $InnoRoot = Split-Path $Iscc -Parent
+  $LanguageFile = @(
+    (Join-Path $InnoRoot "Languages\Unofficial\ChineseSimplified.isl"),
+    (Join-Path $InnoRoot "Languages\ChineseSimplified.isl")
+  ) | Where-Object { Test-Path $_ -PathType Leaf } | Select-Object -First 1
+  if (-not $LanguageFile) {
+    $LanguageDir = Join-Path $Root ".release-tools"
+    New-Item -ItemType Directory -Path $LanguageDir -Force | Out-Null
+    $LanguageFile = Join-Path $LanguageDir "ChineseSimplified.isl"
+    Write-Host "正在获取 Inno Setup 官方简体中文语言文件..."
+    Invoke-WebRequest `
+      -Uri "https://raw.githubusercontent.com/jrsoftware/issrc/is-6_7_1/Files/Languages/Unofficial/ChineseSimplified.isl" `
+      -OutFile $LanguageFile
+  }
+  $env:AUDIO_TRANSCRIBE_INNO_LANGUAGE_FILE = $LanguageFile
   & $Iscc (Join-Path $Root "packaging\windows\AudioTranscribe.iss")
   if ($LASTEXITCODE -ne 0) {
     Write-ReleaseWarning "Inno Setup 构建失败，已跳过 Windows Installer。"

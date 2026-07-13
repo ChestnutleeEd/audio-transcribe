@@ -10,6 +10,7 @@
 #define MyAppExeName "start-audio-transcribe.bat"
 #define MySourceDir GetEnv("AUDIO_TRANSCRIBE_WINDOWS_STAGE")
 #define MyOutputDir GetEnv("AUDIO_TRANSCRIBE_WINDOWS_INSTALLER_DIR")
+#define MyLanguageFile GetEnv("AUDIO_TRANSCRIBE_INNO_LANGUAGE_FILE")
 
 [Setup]
 AppId={{8D0E0C49-EC5B-4A9D-83C7-A1B4D5D50C8E}
@@ -30,7 +31,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 
 [Languages]
-Name: "chinesesimp"; MessagesFile: "compiler:Languages\Unofficial\ChineseSimplified.isl"
+Name: "chinesesimp"; MessagesFile: "{#MyLanguageFile}"
 
 [Messages]
 WelcomeLabel1=欢迎安装 Audio-Transcribe
